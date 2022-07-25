@@ -1,0 +1,8 @@
+{
+    "hsc_ssp": {
+        "config_path": "hsc.json"
+    },
+    "des": {
+        "config_path": "des.json"
+    }
+}
