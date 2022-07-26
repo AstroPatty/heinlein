@@ -17,23 +17,36 @@ def Region(*args, **kwargs):
     except:
         return PolygonRegion(*args, **kwargs)
 
-class BaseRegion(Protocol):
+class HeinleinCacheException(Exception):
+    pass 
+
+
+class BaseRegion:
 
     def __init__(self, *args, **kwargs):
-        pass
+        self._cache = {}
+
     def overlaps(self, *args, **kwargs):
         pass
     def center(self, *args, **kwargs):
         pass
+    def cache(self, ref, dtype):
+        self._cache.update({dtype: ref})
+    def get_data(self, dtype):
+        try:
+            return self._cache[dtype]
+        except KeyError:
+            raise HeinleinCacheException
 
 
-class PolygonRegion:
+class PolygonRegion(BaseRegion):
 
     def __init__(self, points, name: str, *args, **kwargs):
         """
         Core region object. All points are assumed to be in units
         of degrees.
         """
+        super().__init__()
         self._geometry = Polygon(points)
         self.name = name
 
@@ -44,13 +57,14 @@ class PolygonRegion:
     def center(self) -> Point:
         return self._geometry.centroid
 
-class CircularRegion:
+class CircularRegion(BaseRegion):
 
     def __init__(self, center: Union[SkyCoord, tuple], radius: Union[u.Quantity, float], name: str, *args, **kwargs):
         """
         Core region object. All points are assumed to be in units
         of degrees.
         """
+        super().__init__()
         if type(center) == SkyCoord:
             self._skypoint = center
             self._center = Point(center.ra.value, center.dec.value)

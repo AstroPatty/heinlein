@@ -2,12 +2,15 @@ import json
 import pathlib
 import logging
 from abc import abstractmethod
+from pkgutil import get_data
 from sys import implementation
 from importlib import import_module
 import numpy as np
 from xml.dom.minidom import Attr
 
-from heinlein.region import BaseRegion, Region
+from heinlein.region import BaseRegion, Region, HeinleinCacheException
+from heinlein.data import get_handler
+
 
 logger = logging.getLogger("Survey")
 
@@ -36,6 +39,19 @@ class Survey:
         """
         mask = np.array([other.overlaps(r) for r in self._regions])
         return self._regions[mask]
+
+    def get_data_from_region(self, region: BaseRegion, dtype="catalog", *args, **kwargs):
+        overlaps = self.get_region_overlaps(self, *args, **kwargs)
+        data = {}
+        for region in overlaps:
+            try:
+                data = region.get_data(dtype)
+            except HeinleinCacheException:
+                handler = get_handler(self, region, dtype)
+                data.update({dtype: handler()})
+        return data
+
+
 
 
 def load_survey(name: str) -> Survey:
