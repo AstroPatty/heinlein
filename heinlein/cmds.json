@@ -24,5 +24,31 @@
                 "required": true
             }       
         }
+    },
+    "remove": {
+        "description": "Remove a datatype from a dataset",
+        "options": {
+            "survey_name": {
+                "description": "The name of the dataset",
+                "required": true
+            },
+            "dtype": {
+                "description": "The type of data being removed",
+                "required": true
+            }       
+        }
+    },
+    "get": {
+        "description": "Get the path to a specified data type in a dataset",
+        "options": {
+            "dataset_name": {
+                "description": "The name of the datset",
+                "required": true
+            },
+            "dtype": {
+                "description": "The type of data being removed",
+                "required": true
+            }
+        }
     }
 }

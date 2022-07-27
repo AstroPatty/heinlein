@@ -10,6 +10,7 @@ from heinlein.utilities import warning_prompt, warning_prompt_tf
 import shutil
 import os
 import logging
+from typing import Union
 
 logger = logging.getLogger("manager")
 
@@ -204,6 +205,44 @@ class FileManager(Manager):
         with open(self.config_location, 'w') as f:
             json.dump(self.config_data, f, indent=4)
         return True
+
+    def remove_data(self, dtype: str) -> bool:
+        """
+        Remove data from a datset. Usually this will be invoked
+        by a command line script.
+
+        Params:
+
+        dtype <str>: Type of data being added (i.e. "catalog")
+
+        Returns:
+
+        bool: Whether or not the file was sucessfully removed
+        """
+        try:
+            path = self.config_data['data'][dtype]
+        except KeyError:
+            print(f"Error: dataset {self.name} has no data of type {dtype}")
+            return False
+        
+        path = pathlib.Path(path)
+        if not path.is_file():
+            self.delete_manifest(path)
+        self.config_data['data'].pop(dtype)
+        self.write_config()
+
+    def get_data(self, dtype: str) -> Union[pathlib.Path, bool]:
+        """
+        Get data of a specificed type
+        Note, this ONLY returns a path
+        """
+        try:
+            path = self.config_data['data'][dtype]
+        except KeyError:
+            print(f"Error: dataset {self.name} has no data of type {dtype}")
+            return False
+        return pathlib.Path(path)
+
 
     def clear_all_data(self, *args, **kwargs) -> None:
         for dtype, path in self.config_data['data'].items():

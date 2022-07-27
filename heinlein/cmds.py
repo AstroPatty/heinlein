@@ -19,9 +19,6 @@ def main(*args, **kwargs):
         raise NotImplementedError
     
     if cmd in cmds.keys():
-        if sys.argv[2] == "help":
-            print_help(cmd, cmds[cmd])
-            return
         info = cmds[cmd]
         options = sys.argv[2:]
         option_required = np.array([o['required'] for o in info['options'].values()])
@@ -32,7 +29,9 @@ def main(*args, **kwargs):
             print()
             print_help(cmd, info)
             return False
-
+        elif sys.argv[2] == "help":
+            print_help(cmd, cmds[cmd])
+            return
         
         try:
             this = sys.modules[__name__]
@@ -62,17 +61,29 @@ def add(options: list, info: dict, *args, **kwargs) -> bool:
     """
     Add a location on disk to a dataset
     """
+    cwd = Path.cwd()
     name = options[0]
     dtype = options[1]
     try:
         path = Path(options[2])
+        path = cwd / path
     except IndexError:
-        path = Path.cwd()
+        path = cwd
     if not path.exists():
         print("Error: f{path} not found!")
         return
     manager = FileManager(name)
     manager.add_data(dtype, path)
+    return True
+
+def remove(options: dict, info: dict, *args, **kwargs):
+    name = options[0]
+    if not FileManager.exists(name):
+        print(f"Error: dataset {name} does not exist!")
+        return True
+    dtype = options[1]
+    mgr = FileManager(name)
+    mgr.remove_data(dtype)
     return True
 
 def clear(options: dict, info: dict, *args, **kwargs) -> bool:
@@ -91,4 +102,18 @@ def clear(options: dict, info: dict, *args, **kwargs) -> bool:
         mgr = FileManager(name)
         mgr.clear_all_data()
     return True
-    
+
+def get(options: dict, info: dict, *args, **kwargs) -> bool:
+    """
+    Get the path to a specific data type in a specific datset
+    """
+    name = options[0]
+    if not FileManager.exists(name):
+        print(f"Error: dataset {name} does not exist!")
+        return True
+    dtype = options[1]
+    mgr = FileManager(name)
+    path = mgr.get_data(dtype)
+    if path:
+        print(str(path))
+    return True
