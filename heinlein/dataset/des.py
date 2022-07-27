@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 import pickle
 
-from heinlein.survey.survey import load_survey
+from heinlein.dataset.dataset import load_survey
 
 EXPORT = ["read_regions"]
 

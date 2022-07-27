@@ -65,13 +65,12 @@ def add(options: list, info: dict, *args, **kwargs) -> bool:
     name = options[0]
     dtype = options[1]
     try:
-        path = Path(options[3])
+        path = Path(options[2])
     except IndexError:
         path = Path.cwd()
     if not path.exists():
         print("Error: f{path} not found!")
         return
-    
     manager = FileManager(name)
     manager.add_data(dtype, path)
     return True

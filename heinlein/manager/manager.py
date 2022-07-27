@@ -1,11 +1,17 @@
+from genericpath import isfile
 from importlib.resources import path
 import pathlib
 from sys import implementation
+from tkinter import TRUE
 import pymongo
 import json
 from heinlein.locations import BASE_DATASET_CONFIG, BASE_DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG
 from heinlein.utilities import warning_prompt, warning_prompt_tf
 import shutil
+import os
+import logging
+
+logger = logging.getLogger("manager")
 
 class Manager:
 
@@ -69,7 +75,92 @@ class FileManager(Manager):
             with open(self.config_location, "r") as f:
                 self.config_data = json.load(f)
             self.ready = True
+
+    @staticmethod
+    def update_manifest(path: pathlib.Path, *args, **kwargs):
+        if path.is_file():
+            return
+        manifest_file = path / ".heinlein"
+        manifest = FileManager.build_manifest(path, recursive = False)
+        if manifest_file.exists():
+            with open(manifest_file, "r") as f:
+                m_data = json.load(f)
+            if m_data != manifest:
+                with open(manifest_file, "w") as f:
+                    json.dump(manifest, f, indent=4)
+        else:
+            with open(manifest_file, "w") as f:
+                json.dump(manifest, f, indent=4)
     
+    @staticmethod
+    def check_manifest(path: pathlib.Path, recursive = False, modified = False, *args, **kwargs) -> bool:
+        if modified:
+            FileManager.update_manifest(path)
+            return True
+        
+        if path.is_file() and path.exists():
+            return True
+        
+        manifest_file = path / ".henlein"
+        if not manifest_file.exists():
+            print(f"Errror: No file maniefest found in {str(path)}")
+            return
+        good = True  
+        with open(manifest_file, "r") as f:
+            current_manifest = json.load(f)
+        new_manifest = FileManager.build_manifest(path)
+
+        current_files = set(current_manifest['files'].keys())
+        new_files = set(new_manifest['files'].keys())
+
+        if current_files != new_files:
+            missing = current_files.difference(new_files)
+            extra = new_files.difference(current_files)
+            if len(missing) > 0:
+                logging.warning(f"Warning: some files are missing from {str(path)}")
+                good = False
+            if len(extra) > 0:
+                logging.warning(f"Warning: some extra files found in {str(path)}")
+                good = False
+        modified = []
+        for file in current_files.intersection(new_files):
+            if new_manifest['files'][file] != current_manifest['files'][file]:
+                modified.append(file)
+        
+        if len(modified) > 0:
+            logging.warning(f"Warning: some files have been modified in {str(path)}")
+        if not good:
+            logging.warning(f"Pass modfied = True to silence this warning and update the manifest")
+        return good
+
+    @staticmethod
+    def build_manifest(path: pathlib.Path, *args, **kwargs) -> dict:
+        """
+        Builds a manifest of files with last-modified dates.
+        """
+        all = [f for f in path.glob('*') if not f.name.startswith('.')]
+        files = []
+        folders = []
+
+        for f in all:
+            if f.is_file():
+                files.append(f)
+            else:
+                folders.append(str(f))
+        files_mod = {str(f): f.stat().st_mtime for f in files}
+        manifest = {"files": files_mod, "dirs": folders}
+        return manifest
+
+    @staticmethod
+    def delete_manifest(path: pathlib.Path, *args, **kwargs) -> None:
+        if path.is_file():
+            return
+        manifest = path / ".heinlein"
+        if not path.exists():
+            raise FileNotFoundError(f"Path {str(path)} was not initialized properly!")
+        else:
+            manifest.unlink()
+
     def write_config(self):
         with open(self.config_location, 'w') as f:
             json.dump(self.config_data, f, indent=4)
@@ -108,12 +199,15 @@ class FileManager(Manager):
                 raise NotImplementedError
         
         data.update({dtype: str(path)})
+        self.update_manifest(path)
         self.config_data.update({'data': data})
         with open(self.config_location, 'w') as f:
             json.dump(self.config_data, f, indent=4)
         return True
 
     def clear_all_data(self, *args, **kwargs) -> None:
+        for dtype, path in self.config_data['data'].items():
+            self.delete_manifest(pathlib.Path(path)) 
         self.config_data['data'] = {}
         self.write_config()
 
