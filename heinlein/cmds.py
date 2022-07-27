@@ -1,7 +1,8 @@
 import sys
 import json
 from heinlein.locations import INSTALL_DIR
-from heinlein.manager.manager import FileManager
+from heinlein.manager import FileManager
+from heinlein.utilities import warning_prompt_tf
 import numpy as np
 from pathlib import Path
 
@@ -12,7 +13,11 @@ def main(*args, **kwargs):
     cmd_config_location = INSTALL_DIR / "cmds.json"
     with open(cmd_config_location) as f:
         cmds = json.load(f) 
-    cmd = sys.argv[1]
+    try:
+        cmd = sys.argv[1]
+    except IndexError:
+        raise NotImplementedError
+    
     if cmd in cmds.keys():
         if sys.argv[2] == "help":
             print_help(cmd, cmds[cmd])
@@ -53,7 +58,7 @@ def print_help(name, info):
     print(example)
 
 
-def add(options: dict, info: dict, *args, **kwargs) -> bool:
+def add(options: list, info: dict, *args, **kwargs) -> bool:
     """
     Add a location on disk to a dataset
     """
@@ -71,3 +76,20 @@ def add(options: dict, info: dict, *args, **kwargs) -> bool:
     manager.add_data(dtype, path)
     return True
 
+def clear(options: dict, info: dict, *args, **kwargs) -> bool:
+    """
+    Clear all data from a dataset
+    """
+    name = options[0]
+    if not FileManager.exists(name):
+        print(f"Error: dataset {name} does not exist!")
+        return True
+    msg = f"This will delete all references to data for the {name} dataset." \
+                                " Are you sure you want to do this?"
+    delete = warning_prompt_tf(msg)
+
+    if delete:
+        mgr = FileManager(name)
+        mgr.clear_all_data()
+    return True
+    

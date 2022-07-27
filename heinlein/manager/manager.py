@@ -3,8 +3,9 @@ import pathlib
 from sys import implementation
 import pymongo
 import json
-from heinlein.locations import MAIN_DATASET_CONFIG, DATASET_CONFIG_DIR
-from heinlein.cmds import warning_prompt, warning_prompt_tf
+from heinlein.locations import BASE_DATASET_CONFIG, BASE_DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG
+from heinlein.utilities import warning_prompt, warning_prompt_tf
+import shutil
 
 class Manager:
 
@@ -15,6 +16,18 @@ class Manager:
         
         """
         self.name = name
+    
+    @staticmethod
+    def exists(name: str) -> bool:
+        """
+        Checks if a datset exists
+        """
+        with open(MAIN_DATASET_CONFIG, "r") as f:
+            surveys = json.load(f)
+        if name in surveys.keys():
+            return True
+        return False
+
 
 
 class FileManager(Manager):
@@ -40,6 +53,7 @@ class FileManager(Manager):
         """
         with open(MAIN_DATASET_CONFIG, "r") as f:
             surveys = json.load(f)
+
         if self.name not in surveys.keys():
             write_new = warning_prompt_tf(f"Survey {self.name} not found, would you like to initialize it? ")
             if write_new:
@@ -49,8 +63,18 @@ class FileManager(Manager):
         else:
             cp = surveys[self.name]['config_path']
             self.config_location = DATASET_CONFIG_DIR / cp
+            base_config = BASE_DATASET_CONFIG_DIR / cp
+            if base_config.exists() and not self.config_location.exists():
+                shutil.copy(base_config, self.config_location)
+            with open(self.config_location, "r") as f:
+                self.config_data = json.load(f)
             self.ready = True
     
+    def write_config(self):
+        with open(self.config_location, 'w') as f:
+            json.dump(self.config_data, f, indent=4)
+
+
     def add_data(self, dtype: str, path: pathlib.Path) -> bool:
         """
         Add data to a datset. Note that this only gives the manager
@@ -69,10 +93,8 @@ class FileManager(Manager):
         """
         if not self.ready:
             return False
-        with open(self.config_location, "r") as f:
-            config_data = json.load(f)
         try:
-            data = config_data['data']
+            data = self.config_data['data']
         except KeyError:
             data = {}
 
@@ -86,10 +108,15 @@ class FileManager(Manager):
                 raise NotImplementedError
         
         data.update({dtype: str(path)})
-        config_data.update({'data': data})
+        self.config_data.update({'data': data})
         with open(self.config_location, 'w') as f:
-            json.dump(config_data, f, indent=4)
+            json.dump(self.config_data, f, indent=4)
         return True
+
+    def clear_all_data(self, *args, **kwargs) -> None:
+        self.config_data['data'] = {}
+        self.write_config()
+
 
     def initialize_dataset(self, *args, **kwargs) -> pathlib.Path:
         """
@@ -102,6 +129,8 @@ class FileManager(Manager):
         """
 
         default_survey_config_location = DATASET_CONFIG_DIR / "default.json"
+        if not default_survey_config_location.exists():
+            shutil.copy(BASE_DATASET_CONFIG_DIR / "default.json", default_survey_config_location)
         with open(default_survey_config_location, "r") as f:
             default_survey_config = json.load(f)
         

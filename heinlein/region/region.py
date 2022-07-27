@@ -1,5 +1,4 @@
-from ast import excepthandler
-from typing import Any, Protocol, Union
+from typing import Any, Union
 import astropy.units as u
 from shapely.geometry import Point, Polygon
 from astropy.coordinates import SkyCoord

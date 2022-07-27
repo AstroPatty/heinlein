@@ -1,9 +1,9 @@
 {
     "add" : {
-        "description": "Add a file to a survey.",
+        "description": "Add a file to a dataset.",
         "options": {
             "survey_name": {
-                "description": "The name of the survey",
+                "description": "The name of the dataset",
                 "required": true
             },
             "data_type": {
@@ -14,6 +14,15 @@
                 "description": "Path to the data (leave empty to use the current directory",
                 "required": false
             }
+        }
+    },
+    "clear": {
+        "description": "Clear all data from a dataset",
+        "options": {
+            "survey_name": {
+                "description": "The name of the dataset",
+                "required": true
+            }       
         }
     }
 }
