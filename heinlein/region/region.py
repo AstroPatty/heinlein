@@ -1,5 +1,5 @@
 from ast import excepthandler
-from typing import Protocol, Union
+from typing import Any, Protocol, Union
 import astropy.units as u
 from shapely.geometry import Point, Polygon
 from astropy.coordinates import SkyCoord
@@ -7,6 +7,9 @@ from astropy.coordinates import SkyCoord
 from heinlein.data.handlers import get_handler
 
 def Region(*args, **kwargs):
+    """
+    Factory function for building regions.
+    """
     try:
         name = kwargs['name']
     except KeyError:
@@ -21,15 +24,19 @@ def Region(*args, **kwargs):
 class BaseRegion:
 
     def __init__(self, *args, **kwargs):
+        """
+        Base region object
+        """
         self._cache = {}
 
     def overlaps(self, *args, **kwargs):
         pass
     def center(self, *args, **kwargs):
         pass
-    def cache(self, ref, dtype):
+    def cache(self, ref: Any, dtype: str) -> None:
         self._cache.update({dtype: ref})
-    def get_data(self, ext, dtype):
+
+    def get_data(self, ext, dtype: str) -> Any:
         try:
             return self._cache[dtype]
         except:
@@ -59,9 +66,10 @@ class CircularRegion(BaseRegion):
 
     def __init__(self, center: Union[SkyCoord, tuple], radius: Union[u.Quantity, float], name: str, *args, **kwargs):
         """
-        Core region object. All points are assumed to be in units
-        of degrees.
+        Circular region
+        Accepts point-radius for initialization
         """
+        
         super().__init__()
         if type(center) == SkyCoord:
             self._skypoint = center

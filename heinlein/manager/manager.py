@@ -4,6 +4,7 @@ from sys import implementation
 import pymongo
 import json
 from heinlein.locations import MAIN_DATASET_CONFIG, DATASET_CONFIG_DIR
+from heinlein.cmds import warning_prompt, warning_prompt_tf
 
 class Manager:
 
@@ -14,26 +15,6 @@ class Manager:
         
         """
         self.name = name
-    
-    def warning_prompt(self, warning: str, options: list) -> str:
-        print(warning)
-        keys = [l[0].upper() for l in options]
-        while True:
-            for index, option in enumerate(options):
-                print(f"{option} ({keys[index]})")
-            i = input("?: ")
-            if i.upper() in keys:
-                return i.upper()
-            else:
-                print("Invalid option")
-
-
-    def warning_prompt_tf(self, warning: str) -> bool:
-        options = ["Yes", "No"]
-        if self.warning_prompt(warning, options) == "Y":
-            return True
-        return False
-
 
 
 class FileManager(Manager):
@@ -60,7 +41,7 @@ class FileManager(Manager):
         with open(MAIN_DATASET_CONFIG, "r") as f:
             surveys = json.load(f)
         if self.name not in surveys.keys():
-            write_new = self.warning_prompt_tf(f"Survey {self.name} not found, would you like to initialize it? ")
+            write_new = warning_prompt_tf(f"Survey {self.name} not found, would you like to initialize it? ")
             if write_new:
                 self.config_location = self.initialize_dataset()
             else:
@@ -98,7 +79,7 @@ class FileManager(Manager):
         if dtype in data.keys():
             msg = f"Datatype {dtype} already found for survey {self.name}."
             options = ["Overwrite", "Merge", "Abort"]
-            choice = self.warning_prompt(msg, options)        
+            choice = warning_prompt(msg, options)        
             if choice == "A":
                 return False
             elif choice == "M":

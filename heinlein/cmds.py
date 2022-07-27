@@ -6,6 +6,9 @@ import numpy as np
 from pathlib import Path
 
 def main(*args, **kwargs):
+    """
+    Entrypoint for "heinlein" command
+    """
     cmd_config_location = INSTALL_DIR / "cmds.json"
     with open(cmd_config_location) as f:
         cmds = json.load(f) 
@@ -51,6 +54,9 @@ def print_help(name, info):
 
 
 def add(options: dict, info: dict, *args, **kwargs) -> bool:
+    """
+    Add a location on disk to a dataset
+    """
     name = options[0]
     dtype = options[1]
     try:
