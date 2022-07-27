@@ -1,1 +1,1 @@
-from .handler import get_handler
+from .handlers import get_handler

@@ -4,6 +4,7 @@ import astropy.units as u
 from shapely.geometry import Point, Polygon
 from astropy.coordinates import SkyCoord
 
+from heinlein.data.handlers import get_handler
 
 def Region(*args, **kwargs):
     try:
@@ -17,10 +18,6 @@ def Region(*args, **kwargs):
     except:
         return PolygonRegion(*args, **kwargs)
 
-class HeinleinCacheException(Exception):
-    pass 
-
-
 class BaseRegion:
 
     def __init__(self, *args, **kwargs):
@@ -32,11 +29,12 @@ class BaseRegion:
         pass
     def cache(self, ref, dtype):
         self._cache.update({dtype: ref})
-    def get_data(self, dtype):
+    def get_data(self, ext, dtype):
         try:
             return self._cache[dtype]
-        except KeyError:
-            raise HeinleinCacheException
+        except:
+            handler = get_handler(ext, self, dtype)
+        
 
 
 class PolygonRegion(BaseRegion):

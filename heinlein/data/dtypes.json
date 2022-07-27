@@ -1,0 +1,8 @@
+{   
+    "catalog" : {
+        "description": "For holding object catalogs"
+    },
+    "mask": {
+        "description": "Masks of various types (bright stars are the most common reasons)"
+    }
+}

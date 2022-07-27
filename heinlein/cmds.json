@@ -1,0 +1,19 @@
+{
+    "add" : {
+        "description": "Add a file to a survey.",
+        "options": {
+            "survey_name": {
+                "description": "The name of the survey",
+                "required": true
+            },
+            "data_type": {
+                "description": "The type of data being added",
+                "required": true
+            },
+            "path": {
+                "description": "Path to the data (leave empty to use the current directory",
+                "required": false
+            }
+        }
+    }
+}

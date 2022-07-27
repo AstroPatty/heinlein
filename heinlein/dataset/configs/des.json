@@ -1,0 +1,9 @@
+{
+    "name": "Dark Energy Survey",
+    "survey_region": "None",
+    "implementation": true,
+    "data": {
+        "catalog": "/Users/patrick",
+        "catalogs": "/Users/patrick"
+    }
+}

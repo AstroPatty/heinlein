@@ -9,7 +9,6 @@ class HeinleinData(Protocol):
         pass
 
 
-
 class HeinleinCatalog:
     
     def __init__(self, *args, **kwargs):
@@ -17,11 +16,8 @@ class HeinleinCatalog:
 
     def get_data_in_region(self, *args, **kwargs):
         pass
-    def get_objects(self, *args, **kwargs):
-        pass
-
 
 class HeinleinStarMask:
-        
+
     def __init__(self, *args, **kwargs):
         pass

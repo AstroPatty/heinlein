@@ -42,6 +42,4 @@ def load_regions_from_pandas(support_location):
     return tiles    
 
 
-class des(Survey):
-    pass
 
