@@ -1,8 +1,10 @@
+import atexit
 from genericpath import isfile
 from importlib.resources import path
 import pathlib
 from sys import implementation
 from tkinter import TRUE
+from pandas import DataFrame
 import pymongo
 import json
 from heinlein.locations import BASE_DATASET_CONFIG, BASE_DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG
@@ -11,8 +13,21 @@ import shutil
 import os
 import logging
 from typing import Union
+from copy import copy
 
 logger = logging.getLogger("manager")
+
+def get_manager(name):
+    #to-do: mogodb data
+    return FileManager(name)
+
+def write_config_atexit(config, data, path):
+    output = config
+    output.update({'data': data})
+    with open(path, 'w') as f:
+        json.dump(output, f, indent=4)
+
+
 
 class Manager:
 
@@ -51,6 +66,8 @@ class FileManager(Manager):
         """
         super().__init__(name, *args, **kwargs)
         self.setup()
+        write_atexit = lambda x=self.config_data, y = self.data, z = self.config_location: write_config_atexit(x, y, z)
+        atexit.register(write_atexit)
 
     def setup(self, *args, **kwargs) -> None:
         """
@@ -71,11 +88,30 @@ class FileManager(Manager):
             cp = surveys[self.name]['config_path']
             self.config_location = DATASET_CONFIG_DIR / cp
             base_config = BASE_DATASET_CONFIG_DIR / cp
-            if base_config.exists() and not self.config_location.exists():
-                shutil.copy(base_config, self.config_location)
-            with open(self.config_location, "r") as f:
-                self.config_data = json.load(f)
+            self.config_data = self.reconcile_configs(base_config, self.config_location)
+            self.data = self.config_data.pop("data", {})
             self.ready = True
+    
+    @staticmethod
+    def reconcile_configs(base_path, config_path):
+        """
+        Reconciles the base config file with the current version stored outside the package
+        Ensures new config entries added by developors are propogated correctly
+        Returns the reconciled version
+        """
+        with open(base_path, "r") as f:
+            base_config_data = json.load(f)
+
+        if base_path.exists() and not config_path.exists():
+            shutil.copy(base_path, config_path)
+            return base_config_data
+        
+        with open(config_path, "r") as f:
+            stored_config_data = json.load(f)
+        
+        update = {k: v for k, v in base_config_data.items() if k != "data"}
+        stored_config_data.update(update)
+        return stored_config_data
 
     @staticmethod
     def update_manifest(path: pathlib.Path, *args, **kwargs):
@@ -161,10 +197,15 @@ class FileManager(Manager):
             raise FileNotFoundError(f"Path {str(path)} was not initialized properly!")
         else:
             manifest.unlink()
+    @property
+    def config(self):
+        return self.config_data
 
     def write_config(self):
+        output = copy(self.config_data)
+        output.update({'data': self.data})
         with open(self.config_location, 'w') as f:
-            json.dump(self.config_data, f, indent=4)
+            json.dump(output, f, indent=4)
 
 
     def add_data(self, dtype: str, path: pathlib.Path) -> bool:
@@ -186,8 +227,8 @@ class FileManager(Manager):
         if not self.ready:
             return False
         try:
-            data = self.config_data['data']
-        except KeyError:
+            data = self.data
+        except AttributeError:
             data = {}
 
         if dtype in data.keys():
@@ -199,11 +240,9 @@ class FileManager(Manager):
             elif choice == "M":
                 raise NotImplementedError
         
-        data.update({dtype: str(path)})
         self.update_manifest(path)
-        self.config_data.update({'data': data})
-        with open(self.config_location, 'w') as f:
-            json.dump(self.config_data, f, indent=4)
+        self.data.update({dtype: str(path)})
+        self.write_config()
         return True
 
     def remove_data(self, dtype: str) -> bool:
@@ -220,7 +259,7 @@ class FileManager(Manager):
         bool: Whether or not the file was sucessfully removed
         """
         try:
-            path = self.config_data['data'][dtype]
+            path = self.data[dtype]
         except KeyError:
             print(f"Error: dataset {self.name} has no data of type {dtype}")
             return False
@@ -228,7 +267,7 @@ class FileManager(Manager):
         path = pathlib.Path(path)
         if not path.is_file():
             self.delete_manifest(path)
-        self.config_data['data'].pop(dtype)
+        self.data.pop(dtype)
         self.write_config()
 
     def get_data(self, dtype: str) -> Union[pathlib.Path, bool]:
@@ -237,7 +276,7 @@ class FileManager(Manager):
         Note, this ONLY returns a path
         """
         try:
-            path = self.config_data['data'][dtype]
+            path = self.data[dtype]
         except KeyError:
             print(f"Error: dataset {self.name} has no data of type {dtype}")
             return False
@@ -245,9 +284,9 @@ class FileManager(Manager):
 
 
     def clear_all_data(self, *args, **kwargs) -> None:
-        for dtype, path in self.config_data['data'].items():
+        for dtype, path in self.data.items():
             self.delete_manifest(pathlib.Path(path)) 
-        self.config_data['data'] = {}
+        self.data = {}
         self.write_config()
 
 
@@ -282,3 +321,5 @@ class FileManager(Manager):
         
         self.ready = True
         return output_location
+
+
