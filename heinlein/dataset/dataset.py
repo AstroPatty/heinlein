@@ -7,6 +7,8 @@ import sys
 from importlib import import_module
 import numpy as np
 from xml.dom.minidom import Attr
+from typing import Union
+
 from heinlein.manager.manager import FileManager
 
 from heinlein.region import BaseRegion, Region
@@ -26,6 +28,10 @@ class Dataset:
         self.setup()
 
     def setup(self, *args, **kwargs) -> None:
+        """
+        Searches for an external implementation of the datset
+        This is used for datasets with specific needs (i.e. specific surveys)
+        """
         external = self.config['implementation']
         if not external:
             return
@@ -44,16 +50,18 @@ class Dataset:
         
         self._build_region_tree()
 
-    def _validate_setup(self, *args, **kwargs):
+    def _validate_setup(self, *args, **kwargs) -> None:
         try:
             regions = self._regions
             self._regions = np.asarray(self._regions, dtype=object)
         except AttributeError:
             logging.error(f"No region found for survey {self.name}")
     
-    def _build_region_tree(self, *args, **kwargs):
+    def _build_region_tree(self, *args, **kwargs) -> None:
         """
-        Builds a search tree for finding region overlaps
+        For larger surveys, we subidivide into smaller regions for easier
+        querying. Shapely implements a tree-based searching algorithm for 
+        finding region overlaps, so we create that tree here.
         """
         regions = np.empty(len(self._regions), dtype=object)
         indices = {}
@@ -67,10 +75,10 @@ class Dataset:
         self._geo_tree = STRtree(geo_list)
 
 
-    def get_region_overlaps(self, other: BaseRegion, *args, **kwargs):
+    def get_region_overlaps(self, other: BaseRegion, *args, **kwargs) -> list:
         """
         Find the subregions inside a dataset that overlap with a given region
-        Uses the shapely STRTree for speed
+        Uses the shapely STRTree for speed.
         """
         region_overlaps = np.asarray([self._geo_tree.query(geo) for geo in other.geometry], dtype = "object")
         region_overlaps = np.hstack(region_overlaps)
@@ -78,7 +86,16 @@ class Dataset:
         return self._regions[idxs]
 
 
-    def get_data_from_region(self, region: BaseRegion, dtypes="catalog", *args, **kwargs):
+    def get_data_from_region(self, region: BaseRegion, dtypes: Union[str, list] = "catalog", *args, **kwargs) -> dict:
+        """
+        Get data of type dtypes from a particular region
+        
+        Paramaters:
+
+        region <BaseRegion> heinlein Region object
+        dtypes <str> or <list>: list of data types to return
+        
+        """
         overlaps = self.get_region_overlaps(region, *args, **kwargs)
         handlers = {}
         data = {}
@@ -88,6 +105,7 @@ class Dataset:
         
         for t in dtypes:
             try: 
+                #Search for the path to the data type
                 p = self.manager.get_data(t)
                 paths.update({t: p})
                 data.update({t: []})
@@ -95,14 +113,18 @@ class Dataset:
                 logger.error(f"Path to data type {t} not found, skipping...")
                 
         for t in dtypes:
+            #Handlers are functions that know how to read specific data types
             handler = get_handler(self.external, t)
             handlers.update({t: handler})
         
         for reg in overlaps:
+            #The region object is responsible for actually calling the handler
+            #So it can cache results for easy lookup later
             reg.get_data(handlers, paths, data)
         
         return_data = {}
         for dtype, values in data.items():
+            #Now, we process into useful objects
             return_data.update({dtype: get_data_object(dtype, values)})                
         return return_data
 
@@ -110,19 +132,3 @@ class Dataset:
 def load_dataset(name: str) -> Dataset:
     manager = get_manager(name)
     return Dataset(manager)
-    
-def validate_dataset_config(config: dict, config_path: pathlib.Path) -> bool:
-    default_config_path = config_path / "default.json"
-    with open(default_config_path) as f:
-        default_config = json.load(f)
-
-    default_keys = set(default_config.keys())
-    passed_keys = set(config.keys())
-
-    if passed_keys != default_keys:
-        missing = default_keys.difference(passed_keys)
-        logger.error("The config file did not contain some required keys!")
-        logger.error(f"Missing keys: {list(missing)}")
-        return False
-    
-    return True
