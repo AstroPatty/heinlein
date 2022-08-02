@@ -3,7 +3,8 @@ import astropy.units as u
 from shapely.geometry import Point, Polygon
 from astropy.coordinates import SkyCoord
 
-from heinlein.data.handlers import get_handler
+from heinlein.data import get_handler
+from heinlein.region.base import BaseRegion
 
 def Region(*args, **kwargs):
     """
@@ -20,27 +21,6 @@ def Region(*args, **kwargs):
     except:
         return PolygonRegion(*args, **kwargs)
 
-class BaseRegion:
-
-    def __init__(self, *args, **kwargs):
-        """
-        Base region object
-        """
-        self._cache = {}
-
-    def overlaps(self, *args, **kwargs):
-        pass
-    def center(self, *args, **kwargs):
-        pass
-    def cache(self, ref: Any, dtype: str) -> None:
-        self._cache.update({dtype: ref})
-
-    def get_data(self, ext, dtype: str) -> Any:
-        try:
-            return self._cache[dtype]
-        except:
-            handler = get_handler(ext, self, dtype)
-        
 
 
 class PolygonRegion(BaseRegion):
@@ -50,16 +30,41 @@ class PolygonRegion(BaseRegion):
         Core region object. All points are assumed to be in units
         of degrees.
         """
-        super().__init__()
-        self._geometry = Polygon(points)
-        self.name = name
+        geometry = Polygon(points)
 
-    def overlaps(self, other) -> bool:
-        return self._geometry.intersects(other._geometry)
+        super().__init__(geometry)
+        self.name = name
     
     @property
     def center(self) -> Point:
         return self._geometry.centroid
+
+    def build_wrapped_regions(self, *args, **kwargs):
+        points = self._geometry.exterior.xy
+        if self._edge_overlap[0]:
+            x_vals = points[0]
+            shift_right = [x if (x > 180) else (x + 360) for x in x_vals]    
+            shift_left = [x if (x < 180) else (x - 360) for x in x_vals ]
+            x_coords = [shift_left, shift_right]
+        else:
+            x_coords = [points[0]]
+
+        if self._edge_overlap[1]:
+            y_vals = points[1]
+            shift_right = [y if (y > 90) else (y + 180) for y in y_vals]    
+            shift_left = [y if (y < 90) else (y - 189) for y in y_vals ]
+            y_coords = [shift_left, shift_right]
+        else:
+            y_coords = [points[1]]
+
+        geometry = []
+
+        for x_ in x_coords:
+            for y_ in y_coords:
+                points = list(zip(x_, y_))
+                geometry.append(Polygon(points))
+        self._geometries = geometry
+
 
 class CircularRegion(BaseRegion):
 
@@ -69,7 +74,6 @@ class CircularRegion(BaseRegion):
         Accepts point-radius for initialization
         """
         
-        super().__init__()
         if type(center) == SkyCoord:
             self._skypoint = center
             self._center = Point(center.ra.value, center.dec.value)
@@ -81,12 +85,32 @@ class CircularRegion(BaseRegion):
             self._radius = radius.to(u.degree).value
         else:
             self._radius = radius
+        geometry = self._center.buffer(self._radius)
+        super().__init__(geometry)
 
-        self._geometry = self._center.buffer(self._radius)
+    def build_wrapped_regions(self, *args, **kwargs):
+        x_coord, y_coord = self._center.xy
+        if self._edge_overlap[0]:
+            shift_right = [x if (x > 180) else (x + 360) for x in x_coord]    
+            shift_left = [x if (x < 180) else (x - 360) for x in x_coord]
+            x_coords = [shift_left, shift_right]
+        else:
+            x_coords = x_coord
 
-    def overlaps(self, other) -> bool:
-        return self._geometry.intersects(other._geometry)
-    
+        if self._edge_overlap[1]:
+            shift_right = [y if (y > 90) else (y + 180) for y in y_coord]    
+            shift_left = [y if (y < 90) else (y - 189) for y in y_coord]
+            y_coords = [shift_left, shift_right]
+        else:
+            y_coords = y_coord
+
+        geometry = []
+        for x_ in x_coords:
+            for y_ in y_coords:
+                points = list(zip(x_, y_))
+                geometry.append(Point(points).buffer(self._raidus))
+        self._geometries = geometry
+
     @property
     def center(self) -> Point:
         return self._center

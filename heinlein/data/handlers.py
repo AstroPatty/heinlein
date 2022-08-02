@@ -1,7 +1,14 @@
 
 from functools import partial
+from genericpath import isfile
+from lib2to3.pytree import Base
+from pathlib import Path
+from heinlein.region.base import BaseRegion
+from astropy.io import ascii
+import sys
 
-def get_handler(survey_mod, regions, dtype):
+
+def get_handler(survey_mod, dtype):
     """
     Returns a function to get data from a particular region.
     This allows for lazy evaluation, which is useful with large datasets.
@@ -9,12 +16,33 @@ def get_handler(survey_mod, regions, dtype):
     try:
         h_name = f"get_{dtype}"
         handler = getattr(survey_mod, h_name)
-        return partial(handler, regions=regions)
+        return handler
     except AttributeError:
         return get_defualt_handler(dtype)
 
 def get_defualt_handler(dtype):
-    pass
+    try:
+        this = sys.modules[__name__]
+        handler = getattr(this, f"get_{dtype}")
+        return handler
+    except AttributeError:
+        raise NotImplementedError(f"Data type {dtype} does not have a default handler")
 
-def get_catalog(survey_mod, regions):
-    pass
+def get_catalog(path: Path, region: BaseRegion):
+    """
+    Default handler for a catalog.
+    Loads a signle catalog, assuming the region name can be found in the file name.
+    """
+    if not path.is_file():
+        files = [f for f in path.glob(f"*{region.name}*") if not f.name.startswith('.')]
+        if len(files) > 1:
+            raise NotImplementedError
+        file_path = files[0]
+    else:
+        file_path = path
+
+    if file_path.suffix == ".csv":
+        return ascii.read(file_path)
+    else:
+        raise NotImplementedError(f"File loader not implemented for file type {file_path.suffix}")
+

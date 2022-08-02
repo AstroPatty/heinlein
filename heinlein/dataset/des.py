@@ -1,11 +1,11 @@
-from heinlein import Survey, Region
+from heinlein import Dataset, Region
 import numpy as np
 
 from pathlib import Path
 import pandas as pd
 import pickle
 
-from heinlein.dataset.dataset import load_survey
+from heinlein.dataset.dataset import load_dataset
 
 EXPORT = ["read_regions"]
 
@@ -14,13 +14,7 @@ def setup(self, *args, **kwargs):
 
 def load_regions():
     support_location = Path(__file__).parents[0] / "configs" / "support"
-    try:
-        with open(support_location / "des_tiles.dat", "rb") as f:
-            regions = pickle.load(f)
-    except FileNotFoundError:
-        regions = load_regions_from_pandas(support_location)
-        with open(support_location / "des_tiles.dat", "wb") as f:
-            pickle.dump(regions, f)
+    regions = load_regions_from_pandas(support_location)
     return regions
     
 

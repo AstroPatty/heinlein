@@ -1,3 +1,3 @@
-from .dataset import Dataset
+from .dataset import Dataset, load_dataset
 
-__all__ = ["Survey"]
+__all__ = ["Dataset", "load_dataset"]

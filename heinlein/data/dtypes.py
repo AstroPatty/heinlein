@@ -1,4 +1,4 @@
-from typing import Protocol
+from typing import Protocol, Any
 
 class HeinleinData(Protocol):
     
@@ -9,7 +9,7 @@ class HeinleinData(Protocol):
         pass
 
 
-class HeinleinCatalog:
+class Catalog:
     
     def __init__(self, *args, **kwargs):
         pass
@@ -17,7 +17,15 @@ class HeinleinCatalog:
     def get_data_in_region(self, *args, **kwargs):
         pass
 
-class HeinleinStarMask:
+class StarMask:
 
     def __init__(self, *args, **kwargs):
         pass
+
+    def get_data_in_region(self, *args, **kwargs):
+        pass
+
+
+
+
+        

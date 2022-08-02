@@ -278,8 +278,7 @@ class FileManager(Manager):
         try:
             path = self.data[dtype]
         except KeyError:
-            print(f"Error: dataset {self.name} has no data of type {dtype}")
-            return False
+            raise FileNotFoundError(f"Error: dataset {self.name} has no data of type {dtype}")
         return pathlib.Path(path)
 
 

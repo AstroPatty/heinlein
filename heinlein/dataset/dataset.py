@@ -3,25 +3,38 @@ import pathlib
 import logging
 from abc import abstractmethod
 from pkgutil import get_data
-from sys import implementation
+import sys
 from importlib import import_module
 import numpy as np
 from xml.dom.minidom import Attr
+from heinlein.manager.manager import FileManager
 
 from heinlein.region import BaseRegion, Region
 from heinlein.data import get_handler
+from heinlein.manager import get_manager
 
 
 logger = logging.getLogger("Dataset")
 
 class Dataset:
 
-    def __init__(self, config, *args, **kwargs):
-        self.__dict__.update(config)
+    def __init__(self, manager: FileManager, *args, **kwargs):
+        self.manager = manager
+        self.config = manager.config
+        self.setup()
 
     def setup(self, *args, **kwargs) -> None:
+        external = self.config['implementation']
+        if not external:
+            return
+        
         try:
-            setup = getattr(self._ext, "setup")
+            self.external = import_module(f".{self.config['slug']}", "heinlein.dataset")
+        except KeyError:
+            raise ModuleNotFoundError(f"Pointer to {self.config['name']} implementation not found in config!")
+
+        try:
+            setup = getattr(self.external, "setup")
             setup(self)
             self._validate_setup()
         except AttributeError:
@@ -37,45 +50,39 @@ class Dataset:
         """
         Find the subregions inside a dataset that overlap with a given region
         """
-        mask = np.array([other.overlaps(r) for r in self._regions])
+        mask = np.array([other.intersects(r) for r in self._regions])
         return self._regions[mask]
 
     def get_data_from_region(self, region: BaseRegion, dtypes="catalog", *args, **kwargs):
         overlaps = self.get_region_overlaps(region, *args, **kwargs)
+        handlers = {}
         data = {}
+        paths = {}
         if type(dtypes) == str:
             dtypes = [dtypes]
+        
         for t in dtypes:
-            handler = get_handler(self._ext, overlaps, t)
-            data.update({t: handler()})
+            try: 
+                p = self.manager.get_data(t)
+                paths.update({t: p})
+                data.update({t: []})
+            except FileNotFoundError:
+                logger.error(f"Path to data type {t} not found, skipping...")
+                
+        for t in dtypes:
+            handler = get_handler(self.external, t)
+            handlers.update({t: handler})
+        
+        for reg in overlaps:
+            reg.get_data(handlers, paths, data)
+
         return data
 
 
 def load_dataset(name: str) -> Dataset:
-    config = load_dataset_config(name)
-    s = Dataset(config)
-    return update_dataset_object(s)
-
-def load_dataset_config(name: str) -> dict:
-    self_path = pathlib.Path(__file__)
-    config_path = self_path.parents[0] / "configs"
-    registered_datasets_path = config_path / "datasets.json"
-    with open(registered_datasets_path) as rsf:
-        try:
-            data = json.load(rsf)
-            path = data[name]['config_path']
-        except KeyError:
-            logger.error(f"Unable to find a config for dataset {name}")
-            return None
+    manager = get_manager(name)
+    return Dataset(manager)
     
-    with open(config_path / path) as scf:
-        dataset_config = json.load(scf)
-        if validate_dataset_config(dataset_config, config_path):
-            dataset_config.update({'slug': name})
-            return dataset_config
-        else:
-            return None        
-
 def validate_dataset_config(config: dict, config_path: pathlib.Path) -> bool:
     default_config_path = config_path / "default.json"
     with open(default_config_path) as f:
@@ -92,9 +99,9 @@ def validate_dataset_config(config: dict, config_path: pathlib.Path) -> bool:
     
     return True
 
-def update_dataset_object(obj, *args, **kwargs):
-    mod = import_module(obj.slug)
-    obj._ext = mod
-    obj.setup()
-    return obj
-    
+if __name__ == "__main__":
+    import astropy.units as u
+    region = Region(center = (13.4349, -19.972222), radius = 120*u.arcsec)
+    d = load_dataset("des")
+    data = d.get_data_from_region(region, "catalog")
+    print(data)
