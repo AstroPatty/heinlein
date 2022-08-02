@@ -12,6 +12,7 @@ Shapely = "^1.8.2"
 pandas = "^1.4.3"
 astropy = "^5.1"
 appdirs = "^1.4.4"
+portalocker = "^2.5.1"
 
 [tool.poetry.dev-dependencies]
 
