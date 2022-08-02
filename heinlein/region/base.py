@@ -20,8 +20,13 @@ class BaseRegion:
                     return True
         return False
 
+    @property
+    def geometry(self, *args, **kwargs):
+        return self._geometries
+
     def center(self, *args, **kwargs):
         pass
+
     def cache(self, ref: Any, dtype: str) -> None:
         self._cache.update({dtype: ref})
 

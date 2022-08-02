@@ -1,4 +1,10 @@
 from typing import Protocol, Any
+from astropy.table import vstack
+
+
+def get_data_object(dtype: str, values: list) -> Any:
+    if dtype == "catalog":
+        return vstack(values)
 
 class HeinleinData(Protocol):
     

@@ -10,8 +10,10 @@ from xml.dom.minidom import Attr
 from heinlein.manager.manager import FileManager
 
 from heinlein.region import BaseRegion, Region
-from heinlein.data import get_handler
+from heinlein.data import get_handler, get_data_object
 from heinlein.manager import get_manager
+
+from shapely.strtree import STRtree
 
 
 logger = logging.getLogger("Dataset")
@@ -39,19 +41,42 @@ class Dataset:
             self._validate_setup()
         except AttributeError:
             raise NotImplementedError("Dataset {self.name} does not have a setup method!")
+        
+        self._build_region_tree()
 
     def _validate_setup(self, *args, **kwargs):
         try:
             regions = self._regions
+            self._regions = np.asarray(self._regions, dtype=object)
         except AttributeError:
-            logging.error(f"No region found for surve {self.name}")
+            logging.error(f"No region found for survey {self.name}")
+    
+    def _build_region_tree(self, *args, **kwargs):
+        """
+        Builds a search tree for finding region overlaps
+        """
+        regions = np.empty(len(self._regions), dtype=object)
+        indices = {}
+        for idx, reg in enumerate(self._regions):
+            geos = reg.geometry
+            indices.update({id(geo): idx for geo in geos})
+            regions[idx] = np.asarray(geos, dtype=object)
+        
+        geo_list = np.hstack(regions)
+        self._geo_idx = indices
+        self._geo_tree = STRtree(geo_list)
+
 
     def get_region_overlaps(self, other: BaseRegion, *args, **kwargs):
         """
         Find the subregions inside a dataset that overlap with a given region
+        Uses the shapely STRTree for speed
         """
-        mask = np.array([other.intersects(r) for r in self._regions])
-        return self._regions[mask]
+        region_overlaps = np.asarray([self._geo_tree.query(geo) for geo in other.geometry], dtype = "object")
+        region_overlaps = np.hstack(region_overlaps)
+        idxs = np.unique(np.asarray([self._geo_idx[id(reg)] for reg in region_overlaps]))
+        return self._regions[idxs]
+
 
     def get_data_from_region(self, region: BaseRegion, dtypes="catalog", *args, **kwargs):
         overlaps = self.get_region_overlaps(region, *args, **kwargs)
@@ -75,8 +100,11 @@ class Dataset:
         
         for reg in overlaps:
             reg.get_data(handlers, paths, data)
-
-        return data
+        
+        return_data = {}
+        for dtype, values in data.items():
+            return_data.update({dtype: get_data_object(dtype, values)})                
+        return return_data
 
 
 def load_dataset(name: str) -> Dataset:
@@ -98,10 +126,3 @@ def validate_dataset_config(config: dict, config_path: pathlib.Path) -> bool:
         return False
     
     return True
-
-if __name__ == "__main__":
-    import astropy.units as u
-    region = Region(center = (13.4349, -19.972222), radius = 120*u.arcsec)
-    d = load_dataset("des")
-    data = d.get_data_from_region(region, "catalog")
-    print(data)
