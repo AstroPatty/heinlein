@@ -6,7 +6,7 @@ from astropy.coordinates import SkyCoord
 from heinlein.data import get_handler
 from heinlein.region.base import BaseRegion
 
-def Region(*args, **kwargs):
+def Region(*args, **kwargs) -> BaseRegion:
     """
     Factory function for building regions.
     """
@@ -27,8 +27,7 @@ class PolygonRegion(BaseRegion):
 
     def __init__(self, points, name: str, *args, **kwargs):
         """
-        Core region object. All points are assumed to be in units
-        of degrees.
+        Basic general-shape region object
         """
         geometry = Polygon(points)
 
@@ -39,7 +38,8 @@ class PolygonRegion(BaseRegion):
     def center(self) -> Point:
         return self._geometry.centroid
 
-    def build_wrapped_regions(self, *args, **kwargs):
+    def build_wrapped_regions(self, *args, **kwargs) -> None:
+        
         points = self._geometry.exterior.xy
         if self._edge_overlap[0]:
             x_vals = points[0]
@@ -68,10 +68,11 @@ class PolygonRegion(BaseRegion):
 
 class CircularRegion(BaseRegion):
 
-    def __init__(self, center: Union[SkyCoord, tuple], radius: Union[u.Quantity, float], name: str, *args, **kwargs):
+    def __init__(self, center: Union[SkyCoord, tuple], radius: Union[u.Quantity, float], name: str, *args, **kwargs) -> None:
         """
         Circular region
-        Accepts point-radius for initialization
+        Accepts point-radius for initialization.
+        Shapely does not techincally have a "spherical regions" object
         """
         
         if type(center) == SkyCoord:
