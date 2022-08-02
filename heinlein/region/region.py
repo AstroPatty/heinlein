@@ -89,7 +89,7 @@ class CircularRegion(BaseRegion):
         geometry = self._center.buffer(self._radius)
         super().__init__(geometry)
 
-    def build_wrapped_regions(self, *args, **kwargs):
+    def build_wrapped_regions(self, *args, **kwargs) -> None:
         x_coord, y_coord = self._center.xy
         if self._edge_overlap[0]:
             shift_right = [x if (x > 180) else (x + 360) for x in x_coord]    

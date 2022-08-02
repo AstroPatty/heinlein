@@ -25,7 +25,7 @@ class BaseRegion:
         return False
 
     @property
-    def geometry(self, *args, **kwargs):
+    def geometry(self, *args, **kwargs) -> list:
         return self._geometries
 
     def center(self, *args, **kwargs):
@@ -63,7 +63,7 @@ class BaseRegion:
             self._geometries = [self._geometry]
 
     @abstractmethod
-    def build_wrapped_regions(self, *args, **kwargs):
+    def build_wrapped_regions(self, *args, **kwargs) -> None:
         """
         Shapely is a 2D geometry package, meaning it doesnt understand
         spherical geometry. This function handles a region that goes over

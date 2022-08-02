@@ -93,7 +93,7 @@ class FileManager(Manager):
             self.ready = True
     
     @staticmethod
-    def reconcile_configs(base_path, config_path):
+    def reconcile_configs(base_path, config_path) -> dict:
         """
         Reconciles the base config file with the current version stored outside the package
         Ensures new config entries added by developors are propogated correctly
@@ -114,7 +114,10 @@ class FileManager(Manager):
         return stored_config_data
 
     @staticmethod
-    def update_manifest(path: pathlib.Path, *args, **kwargs):
+    def update_manifest(path: pathlib.Path, *args, **kwargs) -> None:
+        """
+        Updates a file manifest
+        """
         if path.is_file():
             return
         manifest_file = path / ".heinlein"
@@ -131,6 +134,9 @@ class FileManager(Manager):
     
     @staticmethod
     def check_manifest(path: pathlib.Path, recursive = False, modified = False, *args, **kwargs) -> bool:
+        """
+        Checks to ensure that a folder manifest is current.
+        """
         if modified:
             FileManager.update_manifest(path)
             return True
