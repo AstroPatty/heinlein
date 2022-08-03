@@ -1,11 +1,8 @@
-from heinlein import Dataset, Region
+from heinlein import Region
 import numpy as np
 
 from pathlib import Path
 import pandas as pd
-import pickle
-
-from heinlein.dataset.dataset import load_dataset
 
 EXPORT = ["read_regions"]
 

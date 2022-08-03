@@ -1,14 +1,12 @@
 import logging
-from abc import abstractmethod
-from pkgutil import get_data
 from importlib import import_module
 import numpy as np
 from typing import Union
 
 from heinlein.manager.manager import FileManager
 
-from heinlein.region import BaseRegion, Region
-from heinlein.data import get_handler, get_data_object
+from heinlein.region import BaseRegion
+from heinlein.dtypes import get_handler, get_data_object
 from heinlein.manager import get_manager
 
 from shapely.strtree import STRtree

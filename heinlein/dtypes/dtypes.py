@@ -1,4 +1,3 @@
-from lib2to3.pytree import Base
 from typing import Protocol, Any
 from astropy.table import vstack
 from heinlein.region.base import BaseRegion

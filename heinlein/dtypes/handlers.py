@@ -1,6 +1,6 @@
 from pathlib import Path
 from heinlein.region import BaseRegion
-from heinlein.data.catalog import Catalog
+from heinlein.dtypes.catalog import Catalog
 from astropy.io import ascii
 import sys
 

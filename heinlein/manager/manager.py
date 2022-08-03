@@ -1,16 +1,9 @@
 import atexit
-from genericpath import isfile
-from importlib.resources import path
 import pathlib
-from sys import implementation
-from tkinter import TRUE
-from pandas import DataFrame
-import pymongo
 import json
-from heinlein.locations import BASE_DATASET_CONFIG, BASE_DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG
+from heinlein.locations import BASE_DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG
 from heinlein.utilities import warning_prompt, warning_prompt_tf
 import shutil
-import os
 import logging
 from typing import Union
 from copy import copy
