@@ -1,9 +1,6 @@
-
-from functools import partial
-from genericpath import isfile
-from lib2to3.pytree import Base
 from pathlib import Path
-from heinlein.region.base import BaseRegion
+from heinlein.region import BaseRegion
+from heinlein.data.catalog import Catalog
 from astropy.io import ascii
 import sys
 
@@ -42,7 +39,7 @@ def get_catalog(path: Path, region: BaseRegion):
         file_path = path
 
     if file_path.suffix == ".csv":
-        return ascii.read(file_path)
+        data = ascii.read(file_path)
+        return Catalog(data)
     else:
         raise NotImplementedError(f"File loader not implemented for file type {file_path.suffix}")
-

@@ -1,4 +1,5 @@
 from typing import Any, Union
+from xml.dom.minidom import Attr
 import astropy.units as u
 from shapely.geometry import Point, Polygon
 from astropy.coordinates import SkyCoord
@@ -17,8 +18,9 @@ def Region(*args, **kwargs) -> BaseRegion:
     try:
         center = kwargs['center']
         radius = kwargs['radius']
-        return CircularRegion(center, radius, name)
+        return CircularRegion(center, radius, name, type="CircularRegion")
     except:
+        kwargs.update({"type": "PolygonRegion"})
         return PolygonRegion(*args, **kwargs)
 
 
@@ -31,7 +33,7 @@ class PolygonRegion(BaseRegion):
         """
         geometry = Polygon(points)
 
-        super().__init__(geometry)
+        super().__init__(geometry, *args, **kwargs)
         self.name = name
     
     @property
@@ -83,11 +85,11 @@ class CircularRegion(BaseRegion):
             self._skypoint = SkyCoord(*center, unit="deg")
         
         if type(radius) == u.Quantity:
-            self._radius = radius.to(u.degree).value
-        else:
-            self._radius = radius
-        geometry = self._center.buffer(self._radius)
-        super().__init__(geometry)
+            self._radius = radius.to(u.degree)
+        else: #assume deg
+            self._radius = radius*u.deg
+        geometry = self._center.buffer(self._radius.value)
+        super().__init__(geometry, *args, **kwargs)
 
     def build_wrapped_regions(self, *args, **kwargs) -> None:
         x_coord, y_coord = self._center.xy
@@ -111,7 +113,24 @@ class CircularRegion(BaseRegion):
                 points = list(zip(x_, y_))
                 geometry.append(Point(points).buffer(self._raidus))
         self._geometries = geometry
+    
+    def contains(self, other):
+        try:
+            coords = other.coords
+        except AttributeError:
+            raise NotImplementedError
+        
+        return self._skypoint.separation(coords) <= self._radius
+
 
     @property
     def center(self) -> Point:
         return self._center
+
+    @property
+    def coordinate(self) -> SkyCoord:
+        return self._skypoint
+
+    @property
+    def radius(self) -> u.quantity:
+        return self._radius

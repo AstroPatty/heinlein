@@ -1,12 +1,8 @@
-import json
-import pathlib
 import logging
 from abc import abstractmethod
 from pkgutil import get_data
-import sys
 from importlib import import_module
 import numpy as np
-from xml.dom.minidom import Attr
 from typing import Union
 
 from heinlein.manager.manager import FileManager
@@ -124,8 +120,9 @@ class Dataset:
         
         return_data = {}
         for dtype, values in data.items():
-            #Now, we process into useful objects
-            return_data.update({dtype: get_data_object(dtype, values)})                
+            #Now, we process into useful objects and filter further
+            obj_ = get_data_object(dtype, values)
+            return_data.update({dtype: obj_.get_items_in_region(region)})
         return return_data
 
 

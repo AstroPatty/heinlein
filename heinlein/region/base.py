@@ -2,17 +2,19 @@ from abc import abstractmethod
 import logging
 from typing import Any, Tuple, Union
 from shapely.geometry import Polygon, Point
+import numpy as np
 
 
 logger = logging.getLogger("region")
 class BaseRegion:
 
-    def __init__(self, geometry, *args, **kwargs):
+    def __init__(self, geometry, type, *args, **kwargs):
         """
         Base region object. Placed in its own file to get around
         circular imports
         """
         self._geometry = geometry
+        self._type = type
         self.validate_geometry(self._geometry)
         self._cache = {}
         self.check_for_edges()
@@ -24,9 +26,17 @@ class BaseRegion:
                     return True
         return False
 
+
+    def contains(self, other) -> np.array:
+        pass
+
     @property
     def geometry(self, *args, **kwargs) -> list:
         return self._geometries
+
+    @property
+    def type(self) -> str:
+        return self._type
 
     def center(self, *args, **kwargs):
         pass
