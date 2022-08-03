@@ -61,8 +61,3 @@ def write_split_output_file(dfs, output):
 
         with portalocker.Lock(fpath, 'w') as of:
             output_df.to_csv(of, index=False)
-
-if __name__ == "__main__":
-    from pathlib import Path
-    p = Path("/Volumes/workspace/data/hsc/catalogs/test/W2.csv")
-    _split(p, "tract")
