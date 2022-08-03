@@ -1,5 +1,4 @@
 from typing import Any, Union
-from xml.dom.minidom import Attr
 import astropy.units as u
 from shapely.geometry import Point, Polygon
 from astropy.coordinates import SkyCoord
