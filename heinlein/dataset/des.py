@@ -30,7 +30,7 @@ def load_regions_from_pandas(support_location):
             ra = row[f"{ra_par}{c}"]
             dec = row[f"{dec_par}{c}"]
             corners.append((ra, dec))
-        reg = Region(corners, row['TILENAME'])
+        reg = Region(corners, name=row['TILENAME'])
         tiles[index] = reg
 
     return tiles    

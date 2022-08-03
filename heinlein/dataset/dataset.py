@@ -122,10 +122,12 @@ class Dataset:
         for dtype, values in data.items():
             #Now, we process into useful objects and filter further
             obj_ = get_data_object(dtype, values)
-            return_data.update({dtype: obj_.get_items_in_region(region)})
+            return_data.update({dtype: obj_.get_data_from_region(region)})
         return return_data
 
 
 def load_dataset(name: str) -> Dataset:
     manager = get_manager(name)
     return Dataset(manager)
+
+

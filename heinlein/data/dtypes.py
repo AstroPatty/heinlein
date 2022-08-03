@@ -13,6 +13,9 @@ class HeinleinData(Protocol):
     
     def __init__(self, *args, **kwargs):
         pass
+
+    def get_data_from_region(self, region: BaseRegion, *args, **kwargs):
+        pass
     
 class StarMask:
 

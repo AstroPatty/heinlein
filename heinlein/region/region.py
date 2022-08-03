@@ -14,12 +14,12 @@ def Region(*args, **kwargs) -> BaseRegion:
     try:
         name = kwargs['name']
     except KeyError:
-        name = None
+        kwargs.update({"name": "None"})
     try:
         center = kwargs['center']
         radius = kwargs['radius']
-        return CircularRegion(center, radius, name, type="CircularRegion")
-    except:
+        return CircularRegion(type="CircularRegion", *args, **kwargs)
+    except KeyError:
         kwargs.update({"type": "PolygonRegion"})
         return PolygonRegion(*args, **kwargs)
 
@@ -31,8 +31,8 @@ class PolygonRegion(BaseRegion):
         """
         Basic general-shape region object
         """
-        geometry = Polygon(points)
-
+        input_points = [Point(p) for p in points]
+        geometry = Polygon(input_points)
         super().__init__(geometry, *args, **kwargs)
         self.name = name
     
