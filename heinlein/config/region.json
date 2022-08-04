@@ -1,0 +1,4 @@
+{
+    "allowed_predicates": ["equals", "contains", "interesects", "overlaps", "within"]
+
+}
