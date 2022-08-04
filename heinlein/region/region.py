@@ -40,7 +40,7 @@ class PolygonRegion(BaseRegion):
     def center(self) -> Point:
         return self._geometry.centroid
 
-    def build_wrapped_regions(self, *args, **kwargs) -> None:
+    def build_cycle_regions(self, *args, **kwargs) -> None:
         
         points = self._geometry.exterior.xy
         if self._edge_overlap[0]:
@@ -91,7 +91,7 @@ class CircularRegion(BaseRegion):
         geometry = self._center.buffer(self._radius.value)
         super().__init__(geometry, *args, **kwargs)
 
-    def build_wrapped_regions(self, *args, **kwargs) -> None:
+    def build_cycle_regions(self, *args, **kwargs) -> None:
         x_coord, y_coord = self._center.xy
         if self._edge_overlap[0]:
             shift_right = [x if (x > 180) else (x + 360) for x in x_coord]    

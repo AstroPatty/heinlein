@@ -3,6 +3,7 @@ from abc import abstractmethod
 import logging
 from typing import Any, Tuple, Union
 from shapely.geometry import Polygon, Point
+from shapely.affinity import translate
 import numpy as np
 from functools import partial
 import inspect
@@ -96,20 +97,46 @@ class BaseRegion:
 
         x_edge = BaseRegion.check_x_edge(x_min, x_max)
         y_edge = BaseRegion.chcek_y_edge(y_min, y_max)
-        self._edge_overlap = (x_edge, y_edge)
-        if any(self._edge_overlap):
-            self.build_wrapped_regions()
+        cycle = (x_edge[0], y_edge[0])
+        overlap = (x_edge[1], y_edge[1])
+        if any(overlap):
+            self.build_overlap_regions()
+        elif any(cycle):
+            self.build_cycle_regions()
         else:
             self._geometries = [self._geometry]
 
     @abstractmethod
-    def build_wrapped_regions(self, *args, **kwargs) -> None:
+    def build_cycle_regions(self, *args, **kwargs) -> None:
         """
         Shapely is a 2D geometry package, meaning it doesnt understand
         spherical geometry. This function handles a region that goes over
-        the longitude/latitude line.
+        the longitude/latitude line. 
         """
         pass
+
+    def build_overlap_regions(self, *args, **kwargs):
+        """
+        This function handles cases when the region is at least partially out of bounds
+        """
+        x_min, y_min, x_max, y_max = self._geometry.bounds
+        if x_min < 0:
+            x_geometries = [self._geometry, translate(self._geometry, 360)]
+        elif x_max > 360:
+            x_geometries = [self._geometry, translate(self._geometry, -360)]
+        else:
+            x_geometries = [self._geometry]
+        
+        if y_min < -90:
+            y_geometries = [translate(g, 0, 90) for g in x_geometries]
+        elif y_max > 90:
+            y_geometries = [translate(g, 0, -90) for g in x_geometries]
+        else:
+            y_geometries = []
+        
+        self._geometries = x_geometries + y_geometries
+
+
 
 
     @staticmethod
@@ -120,19 +147,22 @@ class BaseRegion:
         minx_r = (minx + 90) % 360
 
         dx_r = maxx_r - minx_r
-        return (dx_r < 0) and (abs(dx_r) < abs(dx))
+        cycle = (dx_r < 0) and (abs(dx_r) < abs(dx))
+        overlap = maxx > 360 or minx < 0
+        return (cycle, overlap)
 
 
     @staticmethod
-    def chcek_y_edge(minx: float, maxx: float) -> bool:
-        dx = maxx - minx
+    def chcek_y_edge(miny: float, maxy: float) -> bool:
+        dy = maxy - miny
 
-        maxx_r = (maxx - 45) % 360
-        minx_r = (minx - 45) % 360
+        maxy_r = (maxy - 45) % 90
+        miny_r = (miny - 45) % 90
 
-        dx_r = maxx_r - minx_r
-
-        return (dx_r < 0) and (abs(dx_r) < abs(dx))
+        dy_r = maxy_r - miny_r
+        cycle = (dy_r < 0) and (abs(dy_r) < abs(dy))
+        overlap = miny < -90 or maxy > 90
+        return (cycle, overlap)
 
     @staticmethod
     def validate_geometry(geo: Union[Point, Polygon]) -> bool:
