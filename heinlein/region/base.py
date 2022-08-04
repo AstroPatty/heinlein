@@ -1,9 +1,11 @@
+from __future__ import annotations
 from abc import abstractmethod
 import logging
 from typing import Any, Tuple, Union
 from shapely.geometry import Polygon, Point
 import numpy as np
-
+from functools import partial
+import inspect
 
 logger = logging.getLogger("region")
 class BaseRegion:
@@ -18,17 +20,45 @@ class BaseRegion:
         self.validate_geometry(self._geometry)
         self._cache = {}
         self.check_for_edges()
+        self._subregions = {}
 
-    def intersects(self, other) -> bool:
-        for geo in self._geometries:
-            for other_geo in other._geometries:
-                if geo.intersects(other_geo):
+    def __getattr__(self, __name: str) -> Any:
+        """
+        Implements geometry relations for regions
+        """
+        try:
+            return partial(self._delegate_relationship, method_name=__name)
+        except AttributeError:
+            raise AttributeError(f"{type(self)} has no attribute \'{__name}")
+        
+
+    def _delegate_relationship(self, other: BaseRegion, method_name: str, *args, **kwargs) -> Any:
+        for geo in self.geometry:
+            for other_geo in other.geometry:
+                f = getattr(geo, method_name)
+                if f(other_geo, *args, **kwargs):
                     return True
         return False
 
+    def add_subregion(self, name: str, subregion: BaseRegion, overwrite=False) -> None:
+        """
+        Adds a subregion to a region. These can be used to more finely filter a dataset,
+        if necessary. The subregion must be entirely contained within the original region.
 
-    def contains(self, other) -> np.array:
-        pass
+        Paramaters:
+        name <str>: A name for the subregion
+        subregion <heinlein.BaseRegion>: A region object
+        
+        """
+        if not self.contains(subregion):
+            logger.error("A subregion must be entirely contained within its superregion!")
+            return False
+        if name in self._subregions.keys() and not overwrite:
+            logger.error(f"Region already has a subregion named {name}. "\
+                        "Set ovewrite = True to silence this warning")
+            return False
+        self._subregions.update({name: subregion})
+        return True
 
     @property
     def geometry(self, *args, **kwargs) -> list:

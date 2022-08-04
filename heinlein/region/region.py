@@ -1,3 +1,4 @@
+from gettext import Catalog
 from typing import Any, Union
 import astropy.units as u
 from shapely.geometry import Point, Polygon
@@ -112,15 +113,6 @@ class CircularRegion(BaseRegion):
                 points = list(zip(x_, y_))
                 geometry.append(Point(points).buffer(self._raidus))
         self._geometries = geometry
-    
-    def contains(self, other):
-        try:
-            coords = other.coords
-        except AttributeError:
-            raise NotImplementedError
-        
-        return self._skypoint.separation(coords) <= self._radius
-
 
     @property
     def center(self) -> Point:
