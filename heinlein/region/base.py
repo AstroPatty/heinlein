@@ -2,12 +2,14 @@ from __future__ import annotations
 from abc import abstractmethod
 import logging
 from typing import Any, Tuple, Union
+from xml.dom.minidom import Attr
 from shapely.geometry import Polygon, Point
 from shapely.affinity import translate
 import numpy as np
 from functools import partial
-import inspect
+import json
 
+from heinlein.locations import MAIN_CONFIG_DIR
 logger = logging.getLogger("region")
 class BaseRegion:
 
@@ -19,20 +21,25 @@ class BaseRegion:
         self._geometry = geometry
         self._type = type
         self.validate_geometry(self._geometry)
-        self._cache = {}
         self.check_for_edges()
+        self.setup()
+
+    def setup(self, *args, **kwargs):
+        self._cache = {}
         self._subregions = {}
+        config_location = MAIN_CONFIG_DIR / "region.json"
+        with open(config_location, "r") as f:
+            self._config = json.load(f)
 
     def __getattr__(self, __name: str) -> Any:
         """
         Implements geometry relations for regions
         """
-        try:
+        if __name in self._config['allowed_predicates']:
             return partial(self._delegate_relationship, method_name=__name)
-        except AttributeError:
-            raise AttributeError(f"{type(self)} has no attribute \'{__name}")
+        else:
+            raise AttributeError(f"{self._type} has no attribute \'{__name}\'")
         
-
     def _delegate_relationship(self, other: BaseRegion, method_name: str, *args, **kwargs) -> Any:
         for geo in self.geometry:
             for other_geo in other.geometry:
