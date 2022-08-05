@@ -75,6 +75,9 @@ class FileManager(Manager):
             write_new = warning_prompt_tf(f"Survey {self.name} not found, would you like to initialize it? ")
             if write_new:
                 self.config_location = self.initialize_dataset()
+                with open(self.config_location, "r") as f:
+                    self.config_data = json.load(f)
+                    self.data = {}
             else:
                 self.ready = False
         else:
