@@ -20,7 +20,7 @@ class BaseRegion:
         """
         self._geometry = geometry
         self._type = type
-        self.validate_geometry(self._geometry)
+        self._validate_geometry()
         self.check_for_edges()
         self.setup()
 
@@ -121,6 +121,26 @@ class BaseRegion:
         the longitude/latitude line. 
         """
         pass
+    
+    def _validate_geometry(self, *args, **kwargs):
+        x_min, y_min, x_max, y_max = self._geometry.bounds
+        x_bounds = np.array([x_min, x_max])
+        y_bounds = np.array([y_min, y_max])
+        if np.all(x_bounds > 360):
+            x_shift = -360 * (x_bounds[0] // 360)
+        elif np.all(x_bounds < 0):
+            x_shift = - 360*(x_bounds[1] // 360)
+        else:
+            x_shift = 0
+
+        if np.all(y_bounds > 90):
+            y_shift = -90 * (y_bounds[0] // 90)
+        elif np.all(y_bounds < -90):
+            y_shift = 90 + 90*(y_bounds[1] // 90)
+        else:
+            y_shift = 0
+        geo = translate(self._geometry, x_shift, y_shift)
+        self._geometry = geo
 
     def build_overlap_regions(self, *args, **kwargs):
         """
@@ -170,25 +190,3 @@ class BaseRegion:
         cycle = (dy_r < 0) and (abs(dy_r) < abs(dy))
         overlap = miny < -90 or maxy > 90
         return (cycle, overlap)
-
-    @staticmethod
-    def validate_geometry(geo: Union[Point, Polygon]) -> bool:
-        """
-        Regions should always be provided as RA and  IN DEGREES
-        This function checks to make sure these values make sense
-        """
-        if type(geo) == Polygon:
-            points = geo.exterior.coords
-        else:
-            points = [geo.centroid]
-
-        def check(coord: Tuple):
-            ra = coord[0]
-            dec = coord[1]
-            ra_check = (ra > 360) or (ra < 0)
-            dec_check = abs(dec) > 90
-            return ra_check or dec_check
-            
-        if any([check(p) for p in points]):
-            logger.warning("Warning: Region objects expect RAs and Decs but got points outside the bounds!")
-        
