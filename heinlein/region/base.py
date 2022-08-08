@@ -1,5 +1,5 @@
 from __future__ import annotations
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 import logging
 from typing import Any, Tuple, Union
 from xml.dom.minidom import Attr
@@ -11,7 +11,7 @@ import json
 
 from heinlein.locations import MAIN_CONFIG_DIR
 logger = logging.getLogger("region")
-class BaseRegion:
+class BaseRegion(ABC):
 
     def __init__(self, geometry, type, *args, **kwargs):
         """
@@ -48,7 +48,7 @@ class BaseRegion:
                     return True
         return False
 
-    def add_subregion(self, name: str, subregion: BaseRegion, overwrite=False) -> None:
+    def add_subregion(self, name: str, subregion: BaseRegion, overwrite=False, ignore_warnings = False) -> None:
         """
         Adds a subregion to a region. These can be used to more finely filter a dataset,
         if necessary. The subregion must be entirely contained within the original region.
@@ -58,7 +58,7 @@ class BaseRegion:
         subregion <heinlein.BaseRegion>: A region object
         
         """
-        if not self.contains(subregion):
+        if not self.contains(subregion) and not ignore_warnings:
             logger.error("A subregion must be entirely contained within its superregion!")
             return False
         if name in self._subregions.keys() and not overwrite:
@@ -67,7 +67,7 @@ class BaseRegion:
             return False
         self._subregions.update({name: subregion})
         return True
-
+    
     @property
     def geometry(self, *args, **kwargs) -> list:
         return self._geometries
@@ -90,7 +90,7 @@ class BaseRegion:
                 d = handler(paths[type], self)
                 self._cache.update({type: d})
             data[type].append(d)
-    
+        
     def check_for_edges(self, *args, **kwargs) -> None:
         """
         Shapely is a 2D geometry package, meaning it doesn't
@@ -109,7 +109,7 @@ class BaseRegion:
         if any(overlap):
             self.build_overlap_regions()
         elif any(cycle):
-            self.build_cycle_regions()
+            self.build_cycle_regions(cycle)
         else:
             self._geometries = [self._geometry]
 

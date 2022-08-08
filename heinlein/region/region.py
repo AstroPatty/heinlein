@@ -40,10 +40,10 @@ class PolygonRegion(BaseRegion):
     def center(self) -> Point:
         return self._geometry.centroid
 
-    def build_cycle_regions(self, *args, **kwargs) -> None:
+    def build_cycle_regions(self, cycle, *args, **kwargs) -> None:
         
         points = self._geometry.exterior.xy
-        if self._edge_overlap[0]:
+        if cycle[0]:
             x_vals = points[0]
             shift_right = [x if (x > 180) else (x + 360) for x in x_vals]    
             shift_left = [x if (x < 180) else (x - 360) for x in x_vals ]
@@ -51,7 +51,7 @@ class PolygonRegion(BaseRegion):
         else:
             x_coords = [points[0]]
 
-        if self._edge_overlap[1]:
+        if cycle[1]:
             y_vals = points[1]
             shift_right = [y if (y > 90) else (y + 180) for y in y_vals]    
             shift_left = [y if (y < 90) else (y - 189) for y in y_vals ]

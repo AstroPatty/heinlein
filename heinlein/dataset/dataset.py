@@ -36,8 +36,8 @@ class Dataset:
             raise ModuleNotFoundError(f"Pointer to {self.config['name']} implementation not found in config!")
 
         try:
-            setup = getattr(self.external, "setup")
-            setup(self)
+            setup_f = getattr(self.external, "setup")
+            setup_f(self)
             self._validate_setup()
         except AttributeError:
             raise NotImplementedError("Dataset {self.name} does not have a setup method!")
@@ -110,7 +110,7 @@ class Dataset:
             #Handlers are functions that know how to read specific data types
             handler = get_handler(self.external, t)
             handlers.update({t: handler})
-        
+         
         for reg in overlaps:
             #The region object is responsible for actually calling the handler
             #So it can cache results for easy lookup later

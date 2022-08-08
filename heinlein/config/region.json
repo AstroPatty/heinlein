@@ -1,4 +1,4 @@
 {
-    "allowed_predicates": ["equals", "contains", "interesects", "overlaps", "within"]
+    "allowed_predicates": ["equals", "contains", "interesects", "overlaps", "within", "covers"]
 
 }
