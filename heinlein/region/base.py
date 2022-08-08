@@ -2,9 +2,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import logging
 from typing import Any, Tuple, Union
-from xml.dom.minidom import Attr
-from shapely.geometry import Polygon, Point
 from shapely.affinity import translate
+from shapely.strtree import STRtree
 import numpy as np
 from functools import partial
 import json
@@ -26,7 +25,8 @@ class BaseRegion(ABC):
 
     def setup(self, *args, **kwargs):
         self._cache = {}
-        self._subregions = {}
+        self._subregions = np.array(dtype=object)
+        self._covered = False
         config_location = MAIN_CONFIG_DIR / "region.json"
         with open(config_location, "r") as f:
             self._config = json.load(f)
@@ -36,7 +36,7 @@ class BaseRegion(ABC):
         Implements geometry relations for regions
         """
         if __name in self._config['allowed_predicates']:
-            return partial(self._delegate_relationship, method_name=__name)
+            return partial(self._delegate_relationship, method_name = __name)
         else:
             raise AttributeError(f"{self._type} has no attribute \'{__name}\'")
         
@@ -47,6 +47,11 @@ class BaseRegion(ABC):
                 if f(other_geo, *args, **kwargs):
                     return True
         return False
+    
+    def add_subregions(self, subregions: dict, overwrite=False):
+        for name, region in subregions:
+            self.add_subregion(name, region, overwrite)
+        self._build_region_tree()
 
     def add_subregion(self, name: str, subregion: BaseRegion, overwrite=False, ignore_warnings = False) -> None:
         """
@@ -61,13 +66,39 @@ class BaseRegion(ABC):
         if not self.contains(subregion) and not ignore_warnings:
             logger.error("A subregion must be entirely contained within its superregion!")
             return False
-        if name in self._subregions.keys() and not overwrite:
-            logger.error(f"Region already has a subregion named {name}. "\
-                        "Set ovewrite = True to silence this warning")
-            return False
-        self._subregions.update({name: subregion})
+
+        np.append(self._subregions, subregion)
         return True
+
+
+    def _build_region_tree(self, *args, **kwargs) -> None:
+        """
+        For larger surveys, we subidivide into smaller regions for easier
+        querying. Shapely implements a tree-based searching algorithm for 
+        finding region overlaps, so we create that tree here.
+        """
+        regions = np.empty(len(self._subregions), dtype=object)
+        indices = {}
+        for idx, reg in enumerate(self._regions):
+            geos = reg.geometry
+            indices.update({id(geo): idx for geo in geos})
+            regions[idx] = np.asarray(geos, dtype=object)
+        
+        geo_list = np.hstack(regions)
+        self._geo_idx = indices
+        self._geo_tree = STRtree(geo_list)
     
+    def get_subregion_overlaps(self, other: BaseRegion, *args, **kwargs) -> list:
+        """
+        Find the subregions inside a dataset that overlap with a given region
+        Uses the shapely STRTree for speed.
+        """
+        region_overlaps = np.asarray([self._geo_tree.query(geo) for geo in other.geometry], dtype = "object")
+        region_overlaps = np.hstack(region_overlaps)
+        idxs = np.unique(np.asarray([self._geo_idx[id(reg)] for reg in region_overlaps]))
+        return self._regions[idxs]
+
+
     @property
     def geometry(self, *args, **kwargs) -> list:
         return self._geometries
@@ -90,7 +121,7 @@ class BaseRegion(ABC):
                 d = handler(paths[type], self)
                 self._cache.update({type: d})
             data[type].append(d)
-        
+    
     def check_for_edges(self, *args, **kwargs) -> None:
         """
         Shapely is a 2D geometry package, meaning it doesn't

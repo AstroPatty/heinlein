@@ -4,7 +4,6 @@ import astropy.units as u
 from shapely.geometry import Point, Polygon
 from astropy.coordinates import SkyCoord
 
-from heinlein.dtypes import get_handler
 from heinlein.region.base import BaseRegion
 
 def Region(*args, **kwargs) -> BaseRegion:

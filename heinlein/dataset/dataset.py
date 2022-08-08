@@ -80,7 +80,7 @@ class Dataset:
         return self._regions[idxs]
 
 
-    def get_data_from_region(self, region: BaseRegion, dtypes: Union[str, list] = "catalog", *args, **kwargs) -> dict:
+    def get_data_from_region(self, query_region: BaseRegion, dtypes: Union[str, list] = "catalog", *args, **kwargs) -> dict:
         """
         Get data of type dtypes from a particular region
         
@@ -90,7 +90,7 @@ class Dataset:
         dtypes <str> or <list>: list of data types to return
         
         """
-        overlaps = self.get_region_overlaps(region, *args, **kwargs)
+        overlaps = self.get_region_overlaps(query_region, *args, **kwargs)
         handlers = {}
         data = {}
         paths = {}
@@ -114,13 +114,13 @@ class Dataset:
         for reg in overlaps:
             #The region object is responsible for actually calling the handler
             #So it can cache results for easy lookup later
-            reg.get_data(handlers, paths, data)
+            reg.get_data(handlers, paths, data, query_region)
         
         return_data = {}
         for dtype, values in data.items():
             #Now, we process into useful objects and filter further
             obj_ = get_data_object(dtype, values)
-            return_data.update({dtype: obj_.get_data_from_region(region)})
+            return_data.update({dtype: obj_.get_data_from_region(query_region)})
         return return_data
 
 
