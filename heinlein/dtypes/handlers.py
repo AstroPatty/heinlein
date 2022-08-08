@@ -30,6 +30,7 @@ def get_catalog(path: Path, region: BaseRegion):
     Default handler for a catalog.
     Loads a single catalog, assuming the region name can be found in the file name.
     """
+    name = region.name
     if not path.is_file():
         files = [f for f in path.glob(f"*{region.name}*") if not f.name.startswith('.')]
         if len(files) > 1:

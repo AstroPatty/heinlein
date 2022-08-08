@@ -9,6 +9,7 @@ import operator
 
 def setup(self, *args, **kwargs):
     reg = load_regions()
+    print(reg)
     self._regions = reg
 
 def load_regions():
@@ -23,12 +24,13 @@ def _load_region_data(files, *args, **kwargs):
     Used to split up data, making it easier to manage
 
     """
-    output = []
-    for file in files:
+    output = np.empty(len(files), dtype=object)
+    for i, file in enumerate(files):
         tracts = _parse_tractfile(file)
         tracts = _parse_tractdata(tracts, *args, **kwargs)
-        output.append(tracts)
-    return np.hstack(output)
+        field = Region(regions=tracts)
+        output[i] = field
+    return output
 
 
 def _parse_tractfile(tractfile):
@@ -61,7 +63,7 @@ def _parse_tractfile(tractfile):
     return tracts
 
 def _parse_tractdata(tractdata, *args, **kwargs):
-    output = np.empty(len(tractdata), dtype=object)
+    output = {}
     try:
         wanted_tracts = kwargs['tracts']
     except:
@@ -74,12 +76,16 @@ def _parse_tractdata(tractdata, *args, **kwargs):
         points = _parse_polygon_corners(center, corners)
         region_obj = Region(points, name=name)
 
+        patches = {}
         for patchname, patch in tract['subregions'].items():
             patch_corners = patch['corners']
             patch_center = patch['center']
             patch_points = _parse_polygon_corners(patch_center, patch_corners)
-            added = region_obj.add_subregion(name=patchname, subregion = Region(patch_points), ignore_warnings=True)
-        output[index] = region_obj
+            patch_name_parsed = _patch_tuple_to_int(patchname)
+            patches.update({patch_name_parsed: Region(patch_points, name=patch_name_parsed)})
+        
+        added = region_obj.add_subregions(patches, ignore_warnings = True)
+        output.update({name: region_obj})
     return output
 
 def _parse_polygon_corners(center, points):
@@ -90,3 +96,12 @@ def _parse_polygon_corners(center, points):
     return sorted_coords
 
 
+def _patch_tuple_to_int(patch_tuple):
+    """
+    Takes in a patch ID as a tuple and turns it into an int.
+    This int can be used to look up objects in the catalof
+    """
+    if patch_tuple[0] == 0:
+        return patch_tuple[1]
+    else:
+        return 100*patch_tuple[0] + patch_tuple[1]

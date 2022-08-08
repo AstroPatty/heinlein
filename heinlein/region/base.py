@@ -1,6 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 import logging
+from reprlib import recursive_repr
 from typing import Any, Tuple, Union
 from shapely.affinity import translate
 from shapely.strtree import STRtree
@@ -25,7 +26,7 @@ class BaseRegion(ABC):
 
     def setup(self, *args, **kwargs):
         self._cache = {}
-        self._subregions = np.array(dtype=object)
+        self._subregions = np.array([], dtype=object)
         self._covered = False
         config_location = MAIN_CONFIG_DIR / "region.json"
         with open(config_location, "r") as f:
@@ -48,9 +49,9 @@ class BaseRegion(ABC):
                     return True
         return False
     
-    def add_subregions(self, subregions: dict, overwrite=False):
-        for name, region in subregions:
-            self.add_subregion(name, region, overwrite)
+    def add_subregions(self, subregions: dict, overwrite=False, *args, **kwargs):
+        for name, region in subregions.items():
+            self.add_subregion(name, region, overwrite, *args, **kwargs)
         self._build_region_tree()
 
     def add_subregion(self, name: str, subregion: BaseRegion, overwrite=False, ignore_warnings = False) -> None:
@@ -67,7 +68,7 @@ class BaseRegion(ABC):
             logger.error("A subregion must be entirely contained within its superregion!")
             return False
 
-        np.append(self._subregions, subregion)
+        self._subregions = np.append(self._subregions, [subregion])
         return True
 
 
@@ -79,7 +80,7 @@ class BaseRegion(ABC):
         """
         regions = np.empty(len(self._subregions), dtype=object)
         indices = {}
-        for idx, reg in enumerate(self._regions):
+        for idx, reg in enumerate(self._subregions):
             geos = reg.geometry
             indices.update({id(geo): idx for geo in geos})
             regions[idx] = np.asarray(geos, dtype=object)
@@ -88,15 +89,25 @@ class BaseRegion(ABC):
         self._geo_idx = indices
         self._geo_tree = STRtree(geo_list)
     
-    def get_subregion_overlaps(self, other: BaseRegion, *args, **kwargs) -> list:
+    def get_subregion_overlaps(self, other: BaseRegion, recursive = False, *args, **kwargs) -> list:
         """
         Find the subregions inside a dataset that overlap with a given region
         Uses the shapely STRTree for speed.
         """
+        if len(self._subregions) == 0:
+            return None
         region_overlaps = np.asarray([self._geo_tree.query(geo) for geo in other.geometry], dtype = "object")
         region_overlaps = np.hstack(region_overlaps)
         idxs = np.unique(np.asarray([self._geo_idx[id(reg)] for reg in region_overlaps]))
-        return self._regions[idxs]
+        subregion_overlaps = self._subregions[idxs]
+
+        if not recursive:
+            return subregion_overlaps
+
+        overlaps = {reg.name: reg.get_subregion_overlaps(other) for reg in subregion_overlaps}
+        #Note setting recursive=False here ensures our subdivision is never more than two layers deep
+        return overlaps
+
 
 
     @property
@@ -113,15 +124,29 @@ class BaseRegion(ABC):
     def cache(self, ref: Any, dtype: str) -> None:
         self._cache.update({dtype: ref})
 
-    def get_data(self, handlers: dict, paths: dict, data: dict) -> None:
-        for type, handler in handlers.items():
-            try:
-                d = self._cache[type]
-            except KeyError:
-                d = handler(paths[type], self)
-                self._cache.update({type: d})
-            data[type].append(d)
+    def get_data(self, handlers: dict, paths: dict, data: dict, query_region: BaseRegion, *args, **kwargs) -> None:
+        overlaps = self.get_subregion_overlaps(query_region, recursive=True)
+        return self._get_data(handlers, paths, data, query_region, overlaps)
     
+    def _get_data(self, handlers: dict, paths: dict, data: dict, query_region: BaseRegion, overlaps: dict = None):
+        if overlaps is None:
+            for type, handler in handlers.items():
+                try:
+                    d = self._cache[type]
+                except KeyError:
+                    d = handler(paths[type], self)
+                    self._cache.update({type: d})
+                data[type].append(d)
+            return
+        else:
+            for reg, overlaps in overlaps.items():
+                if overlaps is None:
+                    return reg._get_data(handlers, paths, data, query_region)
+                d_ = {}
+                for reg in overlaps:
+                    reg._get_data(handlers, paths, d_, query_region)
+                data.update({reg.name: d_})
+
     def check_for_edges(self, *args, **kwargs) -> None:
         """
         Shapely is a 2D geometry package, meaning it doesn't
