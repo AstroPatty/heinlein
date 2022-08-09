@@ -3,10 +3,10 @@ from importlib import import_module
 import numpy as np
 from typing import Union
 
-from heinlein.manager.manager import FileManager
+from heinlein.manager.dataManger import DataManager
 
 from heinlein.region import BaseRegion
-from heinlein.dtypes import get_handler, get_data_object
+from heinlein.dtypes import get_data_object
 from heinlein.manager import get_manager
 
 from shapely.strtree import STRtree
@@ -16,7 +16,7 @@ logger = logging.getLogger("Dataset")
 
 class Dataset:
 
-    def __init__(self, manager: FileManager, *args, **kwargs):
+    def __init__(self, manager: DataManager, *args, **kwargs):
         self.manager = manager
         self.config = manager.config
         self.setup()
@@ -36,8 +36,8 @@ class Dataset:
             raise ModuleNotFoundError(f"Pointer to {self.config['name']} implementation not found in config!")
 
         try:
-            setup = getattr(self.external, "setup")
-            setup(self)
+            setup_f = getattr(self.external, "setup")
+            setup_f(self)
             self._validate_setup()
         except AttributeError:
             raise NotImplementedError("Dataset {self.name} does not have a setup method!")
@@ -80,7 +80,7 @@ class Dataset:
         return self._regions[idxs]
 
 
-    def get_data_from_region(self, region: BaseRegion, dtypes: Union[str, list] = "catalog", *args, **kwargs) -> dict:
+    def get_data_from_region(self, query_region: BaseRegion, dtypes: Union[str, list] = "catalog", *args, **kwargs) -> dict:
         """
         Get data of type dtypes from a particular region
         
@@ -90,37 +90,21 @@ class Dataset:
         dtypes <str> or <list>: list of data types to return
         
         """
-        overlaps = self.get_region_overlaps(region, *args, **kwargs)
-        handlers = {}
+        overlaps = self.get_region_overlaps(query_region, *args, **kwargs)
         data = {}
-        paths = {}
         if type(dtypes) == str:
             dtypes = [dtypes]
         
-        for t in dtypes:
-            try: 
-                #Search for the path to the data type
-                p = self.manager.get_data(t)
-                paths.update({t: p})
-                data.update({t: []})
-            except FileNotFoundError:
-                logger.error(f"Path to data type {t} not found, skipping...")
-                
-        for t in dtypes:
-            #Handlers are functions that know how to read specific data types
-            handler = get_handler(self.external, t)
-            handlers.update({t: handler})
-        
-        for reg in overlaps:
-            #The region object is responsible for actually calling the handler
-            #So it can cache results for easy lookup later
-            reg.get_data(handlers, paths, data)
-        
+        data = self.manager.get_data(dtypes, overlaps, query_region)
         return_data = {}
         for dtype, values in data.items():
             #Now, we process into useful objects and filter further
+            if data is None:
+                logger.error(f"Unable to find data of type{dtype}")
+                continue
             obj_ = get_data_object(dtype, values)
-            return_data.update({dtype: obj_.get_data_from_region(region)})
+            
+            return_data.update({dtype: obj_.get_data_from_region(query_region)})
         return return_data
 
 

@@ -1,4 +1,4 @@
-from .dataset import Dataset
+from .dataset import load_dataset
 from .region import Region
 
-__all__ = ["Dataset", "Region"]
+__all__ = ["load_dataset", "Region"]

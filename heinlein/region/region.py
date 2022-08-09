@@ -1,15 +1,21 @@
+from ast import Mult
+from gettext import Catalog
 from typing import Any, Union
 import astropy.units as u
-from shapely.geometry import Point, Polygon
+from shapely.geometry import Point, Polygon, box, MultiPolygon
 from astropy.coordinates import SkyCoord
+import numpy as np
 
-from heinlein.dtypes import get_handler
 from heinlein.region.base import BaseRegion
 
 def Region(*args, **kwargs) -> BaseRegion:
     """
     Factory function for building regions.
     """
+    compound = kwargs.get("regions", False)
+    if compound:
+        return build_compound_region(*args, **kwargs)
+
     try:
         name = kwargs['name']
     except KeyError:
@@ -22,8 +28,27 @@ def Region(*args, **kwargs) -> BaseRegion:
         kwargs.update({"type": "PolygonRegion"})
         return PolygonRegion(*args, **kwargs)
 
-
-
+def build_compound_region(regions: dict, *args, **kwargs) -> BaseRegion:
+    geo_objects = np.asarray([r.geometry for r in regions.values()], dtype=object)
+    geo_objects = np.hstack(geo_objects)
+    minx = 360 
+    maxx = 0
+    miny = 90
+    maxy = -90
+    for rej_obj in geo_objects:
+        min_x, min_y, max_x, max_y = rej_obj.bounds
+        if min_x < minx:
+            minx = min_x
+        if min_y < miny:
+            miny = min_y
+        if (max_x > maxx) and (max_x < 360):
+            maxx = max_x
+        if (max_y > maxy) and (max_y < 90):
+            maxy = max_y
+    b = box(minx, miny, maxx, maxy)
+    region_obj = Region(points = b.boundary.coords)
+    region_obj.add_subregions(regions)
+    return region_obj
 class PolygonRegion(BaseRegion):
 
     def __init__(self, points, name: str, *args, **kwargs):
@@ -39,10 +64,10 @@ class PolygonRegion(BaseRegion):
     def center(self) -> Point:
         return self._geometry.centroid
 
-    def build_wrapped_regions(self, *args, **kwargs) -> None:
+    def build_cycle_regions(self, cycle, *args, **kwargs) -> None:
         
         points = self._geometry.exterior.xy
-        if self._edge_overlap[0]:
+        if cycle[0]:
             x_vals = points[0]
             shift_right = [x if (x > 180) else (x + 360) for x in x_vals]    
             shift_left = [x if (x < 180) else (x - 360) for x in x_vals ]
@@ -50,7 +75,7 @@ class PolygonRegion(BaseRegion):
         else:
             x_coords = [points[0]]
 
-        if self._edge_overlap[1]:
+        if cycle[1]:
             y_vals = points[1]
             shift_right = [y if (y > 90) else (y + 180) for y in y_vals]    
             shift_left = [y if (y < 90) else (y - 189) for y in y_vals ]
@@ -90,7 +115,7 @@ class CircularRegion(BaseRegion):
         geometry = self._center.buffer(self._radius.value)
         super().__init__(geometry, *args, **kwargs)
 
-    def build_wrapped_regions(self, *args, **kwargs) -> None:
+    def build_cycle_regions(self, *args, **kwargs) -> None:
         x_coord, y_coord = self._center.xy
         if self._edge_overlap[0]:
             shift_right = [x if (x > 180) else (x + 360) for x in x_coord]    
@@ -112,15 +137,6 @@ class CircularRegion(BaseRegion):
                 points = list(zip(x_, y_))
                 geometry.append(Point(points).buffer(self._raidus))
         self._geometries = geometry
-    
-    def contains(self, other):
-        try:
-            coords = other.coords
-        except AttributeError:
-            raise NotImplementedError
-        
-        return self._skypoint.separation(coords) <= self._radius
-
 
     @property
     def center(self) -> Point:

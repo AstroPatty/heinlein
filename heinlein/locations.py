@@ -6,8 +6,12 @@ base = Path(__file__).parents[0]
 data_dir = Path(appdirs.user_data_dir("heinlein"))
  
 INSTALL_DIR = base
+MAIN_CONFIG_DIR = base / "config"
+
 BASE_DATASET_CONFIG_DIR = INSTALL_DIR / "dataset" / "configs"
 BASE_DATASET_CONFIG = BASE_DATASET_CONFIG_DIR / "surveys.json"
+
+BUILTIN_DTYPES = base / "dtypes"/ "dtypes.json"
 
 DATASET_CONFIG_DIR = data_dir / "datasets"
 DATASET_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
