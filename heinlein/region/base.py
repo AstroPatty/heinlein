@@ -10,6 +10,7 @@ from functools import partial
 import json
 
 from heinlein.locations import MAIN_CONFIG_DIR
+from heinlein.manager.factory import DataFactory
 logger = logging.getLogger("region")
 class BaseRegion(ABC):
 
@@ -102,9 +103,9 @@ class BaseRegion(ABC):
         subregion_overlaps = self._subregions[idxs]
 
         if not recursive:
-            return subregion_overlaps
+            return {sr: None for sr in subregion_overlaps}
 
-        overlaps = {reg.name: reg.get_subregion_overlaps(other) for reg in subregion_overlaps}
+        overlaps = {reg: reg.get_subregion_overlaps(other) for reg in subregion_overlaps}
         #Note setting recursive=False here ensures our subdivision is never more than two layers deep
         return overlaps
 
@@ -124,28 +125,26 @@ class BaseRegion(ABC):
     def cache(self, ref: Any, dtype: str) -> None:
         self._cache.update({dtype: ref})
 
-    def get_data(self, handlers: dict, paths: dict, data: dict, query_region: BaseRegion, *args, **kwargs) -> None:
+    def get_data(self, factory: DataFactory, dtypes: list, data_storage: dict, query_region: BaseRegion, *args, **kwargs) -> None:
+        if len(self._subregions) == 0:
+            return self._get_data(factory, dtypes, data_storage, query_region, *args, **kwargs)
+
         overlaps = self.get_subregion_overlaps(query_region, recursive=True)
-        return self._get_data(handlers, paths, data, query_region, overlaps)
-    
-    def _get_data(self, handlers: dict, paths: dict, data: dict, query_region: BaseRegion, overlaps: dict = None):
-        if overlaps is None:
-            for type, handler in handlers.items():
-                try:
-                    d = self._cache[type]
-                except KeyError:
-                    d = handler(paths[type], self)
-                    self._cache.update({type: d})
-                data[type].append(d)
-            return
-        else:
-            for reg, overlaps in overlaps.items():
-                if overlaps is None:
-                    return reg._get_data(handlers, paths, data, query_region)
-                d_ = {}
-                for reg in overlaps:
-                    reg._get_data(handlers, paths, d_, query_region)
-                data.update({reg.name: d_})
+        for region, subregions in overlaps.items():
+            if subregions is None:
+                return region._get_data(factory, dtypes, data_storage, query_region, *args, **kwargs)
+            else:
+                for sr in subregions:
+                    data = {}
+                    sr._get_data(factory, dtypes, data, query_region, parent_region = self)
+
+
+    def _get_data(self, factory: DataFactory, dtypes: list, data_storage: dict, query_region: BaseRegion, *args, **kwargs) -> Any:
+        for dtype in dtypes:
+            data = factory.get_data(dtype, self, *args, **kwargs)
+            self.cache(data, dtype)
+            data_storage.update({dtype: [data]})
+
 
     def check_for_edges(self, *args, **kwargs) -> None:
         """

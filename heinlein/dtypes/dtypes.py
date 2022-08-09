@@ -4,6 +4,8 @@ from heinlein.region.base import BaseRegion
 
 
 def get_data_object(dtype: str, values: list) -> Any:
+    if len(values) == 1:
+        return values[0]
     if dtype == "catalog":
         table = vstack(values)
         return table
