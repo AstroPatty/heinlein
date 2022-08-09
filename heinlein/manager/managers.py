@@ -10,7 +10,7 @@ import shutil
 import logging
 from copy import copy
 import numpy as np
-from heinlein.manager.manager import Manager
+from heinlein.manager.dataManger import DataManager
 
 logger = logging.getLogger("manager")
 
@@ -24,7 +24,7 @@ def write_config_atexit(config, data, path):
     with open(path, 'w') as f:
         json.dump(output, f, indent=4)
 
-class FileManager(Manager):
+class FileManager(DataManager):
 
     def __init__(self, name: str, *args, **kwargs) -> None:
         """
@@ -248,12 +248,13 @@ class FileManager(Manager):
         self.data.pop(dtype)
         self.write_config()
 
-    def get_data(self, dtypes: list, data_storage: dict, region_overlaps: np.array, query_region: BaseRegion) -> Any:
+    def get_data(self, dtypes: list, region_overlaps: np.array, query_region: BaseRegion) -> dict:
         """
         Get data of a specificed type
         The manager is responsible for finding the path, and the giving it to the handlers
         """
         return_types = []
+        data_storage = {}
         for dtype in dtypes:
             try:
                 path = self.data[dtype]
@@ -262,9 +263,13 @@ class FileManager(Manager):
                 data_storage.update({dtype: None})
 
         factory = FileFactory(self)
-
+        data_storage = {dtype: [] for dtype in return_types}
         for region in region_overlaps:
-            region.get_data(factory, dtypes, data_storage, query_region)
+            rd = region.get_data(factory, dtypes, query_region)
+            for dtype, d in rd.items():
+                data_storage.update({dtype: data_storage[dtype] + d })
+
+        return data_storage
     
     def get_path(self, dtype):
         return pathlib.Path(self.data[dtype])

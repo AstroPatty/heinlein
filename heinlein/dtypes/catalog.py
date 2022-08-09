@@ -3,11 +3,13 @@ from astropy.table import Table
 import logging
 import numpy as np
 import astropy.units as u
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, concatenate as scc
+from astropy.table import vstack
 from shapely.geometry import Point
 from shapely.strtree import STRtree
-
+from copy import copy
 from typing import TYPE_CHECKING
+import time
 
 if TYPE_CHECKING:
     from heinlein.region import BaseRegion
@@ -19,7 +21,7 @@ class Catalog(Table):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._maskable_objects = {}
-        if "masked" not in kwargs.keys():
+        if "masked" not in kwargs.keys() and len(self) != 0:
             self.setup(*args, **kwargs)
     
     def setup(self, *args, **kwargs):
@@ -33,6 +35,34 @@ class Catalog(Table):
         except KeyError:
             self._init_points()
         self._init_search_tree()
+
+    def concatenate(self, others: list, *args, **kwargs):
+        if len(others) == 0:
+            return self
+
+        data = {"parmap": self._parmap}
+        maskables = [o._maskable_objects for o in others]
+        for name, obj_ in self._maskable_objects.items():
+
+            new_obj = copy(obj_)
+
+            other_objs = [o[name] for o in maskables]
+            if name == "skycoords":
+
+                new_obj = scc([new_obj] + other_objs)
+                data.update({'skycoords': new_obj})
+
+            else:
+                all_others = np.hstack(other_objs)
+                np.concatenate((new_obj, all_others))
+
+                data.update({name: new_obj})
+        new_cat = vstack([self] + others)
+
+        new_cat.setup(**data)
+
+        return new_cat
+            
 
 
     def _find_coords(self, *args, **kwargs):
@@ -80,8 +110,15 @@ class Catalog(Table):
         try:
             column = self._parmap.get(item)
             return super().__setitem__(column, value)
-        except KeyError:
+        except (KeyError, AttributeError):
             return super().__setitem__(item, value)
+
+    def get_passthrough_items(self, *args, **kwargs):
+        items = {}
+        items.update({"parmap": self._parmap})
+        items = {name: value for name, value in self._maskable_objects.items()}
+
+        return items
     
     def _new_from_slice(self, slice_, *args, **kwargs):
         """

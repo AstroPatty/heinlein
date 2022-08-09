@@ -1,13 +1,13 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from heinlein.locations import BUILTIN_DTYPES
-from heinlein.manager.manager import Manager
+from heinlein.manager.dataManger import DataManager
 from typing import Any
 import json
 
 class DataFactory(ABC):
 
-    def __init__(self, manager: Manager, handlers: dict, *args, **kwargs):
+    def __init__(self, manager: DataManager, handlers: dict, *args, **kwargs):
         """
         A data factory is responsible for retrieving data and returning it 
         to the calling proceess. It contains handlers, which are capable of reading

@@ -41,9 +41,9 @@ def build_compound_region(regions: dict, *args, **kwargs) -> BaseRegion:
             minx = min_x
         if min_y < miny:
             miny = min_y
-        if max_x > maxx:
+        if (max_x > maxx) and (max_x < 360):
             maxx = max_x
-        if max_y > maxy:
+        if (max_y > maxy) and (max_y < 90):
             maxy = max_y
     b = box(minx, miny, maxx, maxy)
     region_obj = Region(points = b.boundary.coords)

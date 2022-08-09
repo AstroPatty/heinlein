@@ -3,7 +3,7 @@ from importlib import import_module
 import numpy as np
 from typing import Union
 
-from heinlein.manager.manager import Manager
+from heinlein.manager.dataManger import DataManager
 
 from heinlein.region import BaseRegion
 from heinlein.dtypes import get_data_object
@@ -16,7 +16,7 @@ logger = logging.getLogger("Dataset")
 
 class Dataset:
 
-    def __init__(self, manager: Manager, *args, **kwargs):
+    def __init__(self, manager: DataManager, *args, **kwargs):
         self.manager = manager
         self.config = manager.config
         self.setup()
@@ -95,7 +95,7 @@ class Dataset:
         if type(dtypes) == str:
             dtypes = [dtypes]
         
-        self.manager.get_data(dtypes, data, overlaps, query_region)
+        data = self.manager.get_data(dtypes, overlaps, query_region)
         return_data = {}
         for dtype, values in data.items():
             #Now, we process into useful objects and filter further
@@ -103,6 +103,7 @@ class Dataset:
                 logger.error(f"Unable to find data of type{dtype}")
                 continue
             obj_ = get_data_object(dtype, values)
+            
             return_data.update({dtype: obj_.get_data_from_region(query_region)})
         return return_data
 

@@ -10,7 +10,7 @@ from functools import partial
 import json
 
 from heinlein.locations import MAIN_CONFIG_DIR
-from heinlein.manager.factory import DataFactory
+from heinlein.manager.dataFactory import DataFactory
 logger = logging.getLogger("region")
 class BaseRegion(ABC):
 
@@ -125,26 +125,48 @@ class BaseRegion(ABC):
     def cache(self, ref: Any, dtype: str) -> None:
         self._cache.update({dtype: ref})
 
-    def get_data(self, factory: DataFactory, dtypes: list, data_storage: dict, query_region: BaseRegion, *args, **kwargs) -> None:
+    def get_data(self, factory: DataFactory, dtypes: list, query_region: BaseRegion, *args, **kwargs) -> None:
         if len(self._subregions) == 0:
-            return self._get_data(factory, dtypes, data_storage, query_region, *args, **kwargs)
+            return self._get_data(factory, dtypes, query_region, *args, **kwargs)
 
         overlaps = self.get_subregion_overlaps(query_region, recursive=True)
+        
+        subregion_storage = {}
         for region, subregions in overlaps.items():
+            storage = {dtype: [] for dtype in dtypes}
+
             if subregions is None:
-                return region._get_data(factory, dtypes, data_storage, query_region, *args, **kwargs)
+                d = region._get_data(factory, dtypes, query_region, *args, **kwargs)
+                for key, d_ in d.items():
+                    storage[key] = d_
+                    subregion_storage.update({region.name: storage})
             else:
                 for sr in subregions:
-                    data = {}
-                    sr._get_data(factory, dtypes, data, query_region, parent_region = self)
-
-
-    def _get_data(self, factory: DataFactory, dtypes: list, data_storage: dict, query_region: BaseRegion, *args, **kwargs) -> Any:
+                    storage_ = {}
+                    d = sr._get_data(factory, dtypes, query_region, parent_region = self)
+                    for key, d_ in d.items():
+                        storage_.update({key: d_})
+                    subregion_storage.update({sr.name: storage_})
+        
+        return_data = {}
         for dtype in dtypes:
-            data = factory.get_data(dtype, self, *args, **kwargs)
-            self.cache(data, dtype)
-            data_storage.update({dtype: [data]})
+            values = [v[dtype] for v in subregion_storage.values()]
+            return_data.update({dtype: values})
 
+        return return_data
+
+
+    def _get_data(self, factory: DataFactory, dtypes: list, query_region: BaseRegion, *args, **kwargs) -> dict:
+        data_storage = {}
+        for dtype in dtypes:
+
+            try:
+                data_storage.update({dtype: self._cache[dtype]})
+            except KeyError:
+                data = factory.get_data(dtype, self, *args, **kwargs)
+                self.cache(data, dtype)
+                data_storage.update({dtype: data})
+        return data_storage
 
     def check_for_edges(self, *args, **kwargs) -> None:
         """

@@ -1,17 +1,19 @@
 from abc import abstractmethod
 import json
 from heinlein.locations import BASE_DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG
+from abc import ABC
 from heinlein.utilities import warning_prompt, warning_prompt_tf
 from typing import Any
 import logging
 
 logger = logging.getLogger("manager")
 
-class Manager:
+class DataManager(ABC):
 
     def __init__(self, name, *args, **kwargs):
         """
-        The datamanger keeps track of where files are located on disk.
+        The datamanger keeps track of where data is located, either on disk or 
+        otherwise.
         It also keeps a manifest, so it knows when files have been moved or changed.
         
         """
@@ -37,7 +39,7 @@ class Manager:
         pass
 
     @abstractmethod
-    def get_data(self, *args, **kwargs):
+    def get_data(self, *args, **kwargs) -> dict:
         pass
 
     @abstractmethod

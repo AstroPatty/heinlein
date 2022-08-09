@@ -1,9 +1,9 @@
-from heinlein.manager.factory import DataFactory
-from heinlein.manager.manager import Manager
+from heinlein.manager.dataFactory import DataFactory
+from heinlein.manager.dataManger import DataManager
 
 class FileFactory(DataFactory):
 
-    def __init__(self, manager: Manager, *args, **kwargs):
+    def __init__(self, manager: DataManager, *args, **kwargs):
         handlers = self.load_handlers()
         super().__init__(manager = manager, handlers = handlers)
     
