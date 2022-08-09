@@ -5,6 +5,7 @@ from heinlein.dtypes.catalog import Catalog
 from astropy.io import ascii
 import sys
 from abc import ABC, abstractmethod
+import logging
 
 
 def get_file_handlers():
@@ -25,7 +26,13 @@ def file_catalog_handler(path: Path, region: BaseRegion, *args, **kwargs):
             files = [f for f in path.glob(f"*{region.name}*") if not f.name.startswith('.')]
             if len(files) > 1:
                 raise NotImplementedError
-            file_path = files[0]
+            if len(files) == 0:
+                new_path = path / str(parent_region.name)
+                files = [f for f in new_path.glob(f"*{region.name}*") if not f.name.startswith('.')]
+            try:
+                file_path = files[0]
+            except IndexError:
+                logging.error(f"No file found for dtype catalog in region {region.name}!")
         else:
             file_path = path
 

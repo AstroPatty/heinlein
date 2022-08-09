@@ -9,7 +9,6 @@ import operator
 
 def setup(self, *args, **kwargs):
     reg = load_regions()
-    print(reg)
     self._regions = reg
 
 def load_regions():

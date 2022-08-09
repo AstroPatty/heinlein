@@ -143,7 +143,7 @@ class BaseRegion(ABC):
             else:
                 for sr in subregions:
                     storage_ = {}
-                    d = sr._get_data(factory, dtypes, query_region, parent_region = self)
+                    d = sr._get_data(factory, dtypes, query_region, parent_region = region)
                     for key, d_ in d.items():
                         storage_.update({key: d_})
                     subregion_storage.update({sr.name: storage_})
