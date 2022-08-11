@@ -95,7 +95,7 @@ class Dataset:
         if type(dtypes) == str:
             dtypes = [dtypes]
         
-        data = self.manager.get_data(dtypes, overlaps, query_region)
+        data = self.manager.get_data(dtypes, query_region, overlaps)
         return_data = {}
         for dtype, values in data.items():
             #Now, we process into useful objects and filter further

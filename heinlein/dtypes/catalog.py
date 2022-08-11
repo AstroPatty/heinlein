@@ -22,8 +22,11 @@ class Catalog(Table):
         super().__init__(*args, **kwargs)
         self._maskable_objects = {}
         if "masked" not in kwargs.keys() and len(self) != 0:
+            start = time.time()
             self.setup(*args, **kwargs)
-    
+            end = time.time()
+            print(f"Setup took {end-start} seconds")
+
     def setup(self, *args, **kwargs):
         try:
             self._parmap = kwargs['parmap']
@@ -35,6 +38,11 @@ class Catalog(Table):
         except KeyError:
             self._init_points()
         self._init_search_tree()
+
+    @classmethod
+    def from_rows(cls, rows, columns):
+        t = Table(rows=rows, names=columns)
+        return cls(t)
 
     def concatenate(self, others: list, *args, **kwargs):
         if len(others) == 0:

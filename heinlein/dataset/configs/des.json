@@ -4,5 +4,10 @@
     "implementation": true,
     "slug": "des",
     "data": {
+    },
+    "dconfig": {
+        "catalog": {
+            "region": "TILENAME"
+        }
     }
 }

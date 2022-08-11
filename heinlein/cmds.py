@@ -1,7 +1,7 @@
 import sys
 import json
 from heinlein.locations import INSTALL_DIR
-from heinlein.manager import FileManager
+from heinlein.manager.managers import FileManager
 from heinlein.utilities import warning_prompt_tf
 import numpy as np
 from pathlib import Path
