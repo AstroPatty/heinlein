@@ -5,6 +5,7 @@ from heinlein.locations import BASE_DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, DAT
 from abc import ABC
 from heinlein.region.base import BaseRegion
 from heinlein.utilities import warning_prompt, warning_prompt_tf
+import numpy as np
 from typing import Any
 import logging
 import pathlib
@@ -229,12 +230,12 @@ class DataManager(ABC):
             except KeyError:
                 data_storage.update({dtype: None})
 
-        data_storage = {dtype: [] for dtype in return_types}
-        for region in region_overlaps:
+        data_storage = {dtype: np.empty(len(region_overlaps), dtype="object") for dtype in return_types}
+        for index, region in enumerate(region_overlaps):
             rd = region.get_data(self._handlers, dtypes, query_region)
             for dtype, d in rd.items():
-                data_storage.update({dtype: data_storage[dtype] + d })
-
+                data_storage[dtype][index] = d
+    
         return data_storage
 
     @abstractmethod

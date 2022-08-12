@@ -1,4 +1,5 @@
 from asyncio import Handle
+from cgi import parse_header
 from pathlib import Path
 import sqlite3
 from typing import Any
@@ -91,23 +92,54 @@ class SQLiteCatalogHandler(Handler):
         self._tnames = [t[1] for t in cur.fetchall()]
     
     def get_data(self, region: BaseRegion, *args, **kwargs):
-        if region.name in self._tnames:
-            query = f"SELECT * FROM \"{region.name}\""
-            cur = self._con.execute(query)
-            rows = cur.fetchall()
-            columns = [d[0] for d in cur.description]
-            c = Catalog.from_rows(rows=rows, columns=columns)
-            return c
-        elif len(self._tnames) == 1:
-            region_key = self._config['region']
-            sql = f"SELECT * FROM {self._tnames[0]} WHERE {region_key} = \"{region.name}\""
-            cur = self._con.execute(sql)
-            rows = cur.fetchall()
-            columns = [d[0] for d in cur.description]
-            c = Catalog.from_rows(rows=rows, columns=columns)
-            return c
+        parent_region = kwargs.get("parent_region", False)
+        region_key = self._config['region']
+        subregion_key = self._config.get("subregion", False)
+        if parent_region:
+            if parent_region.name in self._tnames:
+                table = self.get_where(parent_region.name, {subregion_key: region.name})
+                if table is not None:
+                    return table
+                return self.get_all([parent_region.name])
+
+            elif len(self._tnames) == 1:
+                table = self.get_where(self._tnames[0], {region_key: parent_region.name, subregion_key: region.name})
+                if table is not None:
+                    return table
+                return self.get_where(self._tnames[0], {region_key: parent_region.name})
         else:
-            raise NotImplementedError("Can't infer the structure of the database!")
+            if region.name in self._tnames:
+                table = self.get_all(region.name)
+                return table
+            elif len(self._tnames) == 1:
+                table = self.get_where(self._tnames[0], {region_key: region.name})
+                return table
+        raise NotImplementedError("Unable to infer the structure of the database!")
+
+    def get_where(self, tname: str, conditions: dict):
+        base_query = f"SELECT * FROM {tname} WHERE "
+        base_condition = "{} = \"{}\""
+        output_conditions = [base_condition.format(key, value) for key, value in conditions.items()]
+        query =  base_query + " AND ".join(output_conditions)
+        return self.execute_query(query)
+
+    def get_all(self, tname):
+        query = f"SELECT * FROM \"{tname}\""
+        return self.execute_query(query)
+
+
+    def execute_query(self, query):
+        cur = self._con.execute(query)
+        table = self._parse_return(cur)
+        return table
+    
+    def _parse_return(self, cursor, *args, **kwargs):
+        rows = cursor.fetchall()
+        if len(rows) == 0:
+            return None
+        columns = [d[0] for d in cursor.description]
+        c = Catalog.from_rows(rows=rows, columns=columns)
+        return c
 
 class FileHandler(ABC):
 

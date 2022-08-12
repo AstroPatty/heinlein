@@ -44,10 +44,9 @@ class Catalog(Table):
         t = Table(rows=rows, names=columns)
         return cls(t)
 
-    def concatenate(self, others: list, *args, **kwargs):
+    def concatenate(self, others: list = [], *args, **kwargs):
         if len(others) == 0:
             return self
-
         data = {"parmap": self._parmap}
         maskables = [o._maskable_objects for o in others]
         for name, obj_ in self._maskable_objects.items():
@@ -65,10 +64,13 @@ class Catalog(Table):
                 np.concatenate((new_obj, all_others))
 
                 data.update({name: new_obj})
-        new_cat = vstack([self] + others)
 
+
+        cats = [self]
+        for o in others:
+            cats.append(o)
+        new_cat = vstack(cats)
         new_cat.setup(**data)
-
         return new_cat
             
 
@@ -135,6 +137,7 @@ class Catalog(Table):
         the additional information created.
         """
         items = {name: value[slice_] for name, value in self._maskable_objects.items()}
+        import matplotlib.pyplot as plt
         items.update({"parmap": self._parmap})
         new = super()._new_from_slice(slice_, *args, **kwargs)
         new.setup(**items)
@@ -152,19 +155,12 @@ class Catalog(Table):
     def _get_items_in_circular_region(self, region: CircularRegion):
         center = region.coordinate
         radius = region.radius
+        import matplotlib.pyplot as plt 
         mask = center.separation(self._skycoords) <= radius
         return self[mask]
 
     def _get_items_in_polygon_region(self, region: PolygonRegion):
-        geometries = region.geometry
-        objects = np.empty(len(geometries),dtype=object)
-        for idx, reg in enumerate(geometries):
-            objects[idx] = [id(p) for p in self._search_tree.query(reg)]
-        
-        unique_objects = np.unique(np.hstack(objects))
-        idxs = [self._point_dictionary[k] for k in unique_objects]
-        return self[idxs]
-        
+        raise NotImplementedError
 
 class CatalogParam:
 

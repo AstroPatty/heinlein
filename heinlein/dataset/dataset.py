@@ -2,6 +2,7 @@ import logging
 from importlib import import_module
 import numpy as np
 from typing import Union
+from heinlein import region
 
 from heinlein.manager.dataManger import DataManager
 
@@ -47,7 +48,7 @@ class Dataset:
     def _validate_setup(self, *args, **kwargs) -> None:
         try:
             regions = self._regions
-            self._regions = np.asarray(self._regions, dtype=object)
+            self._regions = np.array(self._regions, dtype=object)
         except AttributeError:
             logging.error(f"No region found for survey {self.name}")
     
@@ -57,14 +58,9 @@ class Dataset:
         querying. Shapely implements a tree-based searching algorithm for 
         finding region overlaps, so we create that tree here.
         """
-        regions = np.empty(len(self._regions), dtype=object)
-        indices = {}
-        for idx, reg in enumerate(self._regions):
-            geos = reg.geometry
-            indices.update({id(geo): idx for geo in geos})
-            regions[idx] = np.asarray(geos, dtype=object)
+        geo_list = np.array([reg.geometry for reg in self._regions])
+        indices = {id(geo): i for i, geo in enumerate(geo_list)}
         
-        geo_list = np.hstack(regions)
         self._geo_idx = indices
         self._geo_tree = STRtree(geo_list)
 
@@ -74,10 +70,9 @@ class Dataset:
         Find the subregions inside a dataset that overlap with a given region
         Uses the shapely STRTree for speed.
         """
-        region_overlaps = np.asarray([self._geo_tree.query(geo) for geo in other.geometry], dtype = "object")
-        region_overlaps = np.hstack(region_overlaps)
-        idxs = np.unique(np.asarray([self._geo_idx[id(reg)] for reg in region_overlaps]))
-        return self._regions[idxs]
+        region_overlaps = self._geo_tree.query(other.geometry)
+        idxs = [id(r) for r in region_overlaps]
+        return [self._regions[self._geo_idx[i]] for i in idxs]
 
 
     def get_data_from_region(self, query_region: BaseRegion, dtypes: Union[str, list] = "catalog", *args, **kwargs) -> dict:
@@ -103,7 +98,6 @@ class Dataset:
                 logger.error(f"Unable to find data of type{dtype}")
                 continue
             obj_ = get_data_object(dtype, values)
-            
             return_data.update({dtype: obj_.get_data_from_region(query_region)})
         return return_data
 

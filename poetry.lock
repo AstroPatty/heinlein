@@ -182,10 +182,26 @@ category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
 
+[[package]]
+name = "spherical-geometry"
+version = "1.2.22"
+description = "Python based tools for spherical geometry"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+astropy = "*"
+numpy = "*"
+
+[package.extras]
+test = ["pytest-cov", "pytest"]
+docs = ["numpydoc", "sphinx-automodapi", "sphinx"]
+
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "f381bc08667ff81206277752ba1007d7abedd77e74f9ebba2b7b52293e8fc58b"
+content-hash = "0ce9568d3f986bba32af8fd616f3a65b41f8b3e20880ac708dc0cde82992501b"
 
 [metadata.files]
 appdirs = [
@@ -317,3 +333,4 @@ six = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},
     {file = "six-1.16.0.tar.gz", hash = "sha256:1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926"},
 ]
+spherical-geometry = []
