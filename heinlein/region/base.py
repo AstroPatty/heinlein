@@ -79,14 +79,9 @@ class BaseRegion(ABC):
         querying. Shapely implements a tree-based searching algorithm for 
         finding region overlaps, so we create that tree here.
         """
-        regions = np.empty(len(self._subregions), dtype=object)
-        indices = {}
-        for idx, reg in enumerate(self._subregions):
-            geos = reg.geometry
-            indices.update({id(geo): idx for geo in geos})
-            regions[idx] = np.asarray(geos, dtype=object)
+        geo_list = np.array([reg.geometry for reg in self._subregions])
+        indices = {id(geo): i for i, geo in enumerate(geo_list)}
         
-        geo_list = np.hstack(regions)
         self._geo_idx = indices
         self._geo_tree = STRtree(geo_list)
     

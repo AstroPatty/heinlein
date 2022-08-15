@@ -38,6 +38,7 @@ def build_compound_region(regions: dict, *args, **kwargs) -> BaseRegion:
     region_obj = Region(points = b.boundary.coords)
     region_obj.add_subregions(regions)
     return region_obj
+    
 class PolygonRegion(BaseRegion):
 
     def __init__(self, polygon: SingleSphericalPolygon, name: str, *args, **kwargs):

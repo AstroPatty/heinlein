@@ -1,10 +1,12 @@
 from pathlib import Path
 import numpy as np
 from heinlein.locations import BASE_DATASET_CONFIG_DIR
+from spherical_geometry.polygon import SingleSphericalPolygon
 from heinlein.region import Region
 import re
 import math
 import operator
+import pickle
 
 
 def setup(self, *args, **kwargs):
@@ -12,6 +14,14 @@ def setup(self, *args, **kwargs):
     self._regions = reg
 
 def load_regions():
+    support_location = Path(__file__).parents[0] / "configs" / "support"
+    pickled_path = support_location / "hsc_regions.reg"
+    if pickled_path.exists():
+        with open(pickled_path, 'rb') as f:
+            regions = pickle.load(f)
+            return regions
+
+    print("Nope!")
     support_location = BASE_DATASET_CONFIG_DIR / "support" / "hsc_tiles"
     files = [f for f in support_location.glob("*.txt") if not f.name.startswith(".")]
     regions = _load_region_data(files=files)
@@ -27,9 +37,9 @@ def _load_region_data(files, *args, **kwargs):
     for i, file in enumerate(files):
         tracts = _parse_tractfile(file)
         tracts = _parse_tractdata(tracts, *args, **kwargs)
-        field = Region(regions=tracts)
+        field = np.hstack(np.array([np.array(t) for t in tracts.values()]))
         output[i] = field
-    return output
+    return np.hstack(output)
 
 
 def _parse_tractfile(tractfile):
@@ -73,7 +83,8 @@ def _parse_tractdata(tractdata, *args, **kwargs):
         corners = tract['corners']
         center = tract['center']
         points = _parse_polygon_corners(center, corners)
-        region_obj = Region(points, name=name)
+        poly = SingleSphericalPolygon(points, center)
+        region_obj = Region(poly, name=name)
 
         patches = {}
         for patchname, patch in tract['subregions'].items():
@@ -81,7 +92,8 @@ def _parse_tractdata(tractdata, *args, **kwargs):
             patch_center = patch['center']
             patch_points = _parse_polygon_corners(patch_center, patch_corners)
             patch_name_parsed = _patch_tuple_to_int(patchname)
-            patches.update({patch_name_parsed: Region(patch_points, name=patch_name_parsed)})
+            patch_poly = SingleSphericalPolygon(patch_points, patch_center)
+            patches.update({patch_name_parsed: Region(patch_poly, name=patch_name_parsed)})
         
         added = region_obj.add_subregions(patches, ignore_warnings = True)
         output.update({name: region_obj})

@@ -22,6 +22,10 @@ class Dataset:
         self.config = manager.config
         self.setup()
 
+    @property
+    def name(self):
+        return self.manager.name
+
     def setup(self, *args, **kwargs) -> None:
         """
         Searches for an external implementation of the datset
@@ -41,7 +45,7 @@ class Dataset:
             setup_f(self)
             self._validate_setup()
         except AttributeError:
-            raise NotImplementedError("Dataset {self.name} does not have a setup method!")
+            raise NotImplementedError(f"Dataset {self.name} does not have a setup method!")
         
         self._build_region_tree()
 
