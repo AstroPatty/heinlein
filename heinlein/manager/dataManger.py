@@ -32,6 +32,7 @@ class DataManager(ABC):
         
         self._setup()
         write_atexit = lambda x=self.config_data, y = self.config_location: write_config_atexit(x, y)
+        self._cache = {}
         atexit.register(write_atexit)
 
     
@@ -221,22 +222,70 @@ class DataManager(ABC):
         Get data of a specificed type
         The manager is responsible for finding the path, and the giving it to the handlers
         """
+        import time
+
         return_types = []
-        data_storage = {}
+        new_data = {}
+        
+        cached = self.get_cached_values(dtypes, region_overlaps)
+
+
         for dtype in dtypes:
             try:
                 path = self._data[dtype]
                 return_types.append(dtype)
             except KeyError:
-                data_storage.update({dtype: None})
+                new_data.update({dtype: None})
 
-        data_storage = {dtype: np.empty(len(region_overlaps), dtype="object") for dtype in return_types}
-        for index, region in enumerate(region_overlaps):
-            rd = region.get_data(self._handlers, dtypes, query_region)
-            for dtype, d in rd.items():
-                data_storage[dtype][index] = d
+        for dtype in return_types:
+            if dtype in cached.keys():
+                dtype_cache = cached[dtype]
+                regions_to_get = [r.name for r in region_overlaps if r.name not in dtype_cache.keys()]
+            else:
+                regions_to_get = region_overlaps
+
+            if len(regions_to_get) != 0:
+                data_ = self._handlers[dtype].get_data(regions_to_get)
+                new_data.update({dtype: data_})
+
+        if len(new_data) != 0:
+            self.cache(new_data)
+
+        storage = {}
+        keys = set(new_data.keys()).union(set(cached.keys()))
+
+        for k in keys:
+            data = cached.get(k, {})
+            new_d = new_data.get(k, {})
+            data.update(new_d)
+            storage.update({k: data})
+
+        return storage
     
-        return data_storage
+    def get_cached_values(self, dtypes: list, region_overlaps: list):
+        cached_values = {}
+        for dtype in dtypes:
+            try:
+                dtype_cache = self._cache[dtype]
+            except KeyError:
+                #No cache for this datatype, continue
+                continue
+            storage = {}
+            for reg in region_overlaps:
+                try:
+                    data = dtype_cache[reg.name]
+                    storage.update({reg.name: data})
+                except KeyError:
+                    continue
+            cached_values.update({dtype: storage})
+        return cached_values
+
+    def cache(self, data_storage: dict):
+        for dtype, data in data_storage.items():
+            dtype_cache = self._cache.get(dtype, {})
+            dtype_cache.update({reg_name: d_obj for reg_name, d_obj in data.items()})
+            self._cache.update({dtype: dtype_cache})
+
 
     @abstractmethod
     def clear_all_data(self, *args, **kwargs): 

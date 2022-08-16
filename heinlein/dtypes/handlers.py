@@ -39,7 +39,7 @@ class Handler(ABC):
         self._config = dconfig
 
     @abstractmethod
-    def get_data(self, region: BaseRegion, *args, **kwargs):
+    def get_data(self, regions: list, *args, **kwargs):
         pass
 
 class CsvCatalogHandler(Handler):
@@ -47,7 +47,7 @@ class CsvCatalogHandler(Handler):
     def __init__(self, path: Path, config: dict, *args, **kwargs):
         super().__init__(path, config)
     
-    def get_data(self, region: BaseRegion, *args, **kwargs):
+    def get_data(self, regions: list, *args, **kwargs):
         """
         Default handler for a catalog.
         Loads a single catalog, assuming the region name can be found in the file name.
@@ -91,35 +91,75 @@ class SQLiteCatalogHandler(Handler):
         cur = self._con.execute(sql)
         self._tnames = [t[1] for t in cur.fetchall()]
     
-    def get_data(self, region: BaseRegion, *args, **kwargs):
-        parent_region = kwargs.get("parent_region", False)
+    def get_data(self, regions: list, *args, **kwargs):
         region_key = self._config['region']
         subregion_key = self._config.get("subregion", False)
-        if parent_region:
-            if parent_region.name in self._tnames:
-                table = self.get_where(parent_region.name, {subregion_key: region.name})
-                if table is not None:
-                    return table
-                return self.get_all([parent_region.name])
-
-            elif len(self._tnames) == 1:
-                table = self.get_where(self._tnames[0], {region_key: parent_region.name, subregion_key: region.name})
-                if table is not None:
-                    return table
-                return self.get_where(self._tnames[0], {region_key: parent_region.name})
+        if subregion_key:
+            splits = [str(reg.name).split(".") for reg in regions]
+            regions_to_get = {}
+            for split in splits:
+                if len(split) == 2:
+                    if split[0] in regions_to_get.keys():
+                        regions_to_get[split[0]].append(split[1])
+                    else:
+                        regions_to_get.update({split[0]: [split[1]]})
+                elif len(split) ==  2 and split[0] not in regions_to_get.keys():
+                        regions_to_get.update({split[0]: []})
+            return self.get_with_subregions(regions_to_get)
         else:
-            if region.name in self._tnames:
-                table = self.get_all(region.name)
-                return table
+            regions_to_get = [str(r.name) for r in regions]
+            return self._get(regions_to_get)
+
+    def get_with_subregions(self, regions: dict):
+        subregion_key = self._config['subregion']
+        region_key = self._config.get('region', False)
+
+        storage = {}
+        for region, subregions in regions.items():
+            if str(region) in self._tnames:
+                table = self.get_where(region, {subregion_key: subregions})
+                if table is not None:
+                    region_names = [".".join([region, sr]) for sr in subregions]
+                    for index, sr in enumerate(subregions):
+                        mask = (table[region_key].astype(str) == region) & (table[subregion_key].astype(str) == sr)
+                        storage.update({region_names[index]: table[mask]})
+                else:
+                    storage.update({region: self.get_all(region.name)})
+                    #This needs to be fixed
             elif len(self._tnames) == 1:
+                region_names = [".".join([region, sr]) for sr in subregions]
+
+                table = self.get_where(self._tnames[0], {region_key: region.name, subregion_key: subregions})
+                for index, sr in enumerate(subregions):
+                    mask = table[subregion_key] == sr
+                    storage.update({region_names[index]: table[mask]})
+
+        return storage
+    
+    def _get(self, regions: list):
+        storage = {}
+        for region in regions:
+            if region in self._tnames:
+                table = self.get_all(region)
+                storage.update({region: table})
+            elif len(self._tnames) == 1:
+                region_key = self._config['region']
                 table = self.get_where(self._tnames[0], {region_key: region.name})
-                return table
-        raise NotImplementedError("Unable to infer the structure of the database!")
+                storage.update({region: table})
+        return storage
 
     def get_where(self, tname: str, conditions: dict):
-        base_query = f"SELECT * FROM {tname} WHERE "
+        base_query = f"SELECT * FROM \"{tname}\" WHERE "
         base_condition = "{} = \"{}\""
-        output_conditions = [base_condition.format(key, value) for key, value in conditions.items()]
+        multiple_base_conditions = "{} IN ({})"
+        output_conditions = []
+        for k, vs in conditions.items():
+            if type(vs) is list:
+                c = "\",\"".join([str(v) for v in vs])
+                c = "\"" + c + "\""
+                output_conditions.append(multiple_base_conditions.format(k, c))
+            else:
+                output_conditions.append(base_condition.format(k, vs))
         query =  base_query + " AND ".join(output_conditions)
         return self.execute_query(query)
 

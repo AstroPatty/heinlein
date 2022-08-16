@@ -27,7 +27,6 @@ def Region(region: Union[SingleSphericalPolygon, dict] = None, *args, **kwargs) 
         center = kwargs['center']
         radius = kwargs['radius']
         return CircularRegion(center, radius, name)
-
     return PolygonRegion(region, name)
 
 def build_compound_region(regions: dict, *args, **kwargs) -> BaseRegion:
@@ -71,8 +70,10 @@ class CircularRegion(BaseRegion):
         else: #assume deg
             self._radius = radius*u.deg
 
-        geometry = SingleSphericalPolygon.from_cone(self._center[0], self._center[1], self._radius.to(u.deg).value)
+        geometry = SingleSphericalPolygon.from_cone(self._center[0], self._center[1], self._radius.to(u.deg).value, *args, **kwargs)
+        low_res_geometry = SingleSphericalPolygon.from_cone(self._center[0], self._center[1], self._radius.to(u.deg).value, steps = 4)
         super().__init__(geometry, "CircularRegion", name, *args, **kwargs)
+        self.low_res_geometry = low_res_geometry
 
     @property
     def center(self) -> Point:
@@ -85,3 +86,4 @@ class CircularRegion(BaseRegion):
     @property
     def radius(self) -> u.quantity:
         return self._radius
+    

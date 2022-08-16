@@ -2,7 +2,6 @@ import logging
 from importlib import import_module
 import numpy as np
 from typing import Union
-from heinlein import region
 
 from heinlein.manager.dataManger import DataManager
 
@@ -76,8 +75,9 @@ class Dataset:
         """
         region_overlaps = self._geo_tree.query(other.geometry)
         idxs = [id(r) for r in region_overlaps]
-        return [self._regions[self._geo_idx[i]] for i in idxs]
-
+        overlaps = [self._regions[self._geo_idx[i]] for i in idxs]
+        overlaps = [o for o in overlaps if o.intersects(other)]
+        return overlaps
 
     def get_data_from_region(self, query_region: BaseRegion, dtypes: Union[str, list] = "catalog", *args, **kwargs) -> dict:
         """
@@ -89,20 +89,33 @@ class Dataset:
         dtypes <str> or <list>: list of data types to return
         
         """
+        import matplotlib.pyplot as plt
         overlaps = self.get_region_overlaps(query_region, *args, **kwargs)
+        overlaps = [o for o in overlaps if o.intersects(query_region)]
+
+        if len(overlaps) == 0:
+            print("Error: No objects found in this region!")
+            return
         data = {}
         if type(dtypes) == str:
             dtypes = [dtypes]
         
+
         data = self.manager.get_data(dtypes, query_region, overlaps)
+
+
         return_data = {}
+
         for dtype, values in data.items():
             #Now, we process into useful objects and filter further
             if data is None:
                 logger.error(f"Unable to find data of type{dtype}")
                 continue
+
             obj_ = get_data_object(dtype, values)
+
             return_data.update({dtype: obj_.get_data_from_region(query_region)})
+
         return return_data
 
 

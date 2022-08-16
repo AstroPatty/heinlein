@@ -22,21 +22,22 @@ class Catalog(Table):
         super().__init__(*args, **kwargs)
         self._maskable_objects = {}
         if "masked" not in kwargs.keys() and len(self) != 0:
-            start = time.time()
             self.setup(*args, **kwargs)
-            end = time.time()
-            print(f"Setup took {end-start} seconds")
 
     def setup(self, *args, **kwargs):
+
+
         try:
             self._parmap = kwargs['parmap']
         except KeyError:
             self._find_coords()
+
         try:
-            self._skycoords = kwargs['skycoords']
-            self._cartesian_points = kwargs['points']
+            self._maskable_objects = kwargs['maskable_objects']
+            self.__dict__.update(self._maskable_objects)
         except KeyError:
             self._init_points()
+
         self._init_search_tree()
 
     @classmethod
@@ -45,34 +46,41 @@ class Catalog(Table):
         return cls(t)
 
     def concatenate(self, others: list = [], *args, **kwargs):
+
         if len(others) == 0:
             return self
+        others = [o for o in others if o is not None]
         data = {"parmap": self._parmap}
+
+
+
         maskables = [o._maskable_objects for o in others]
+        data['maskable_objects'] = {}
         for name, obj_ in self._maskable_objects.items():
 
             new_obj = copy(obj_)
 
             other_objs = [o[name] for o in maskables]
-            if name == "skycoords":
+            if name == "_skycoords":
 
                 new_obj = scc([new_obj] + other_objs)
-                data.update({'skycoords': new_obj})
+                data['maskable_objects'].update({'_skycoords': new_obj})
 
             else:
                 all_others = np.hstack(other_objs)
-                np.concatenate((new_obj, all_others))
+                new_obj = np.concatenate((new_obj, all_others))
 
-                data.update({name: new_obj})
-
+                data['maskable_objects'].update({name: new_obj})
 
         cats = [self]
         for o in others:
             cats.append(o)
+
         new_cat = vstack(cats)
+
         new_cat.setup(**data)
+
         return new_cat
-            
 
 
     def _find_coords(self, *args, **kwargs):
@@ -101,7 +109,7 @@ class Catalog(Table):
         coordinates = list(zip(self._skycoords.ra.to(u.deg).value, self._skycoords.dec.to(u.deg).value))
         self._cartesian_points = np.empty(len(coordinates), dtype=object)
         self._cartesian_points[:] = [Point(p) for p in coordinates]
-        self._maskable_objects.update({'skycoords': self._skycoords, 'points': self._cartesian_points})
+        self._maskable_objects.update({'_skycoords': self._skycoords, '_cartesian_points': self._cartesian_points})
 
     def _init_search_tree(self, *args, **kwargs):
         points = self._cartesian_points
@@ -136,9 +144,9 @@ class Catalog(Table):
         in an astropy Table which correctly handles
         the additional information created.
         """
-        items = {name: value[slice_] for name, value in self._maskable_objects.items()}
+        maskables = {name: value[slice_] for name, value in self._maskable_objects.items()}
         import matplotlib.pyplot as plt
-        items.update({"parmap": self._parmap})
+        items = {"parmap": self._parmap, 'maskable_objects': maskables}
         new = super()._new_from_slice(slice_, *args, **kwargs)
         new.setup(**items)
         return new

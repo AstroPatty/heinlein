@@ -21,7 +21,6 @@ def load_regions():
             regions = pickle.load(f)
             return regions
 
-    print("Nope!")
     support_location = BASE_DATASET_CONFIG_DIR / "support" / "hsc_tiles"
     files = [f for f in support_location.glob("*.txt") if not f.name.startswith(".")]
     regions = _load_region_data(files=files)
@@ -82,21 +81,32 @@ def _parse_tractdata(tractdata, *args, **kwargs):
                 continue
         corners = tract['corners']
         center = tract['center']
+
         points = _parse_polygon_corners(center, corners)
-        poly = SingleSphericalPolygon(points, center)
+        tract_ra = [p[0] for p in points]
+        tract_dec = [p[1] for p in points]
+        poly = SingleSphericalPolygon.from_radec(tract_ra, tract_dec, center)
         region_obj = Region(poly, name=name)
 
         patches = {}
         for patchname, patch in tract['subregions'].items():
             patch_corners = patch['corners']
             patch_center = patch['center']
-            patch_points = _parse_polygon_corners(patch_center, patch_corners)
             patch_name_parsed = _patch_tuple_to_int(patchname)
-            patch_poly = SingleSphericalPolygon(patch_points, patch_center)
-            patches.update({patch_name_parsed: Region(patch_poly, name=patch_name_parsed)})
+            ras = [p[0] for p in patch_corners]
+            decs = [p[1] for p in patch_corners]
+            final_name = f"{name}.{patch_name_parsed}"
+
+            if final_name == "10049.402":
+                import pickle
+                with open("bad_points.p", "wb") as f:
+                    out = {'points': points, 'center': patch_center}
+                    pickle.dump(out, f)
+
+            patch_poly = SingleSphericalPolygon.from_radec(ras, decs, patch_center)
+            patches.update({final_name: Region(patch_poly, name=final_name)})
         
-        added = region_obj.add_subregions(patches, ignore_warnings = True)
-        output.update({name: region_obj})
+        output.update(patches)
     return output
 
 def _parse_polygon_corners(center, points):
