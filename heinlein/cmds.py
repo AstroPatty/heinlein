@@ -93,7 +93,7 @@ def split(args) -> None:
     if args.threads == 1 and globalConfig.interactive:
         print("Warning: Splitting large datasets takes a long time")
         print("We recommend using more than a single thread")
-        print("You can increase this number with -t command in the future")
+        print("You can increase this number with the -t flag in the future")
         while True:
             nthreads = input("How many threads would you like to use? ")
             try:
