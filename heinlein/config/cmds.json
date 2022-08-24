@@ -1,4 +1,13 @@
-{
+{   
+    "options": {
+        "--threads": {
+            "help": "Number of cores to use",
+            "flag": "-t",
+            "type": "int",
+            "default": 1
+        }
+    },
+
     "add" : {
         "help": "Add a file to a dataset.",
         "options": {
@@ -49,5 +58,41 @@
         "help": "List available datsets, and the types of data available for each.",
         "options": {},
         "function": "list_all"
+    },
+    "split": {
+        "help": "Split catalogs from a known dataset based on regions for easier retrieval",
+        "options":{
+            "survey_name": {
+                "help": "The name of the survey"
+            },
+            "input_path":{
+                "help": "Path to the data to be split. Either a specific catalog file or a folder."
+            },
+            "--format": {
+                "help": "Format to output to (default sqlite)",
+                "flag": "-f",
+                "choices": ["csv", "sqlite"],
+                "default": "sqlite"
+
+            },
+            "--output": {
+                "help": "Location to put the output (leave blank to put in same location as source data",
+                "flag": "-o"
+            },
+            "--delete": {
+                "help": "Whether or not to delete the original files after splititng the data",
+                "flag": "-d",
+                "action": "store_true"
+            }, 
+
+            "--conflict": {
+                "help": "What to do if split data is already found (default append)",
+                "flag": "-c",
+                "choices": ["append", "overwrite", "skip"],
+                "default": "append"
+            }
+
+        }
+
     }
 }

@@ -1,10 +1,9 @@
-import sys
-import json
-import argparse
-
+from genericpath import isfile
+import multiprocessing
 from heinlein.locations import INSTALL_DIR, MAIN_CONFIG_DIR
+from heinlein.config import globalConfig
 from heinlein.manager.managers import FileManager
-from heinlein.utilities import warning_prompt_tf
+from heinlein.utilities import warning_prompt_tf, split_catalog
 from heinlein.manager.dataManger import get_all
 import numpy as np
 from pathlib import Path
@@ -84,3 +83,38 @@ def list_all(args) -> None:
         s1 = name
         s2 = ",".join(list(dtypes.keys()))
         print(s1.ljust(20) + s2)
+
+def split(args) -> None:
+    path = Path(args.input_path)
+    if not path.exists():
+        print(f"Error: path {path} does not exist!")
+    else:
+        args.path = path
+    if args.threads == 1 and globalConfig.interactive:
+        print("Warning: Splitting large datasets takes a long time")
+        print("We recommend using more than a single thread")
+        print("You can increase this number with -t command in the future")
+        while True:
+            nthreads = input("How many threads would you like to use? ")
+            try:
+                max_threads = multiprocessing.cpu_count()
+                nthreads = int(nthreads)
+                if max_threads < nthreads:
+                    print(f"Error: Maximum number of threads available on this machine is {max_threads}")
+                    continue
+                elif nthreads < 1:
+                    print(f"Error: I need at least one thread!")
+                    continue
+
+                break
+            except ValueError:
+                print("Number of threads must be an integer")
+        args.threads = nthreads
+
+    if args.output == None:
+        if path.is_file():
+            output_path = path.parents[0]
+        else:
+            output_path = path
+        args.output = output_path
+    split_catalog(args)
