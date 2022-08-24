@@ -1,5 +1,0 @@
-{
-    "name": "Name of the Survey",
-    "survey_region": "The region(s) covered by the survey",
-    "implementation": "Whether or not the survey has a seperate python implementation"
-}

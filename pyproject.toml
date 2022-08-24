@@ -22,4 +22,4 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-heinlein = "heinlein.cmds:main"
+heinlein = "heinlein.entrypoint:delegate_command"

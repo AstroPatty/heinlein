@@ -190,20 +190,17 @@ class FileManager(DataManager):
         bool: Whether or not the file was sucessfully removed
         """
         try:
-            path = self._data[dtype]
+            d = self._data[dtype]
+            path = d['path']
         except KeyError:
             print(f"Error: dataset {self.name} has no data of type {dtype}")
             return False
-        
         path = pathlib.Path(path)
         if not path.is_file():
             self.delete_manifest(path)
         self._data.pop(dtype)
         self.write_config()
-    
-    def get_path(self, dtype):
-        return pathlib.Path(self._data[dtype])
-    
+            
     def get_handler(self, dtype: str, *args, **kwargs):
         pass
             

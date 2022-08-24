@@ -1,10 +1,12 @@
 from abc import abstractmethod
+from glob import glob
 import json
 from os import stat
 from heinlein.locations import BASE_DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, BUILTIN_DTYPES
 from abc import ABC
 from heinlein.region.base import BaseRegion
 from heinlein.utilities import warning_prompt, warning_prompt_tf
+from heinlein.config.config import globalConfig
 import numpy as np
 from typing import Any
 import logging
@@ -29,7 +31,7 @@ class DataManager(ABC):
         
         """
         self.name = name
-        
+        self.globalConfig = globalConfig
         self._setup()
         write_atexit = lambda x=self.config_data, y = self.config_location: write_config_atexit(x, y)
         self._cache = {}
@@ -47,11 +49,13 @@ class DataManager(ABC):
             surveys = json.load(f)
 
         if self.name not in surveys.keys():
-            write_new = warning_prompt_tf(f"Survey {self.name} not found, would you like to initialize it? ")
-            if write_new:
-                self.config_location = self.initialize_dataset()
-            else:
-                self.ready = False
+            if self.globalConfig.interactive:
+                write_new = warning_prompt_tf(f"Survey {self.name} not found, would you like to initialize it? ")
+                if write_new:
+                    self.config_location = self.initialize_dataset()
+                else:
+                    self.ready = False
+            else: raise OSError(f"Dataset {self.name} does not exist!")
         else:
             cp = surveys[self.name]['config_path']
             self.config_location = DATASET_CONFIG_DIR / cp
@@ -66,8 +70,11 @@ class DataManager(ABC):
         self.load_handlers()
         self.validate_data()
 
+    def get_path(self, dtype: str, *args, **kwargs):
+        return pathlib.Path(self._data[dtype]['path'])
 
-    def validate_data(self, *args, **kwargs):
+
+    def validate_data(self, * gargs, **kwargs):
         with open(BUILTIN_DTYPES, "r") as f:
             self._dtype_config = json.load(f)
         
@@ -222,7 +229,6 @@ class DataManager(ABC):
         Get data of a specificed type
         The manager is responsible for finding the path, and the giving it to the handlers
         """
-        import time
 
         return_types = []
         new_data = {}
@@ -295,3 +301,18 @@ class DataManager(ABC):
     def get_handler(self, dtype: str, *args, **kwargs):
         pass
 
+def get_all():
+    default_survey_config_location = DATASET_CONFIG_DIR / "surveys.json"
+    with open(default_survey_config_location, "r") as f:
+        surveys = json.load(f)
+    missing = []
+    storage = {}
+    for name, vals in surveys.items():
+        survey_config = DATASET_CONFIG_DIR / vals['config_path']
+        try:
+            with open(survey_config, "r") as f:
+                    survey_data = json.load(f)
+        except FileNotFoundError:
+            missing.append(name)
+        storage.update({name: survey_data})
+    return storage

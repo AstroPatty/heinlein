@@ -13,7 +13,6 @@ from shapely.strtree import STRtree
 
 
 logger = logging.getLogger("Dataset")
-
 class Dataset:
 
     def __init__(self, manager: DataManager, *args, **kwargs):
@@ -66,6 +65,12 @@ class Dataset:
         
         self._geo_idx = indices
         self._geo_tree = STRtree(geo_list)
+
+    def get_path(self, dtype: str, *args, **kwargs):
+        """
+        Gets the path to where a particular item in a dataset is stored on disk
+        """
+        return self.manager.get_path(dtype)
 
 
     def get_region_overlaps(self, other: BaseRegion, *args, **kwargs) -> list:
@@ -121,6 +126,4 @@ class Dataset:
 
 def load_dataset(name: str) -> Dataset:
     manager = get_manager(name)
-    return Dataset(manager)
-
-
+    return Dataset(manager)    

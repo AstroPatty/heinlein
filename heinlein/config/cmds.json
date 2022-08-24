@@ -1,0 +1,53 @@
+{
+    "add" : {
+        "help": "Add a file to a dataset.",
+        "options": {
+            "dataset_name": {
+                "help": "The name of the dataset"
+            },
+            "dtype": {
+                "help": "The type of data being added"
+            },
+            "path": {
+                "help": "Path to the data (leave empty to use the current directory",
+                "nargs": "?",
+                "default": "cwd"
+            }
+        }
+    },
+    "clear": {
+        "help": "Clear all data from a dataset",
+        "options": {
+            "dataset_name": {
+                "help": "The name of the dataset"
+            }       
+        }
+    },
+    "remove": {
+        "help": "Remove a datatype from a dataset",
+        "options": {
+            "dataset_name": {
+                "help": "The name of the dataset"
+            },
+            "dtype": {
+                "help": "The type of data being removed"
+            }       
+        }
+    },
+    "get": {
+        "help": "Get the path to a specified data type in a dataset",
+        "options": {
+            "dataset_name": {
+                "help": "The name of the datset"
+            },
+            "dtype": {
+                "help": "The type of data being returned"
+            }
+        }
+    },
+    "list": {
+        "help": "List available datsets, and the types of data available for each.",
+        "options": {},
+        "function": "list_all"
+    }
+}

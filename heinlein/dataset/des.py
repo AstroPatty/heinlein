@@ -1,4 +1,5 @@
 from heinlein import Region
+from heinlein.locations import BASE_DATASET_CONFIG_DIR
 import numpy as np
 
 from pathlib import Path
@@ -12,8 +13,9 @@ def setup(self, *args, **kwargs):
     self._regions = list(load_regions().values())
 
 def load_regions():
-    support_location = Path(__file__).parents[0] / "configs" / "support"
+    support_location = BASE_DATASET_CONFIG_DIR/ "support"
     pickled_path = support_location / "des_tiles.reg"
+    print(pickled_path)
     if pickled_path.exists():
         with open(pickled_path, 'rb') as f:
             regions = pickle.load(f)

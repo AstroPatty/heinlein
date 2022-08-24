@@ -14,7 +14,7 @@ def setup(self, *args, **kwargs):
     self._regions = reg
 
 def load_regions():
-    support_location = Path(__file__).parents[0] / "configs" / "support"
+    support_location = BASE_DATASET_CONFIG_DIR  / "support"
     pickled_path = support_location / "hsc_regions.reg"
     if pickled_path.exists():
         with open(pickled_path, 'rb') as f:

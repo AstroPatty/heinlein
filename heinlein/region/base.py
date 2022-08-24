@@ -47,7 +47,7 @@ class BaseRegion(ABC):
         except KeyError:
             raise AttributeError(f"{self._type} has no attribute \'{__name}\'")
     def load_config(self, *args, **kwargs):
-        config_location = MAIN_CONFIG_DIR / "region.json"
+        config_location = MAIN_CONFIG_DIR / "region" / "region.json"
         with open(config_location, "r") as f:
             self._config = json.load(f)
 
