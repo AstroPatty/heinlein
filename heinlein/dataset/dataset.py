@@ -2,10 +2,11 @@ import logging
 from importlib import import_module
 import numpy as np
 from typing import Union
+from astropy.coordinates import SkyCoord
 
 from heinlein.manager.dataManger import DataManager
 
-from heinlein.region import BaseRegion
+from heinlein.region import BaseRegion, Region
 from heinlein.dtypes import get_data_object
 from heinlein.manager import get_manager
 
@@ -123,6 +124,9 @@ class Dataset:
 
         return return_data
 
+    def cone_search(self, center, radius):
+        reg = Region(center=center, radius=radius)
+        return self.get_data_from_region(reg)
 
 def load_dataset(name: str) -> Dataset:
     manager = get_manager(name)
