@@ -56,7 +56,6 @@ class FileManager(DataManager):
             self.config_data = self.reconcile_configs(base_config, self.config_location)
             self.data = self.config_data.pop("data", {})
             self.ready = True
->>>>>>> main:heinlein/manager/manager.py
     
     @staticmethod
     def update_manifest(path: pathlib.Path, *args, **kwargs) -> None:
