@@ -3,11 +3,13 @@ from astropy.table import Table
 import logging
 import numpy as np
 import astropy.units as u
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, concatenate as scc
+from astropy.table import vstack
 from shapely.geometry import Point
 from shapely.strtree import STRtree
-
+from copy import copy
 from typing import TYPE_CHECKING
+import time
 
 if TYPE_CHECKING:
     from heinlein.region import BaseRegion
@@ -19,20 +21,66 @@ class Catalog(Table):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._maskable_objects = {}
-        if "masked" not in kwargs.keys():
+        if "masked" not in kwargs.keys() and len(self) != 0:
             self.setup(*args, **kwargs)
-    
+
     def setup(self, *args, **kwargs):
+
+
         try:
             self._parmap = kwargs['parmap']
         except KeyError:
             self._find_coords()
+
         try:
-            self._skycoords = kwargs['skycoords']
-            self._cartesian_points = kwargs['points']
+            self._maskable_objects = kwargs['maskable_objects']
+            self.__dict__.update(self._maskable_objects)
         except KeyError:
             self._init_points()
+
         self._init_search_tree()
+
+    @classmethod
+    def from_rows(cls, rows, columns):
+        t = Table(rows=rows, names=columns)
+        return cls(t)
+
+    def concatenate(self, others: list = [], *args, **kwargs):
+
+        if len(others) == 0:
+            return self
+        others = [o for o in others if o is not None]
+        data = {"parmap": self._parmap}
+
+
+
+        maskables = [o._maskable_objects for o in others]
+        data['maskable_objects'] = {}
+        for name, obj_ in self._maskable_objects.items():
+
+            new_obj = copy(obj_)
+
+            other_objs = [o[name] for o in maskables]
+            if name == "_skycoords":
+
+                new_obj = scc([new_obj] + other_objs)
+                data['maskable_objects'].update({'_skycoords': new_obj})
+
+            else:
+                all_others = np.hstack(other_objs)
+                new_obj = np.concatenate((new_obj, all_others))
+
+                data['maskable_objects'].update({name: new_obj})
+
+        cats = [self]
+        for o in others:
+            cats.append(o)
+
+        new_cat = vstack(cats)
+
+        new_cat.setup(**data)
+
+        return new_cat
 
 
     def _find_coords(self, *args, **kwargs):
@@ -61,7 +109,7 @@ class Catalog(Table):
         coordinates = list(zip(self._skycoords.ra.to(u.deg).value, self._skycoords.dec.to(u.deg).value))
         self._cartesian_points = np.empty(len(coordinates), dtype=object)
         self._cartesian_points[:] = [Point(p) for p in coordinates]
-        self._maskable_objects.update({'skycoords': self._skycoords, 'points': self._cartesian_points})
+        self._maskable_objects.update({'_skycoords': self._skycoords, '_cartesian_points': self._cartesian_points})
 
     def _init_search_tree(self, *args, **kwargs):
         points = self._cartesian_points
@@ -80,8 +128,15 @@ class Catalog(Table):
         try:
             column = self._parmap.get(item)
             return super().__setitem__(column, value)
-        except KeyError:
+        except (KeyError, AttributeError):
             return super().__setitem__(item, value)
+
+    def get_passthrough_items(self, *args, **kwargs):
+        items = {}
+        items.update({"parmap": self._parmap})
+        items = {name: value for name, value in self._maskable_objects.items()}
+
+        return items
     
     def _new_from_slice(self, slice_, *args, **kwargs):
         """
@@ -89,8 +144,9 @@ class Catalog(Table):
         in an astropy Table which correctly handles
         the additional information created.
         """
-        items = {name: value[slice_] for name, value in self._maskable_objects.items()}
-        items.update({"parmap": self._parmap})
+        maskables = {name: value[slice_] for name, value in self._maskable_objects.items()}
+        import matplotlib.pyplot as plt
+        items = {"parmap": self._parmap, 'maskable_objects': maskables}
         new = super()._new_from_slice(slice_, *args, **kwargs)
         new.setup(**items)
         return new
@@ -107,19 +163,12 @@ class Catalog(Table):
     def _get_items_in_circular_region(self, region: CircularRegion):
         center = region.coordinate
         radius = region.radius
+        import matplotlib.pyplot as plt 
         mask = center.separation(self._skycoords) <= radius
         return self[mask]
 
     def _get_items_in_polygon_region(self, region: PolygonRegion):
-        geometries = region.geometry
-        objects = np.empty(len(geometries),dtype=object)
-        for idx, reg in enumerate(geometries):
-            objects[idx] = [id(p) for p in self._search_tree.query(reg)]
-        
-        unique_objects = np.unique(np.hstack(objects))
-        idxs = [self._point_dictionary[k] for k in unique_objects]
-        return self[idxs]
-        
+        raise NotImplementedError
 
 class CatalogParam:
 

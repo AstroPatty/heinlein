@@ -1,6 +1,7 @@
 [tool.poetry]
 name = "heinlein"
-version = "0.1.1"
+version = "0.1.0"
+description = "Library for interacting with large astronomical survey datasets"
 description = ""
 authors = ["Patrick Wells <pwells@ucdavis.edu>"]
 
@@ -13,6 +14,7 @@ pandas = "^1.4.3"
 astropy = "^5.1"
 appdirs = "^1.4.4"
 portalocker = "^2.5.1"
+spherical-geometry = "^1.2.22"
 
 [tool.poetry.dev-dependencies]
 
@@ -21,4 +23,4 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-heinlein = "heinlein.cmds:main"
+heinlein = "heinlein.entrypoint:delegate_command"

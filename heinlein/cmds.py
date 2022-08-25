@@ -1,96 +1,48 @@
-import sys
-import json
-from heinlein.locations import INSTALL_DIR
-from heinlein.manager import FileManager
-from heinlein.utilities import warning_prompt_tf
+from genericpath import isfile
+import multiprocessing
+from heinlein.locations import INSTALL_DIR, MAIN_CONFIG_DIR
+from heinlein.config import globalConfig
+from heinlein.manager.managers import FileManager
+from heinlein.utilities import warning_prompt_tf, split_catalog
+from heinlein.manager.dataManger import get_all
 import numpy as np
 from pathlib import Path
 
-def main(*args, **kwargs):
-    """
-    Entrypoint for "heinlein" command
-    """
-    cmd_config_location = INSTALL_DIR / "cmds.json"
-    with open(cmd_config_location) as f:
-        cmds = json.load(f) 
-    try:
-        cmd = sys.argv[1]
-    except IndexError:
-        raise NotImplementedError
-    
-    if cmd in cmds.keys():
-        info = cmds[cmd]
-        options = sys.argv[2:]
-        option_required = np.array([o['required'] for o in info['options'].values()])
-        n_required = np.count_nonzero(option_required)
-
-        if len(options) < n_required:
-            print(f"Error: command requires a minimum of {n_required} options but only recieved {len(options)}")
-            print()
-            print_help(cmd, info)
-            return False
-        elif sys.argv[2] == "help":
-            print_help(cmd, cmds[cmd])
-            return
-        
-        try:
-            this = sys.modules[__name__]
-            f = getattr(this, cmd)
-            run = f(sys.argv[2:], cmd, cmds[cmd], *args, **kwargs)
-            if not run:
-                print_help(cmd, cmds[cmd])
-        except AttributeError:
-            raise NotImplementedError(cmd)
-
-def print_help(name, info):
-    desc = info['description']
-    options = info['options']
-    substr = " ".join(list(options.keys()))
-    example = f"heinlein {name} {substr}"
-    print(f"{name}: {desc}\n")
-
-    print("OPTIONS:")
-    for n, details in options.items():
-        print(f"{n}: {details['description']}")
-    print()
-    print("EXAMPLE USAGE:")
-    print(example)
-
-
-def add(options: list, info: dict, *args, **kwargs) -> bool:
+def add(args) -> bool:
     """
     Add a location on disk to a dataset
     """
     cwd = Path.cwd()
-    name = options[0]
-    dtype = options[1]
-    try:
-        path = Path(options[2])
+    name = args.dataset_name
+    dtype = args.dtype
+    path = args.path
+
+    if path != 'cwd':
         path = cwd / path
-    except IndexError:
+    else:
         path = cwd
     if not path.exists():
-        print("Error: f{path} not found!")
+        print(f"Error: {path} not found!")
         return
     manager = FileManager(name)
     manager.add_data(dtype, path)
     return True
 
-def remove(options: dict, info: dict, *args, **kwargs):
-    name = options[0]
+def remove(args):
+    name = args.dataset_name
     if not FileManager.exists(name):
         print(f"Error: dataset {name} does not exist!")
         return True
-    dtype = options[1]
+    dtype = args.dtype
     mgr = FileManager(name)
     mgr.remove_data(dtype)
     return True
 
-def clear(options: dict, info: dict, *args, **kwargs) -> bool:
+def clear(args) -> bool:
     """
     Clear all data from a dataset
     """
-    name = options[0]
+    name = args.dataset_name
     if not FileManager.exists(name):
         print(f"Error: dataset {name} does not exist!")
         return True
@@ -103,17 +55,67 @@ def clear(options: dict, info: dict, *args, **kwargs) -> bool:
         mgr.clear_all_data()
     return True
 
-def get(options: dict, info: dict, *args, **kwargs) -> bool:
+def get(args) -> bool:
     """
     Get the path to a specific data type in a specific datset
     """
-    name = options[0]
+    name = args.dataset_name
     if not FileManager.exists(name):
         print(f"Error: dataset {name} does not exist!")
         return True
-    dtype = options[1]
+    dtype = args.dtype
     mgr = FileManager(name)
-    path = mgr.get_data(dtype)
+    path = mgr.get_path(dtype)
     if path:
         print(str(path))
     return True
+
+def list_all(args) -> None:
+    surveys = get_all()
+    data = {name: d.get("data", []) for name, d in surveys.items()}
+    if len(data) == 0 or all([len(d) == 0 for d in data.values()]):
+        print("No data found!")
+        return
+    header = "DATASET".ljust(20) + "AVAILABLE DATA"
+    print(header)
+    print("-"*len(header))
+    for name, dtypes in data.items():
+        s1 = name
+        s2 = ",".join(list(dtypes.keys()))
+        print(s1.ljust(20) + s2)
+
+def split(args) -> None:
+    path = Path(args.input_path)
+    args.input_path = path
+    if not path.exists():
+        print(f"Error: path {path} does not exist!")
+    else:
+        args.input_path = path
+    if args.threads == 1 and globalConfig.interactive:
+        print("Warning: Splitting large datasets takes a long time")
+        print("We recommend using more than a single thread")
+        print("You can increase this number with the -t flag in the future")
+        while True:
+            nthreads = input("How many threads would you like to use? ")
+            try:
+                max_threads = multiprocessing.cpu_count()
+                nthreads = int(nthreads)
+                if max_threads < nthreads:
+                    print(f"Error: Maximum number of threads available on this machine is {max_threads}")
+                    continue
+                elif nthreads < 1:
+                    print(f"Error: I need at least one thread!")
+                    continue
+
+                break
+            except ValueError:
+                print("Number of threads must be an integer")
+        args.threads = nthreads
+
+    if args.output == None:
+        if path.is_file():
+            output_path = path.parents[0]
+        else:
+            output_path = path
+        args.output = output_path
+    split_catalog(args)

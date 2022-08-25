@@ -1,72 +1,54 @@
+from ast import Mult
+from functools import reduce
+from gettext import Catalog
 from typing import Any, Union
 import astropy.units as u
-from shapely.geometry import Point, Polygon
+from shapely.geometry import Point, Polygon, box, MultiPolygon
 from astropy.coordinates import SkyCoord
+import numpy as np
+from spherical_geometry.polygon import SingleSphericalPolygon
 
-from heinlein.dtypes import get_handler
 from heinlein.region.base import BaseRegion
 
-def Region(*args, **kwargs) -> BaseRegion:
+def Region(region: Union[SingleSphericalPolygon, dict] = None, *args, **kwargs) -> BaseRegion:
     """
     Factory function for building regions.
     """
+
+
+    if type(region) == dict:
+        return build_compound_region(region, *args, **kwargs)
     try:
         name = kwargs['name']
     except KeyError:
-        kwargs.update({"name": "None"})
-    try:
+        name = None
+
+    if 'center' in kwargs.keys():
         center = kwargs['center']
         radius = kwargs['radius']
-        return CircularRegion(type="CircularRegion", *args, **kwargs)
-    except KeyError:
-        kwargs.update({"type": "PolygonRegion"})
-        return PolygonRegion(*args, **kwargs)
+        return CircularRegion(center, radius, name)
+    return PolygonRegion(region, name)
 
-
-
+def build_compound_region(regions: dict, *args, **kwargs) -> BaseRegion:
+    first = list(regions.values())[0]
+    second = list(regions.values())[1]
+    a = first.union(second)
+    full_region = reduce(lambda first, second: first.union(second), regions.values())
+    region_obj = Region(points = b.boundary.coords)
+    region_obj.add_subregions(regions)
+    return region_obj
+    
 class PolygonRegion(BaseRegion):
 
-    def __init__(self, points, name: str, *args, **kwargs):
+    def __init__(self, polygon: SingleSphericalPolygon, name: str, *args, **kwargs):
         """
         Basic general-shape region object
         """
-        input_points = [Point(p) for p in points]
-        geometry = Polygon(input_points)
-        super().__init__(geometry, *args, **kwargs)
-        self.name = name
-    
+        super().__init__(polygon, "PolygonRegion", name)
+
     @property
     def center(self) -> Point:
-        return self._geometry.centroid
-
-    def build_wrapped_regions(self, *args, **kwargs) -> None:
-        
-        points = self._geometry.exterior.xy
-        if self._edge_overlap[0]:
-            x_vals = points[0]
-            shift_right = [x if (x > 180) else (x + 360) for x in x_vals]    
-            shift_left = [x if (x < 180) else (x - 360) for x in x_vals ]
-            x_coords = [shift_left, shift_right]
-        else:
-            x_coords = [points[0]]
-
-        if self._edge_overlap[1]:
-            y_vals = points[1]
-            shift_right = [y if (y > 90) else (y + 180) for y in y_vals]    
-            shift_left = [y if (y < 90) else (y - 189) for y in y_vals ]
-            y_coords = [shift_left, shift_right]
-        else:
-            y_coords = [points[1]]
-
-        geometry = []
-
-        for x_ in x_coords:
-            for y_ in y_coords:
-                points = list(zip(x_, y_))
-                geometry.append(Polygon(points))
-        self._geometries = geometry
-
-
+        return self._flat_geometry.centroid
 class CircularRegion(BaseRegion):
 
     def __init__(self, center: Union[SkyCoord, tuple], radius: Union[u.Quantity, float], name: str, *args, **kwargs) -> None:
@@ -80,47 +62,18 @@ class CircularRegion(BaseRegion):
             self._skypoint = center
             self._center = Point(center.ra.value, center.dec.value)
         else:
-            self._center = Point(center)
+            self._center = center
             self._skypoint = SkyCoord(*center, unit="deg")
         
         if type(radius) == u.Quantity:
             self._radius = radius.to(u.degree)
         else: #assume deg
             self._radius = radius*u.deg
-        geometry = self._center.buffer(self._radius.value)
-        super().__init__(geometry, *args, **kwargs)
 
-    def build_wrapped_regions(self, *args, **kwargs) -> None:
-        x_coord, y_coord = self._center.xy
-        if self._edge_overlap[0]:
-            shift_right = [x if (x > 180) else (x + 360) for x in x_coord]    
-            shift_left = [x if (x < 180) else (x - 360) for x in x_coord]
-            x_coords = [shift_left, shift_right]
-        else:
-            x_coords = x_coord
-
-        if self._edge_overlap[1]:
-            shift_right = [y if (y > 90) else (y + 180) for y in y_coord]    
-            shift_left = [y if (y < 90) else (y - 189) for y in y_coord]
-            y_coords = [shift_left, shift_right]
-        else:
-            y_coords = y_coord
-
-        geometry = []
-        for x_ in x_coords:
-            for y_ in y_coords:
-                points = list(zip(x_, y_))
-                geometry.append(Point(points).buffer(self._raidus))
-        self._geometries = geometry
-    
-    def contains(self, other):
-        try:
-            coords = other.coords
-        except AttributeError:
-            raise NotImplementedError
-        
-        return self._skypoint.separation(coords) <= self._radius
-
+        geometry = SingleSphericalPolygon.from_cone(self._center[0], self._center[1], self._radius.to(u.deg).value, *args, **kwargs)
+        low_res_geometry = SingleSphericalPolygon.from_cone(self._center[0], self._center[1], self._radius.to(u.deg).value, steps = 4)
+        super().__init__(geometry, "CircularRegion", name, *args, **kwargs)
+        self.low_res_geometry = low_res_geometry
 
     @property
     def center(self) -> Point:
@@ -133,3 +86,4 @@ class CircularRegion(BaseRegion):
     @property
     def radius(self) -> u.quantity:
         return self._radius
+    

@@ -1,0 +1,16 @@
+{   
+    "catalog" : {
+        "description": "For holding object catalogs",
+        "required_attributes": {
+            "path": "Path to the catalog",
+            "region": "Key for object region"
+        }
+
+    },
+    "mask": {
+        "description": "Masks of various types (bright stars are the most common reasons)",
+        "required_attributes": {
+            "path": "Path to the mask"
+        }
+    }
+}

@@ -1,0 +1,5 @@
+{
+    "allowed_predicates": {"union": "union", "intersects": "intersects_poly"},
+    "allowed_monoids": ["area"]
+
+}

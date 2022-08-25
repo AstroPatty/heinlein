@@ -1,0 +1,105 @@
+{   
+    "options": {
+        "--threads": {
+            "help": "Number of cores to use",
+            "flag": "-t",
+            "type": "int",
+            "default": 1
+        }
+    },
+
+    "add" : {
+        "help": "Add a file to a dataset.",
+        "options": {
+            "dataset_name": {
+                "help": "The name of the dataset"
+            },
+            "dtype": {
+                "help": "The type of data being added"
+            },
+            "path": {
+                "help": "Path to the data (leave empty to use the current directory",
+                "nargs": "?",
+                "default": "cwd"
+            }
+        }
+    },
+    "clear": {
+        "help": "Clear all data from a dataset",
+        "options": {
+            "dataset_name": {
+                "help": "The name of the dataset"
+            }       
+        }
+    },
+    "remove": {
+        "help": "Remove a datatype from a dataset",
+        "options": {
+            "dataset_name": {
+                "help": "The name of the dataset"
+            },
+            "dtype": {
+                "help": "The type of data being removed"
+            }       
+        }
+    },
+    "get": {
+        "help": "Get the path to a specified data type in a dataset",
+        "options": {
+            "dataset_name": {
+                "help": "The name of the datset"
+            },
+            "dtype": {
+                "help": "The type of data being returned"
+            }
+        }
+    },
+    "list": {
+        "help": "List available datsets, and the types of data available for each.",
+        "options": {},
+        "function": "list_all"
+    },
+    "split": {
+        "help": "Split catalogs from a known dataset based on regions for easier retrieval",
+        "options":{
+            "survey_name": {
+                "help": "The name of the survey"
+            },
+            "input_path":{
+                "help": "Path to the data to be split. Either a specific catalog file or a folder."
+            },
+            "--input-format" : {
+                "help": "The file format the data is stored in (default csv)",
+                "flag": "-i",
+                "choices": [".csv", ".csv.gz"],
+                "default": ".csv"
+
+            },
+            "--output-format": {
+                "help": "Format to output to (default sqlite)",
+                "flag": "-f",
+                "choices": ["csv", "sqlite"],
+                "default": "sqlite"
+
+            },
+            "--output": {
+                "help": "Location to put the output (leave blank to put in same location as source data",
+                "flag": "-o"
+            },
+            "--delete": {
+                "help": "Whether or not to delete the original files after splititng the data",
+                "flag": "-d",
+                "action": "store_true"
+            }, 
+
+            "--conflict": {
+                "help": "What to do if split data is already found (default append)",
+                "flag": "-c",
+                "choices": ["append", "overwrite", "skip"],
+                "default": "append"
+            }
+
+        }
+
+    }
+}
