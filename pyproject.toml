@@ -2,7 +2,6 @@
 name = "heinlein"
 version = "0.2.0"
 description = "Library for interacting with large astronomical survey datasets"
-description = ""
 authors = ["Patrick Wells <pwells@ucdavis.edu>"]
 
 [tool.poetry.dependencies]
