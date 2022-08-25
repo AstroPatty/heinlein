@@ -86,10 +86,11 @@ def list_all(args) -> None:
 
 def split(args) -> None:
     path = Path(args.input_path)
+    args.input_path = path
     if not path.exists():
         print(f"Error: path {path} does not exist!")
     else:
-        args.path = path
+        args.input_path = path
     if args.threads == 1 and globalConfig.interactive:
         print("Warning: Splitting large datasets takes a long time")
         print("We recommend using more than a single thread")

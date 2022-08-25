@@ -68,7 +68,14 @@
             "input_path":{
                 "help": "Path to the data to be split. Either a specific catalog file or a folder."
             },
-            "--format": {
+            "--input-format" : {
+                "help": "The file format the data is stored in (default csv)",
+                "flag": "-i",
+                "choices": [".csv", ".csv.gz"],
+                "default": ".csv"
+
+            },
+            "--output-format": {
                 "help": "Format to output to (default sqlite)",
                 "flag": "-f",
                 "choices": ["csv", "sqlite"],

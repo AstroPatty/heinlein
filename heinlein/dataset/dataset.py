@@ -131,3 +131,7 @@ class Dataset:
 def load_dataset(name: str) -> Dataset:
     manager = get_manager(name)
     return Dataset(manager)    
+
+def load_current_config(name: str):
+    manager = get_manager(name)
+    return manager.config
