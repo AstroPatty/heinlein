@@ -37,6 +37,26 @@ class FileManager(DataManager):
         user if dataset does not exist.
         """
         self.ready = True
+        with open(MAIN_DATASET_CONFIG, "r") as f:
+            surveys = json.load(f)
+
+        if self.name not in surveys.keys():
+            write_new = warning_prompt_tf(f"Survey {self.name} not found, would you like to initialize it? ")
+            if write_new:
+                self.config_location = self.initialize_dataset()
+                with open(self.config_location, "r") as f:
+                    self.config_data = json.load(f)
+                    self.data = {}
+            else:
+                self.ready = False
+        else:
+            cp = surveys[self.name]['config_path']
+            self.config_location = DATASET_CONFIG_DIR / cp
+            base_config = BASE_DATASET_CONFIG_DIR / cp
+            self.config_data = self.reconcile_configs(base_config, self.config_location)
+            self.data = self.config_data.pop("data", {})
+            self.ready = True
+>>>>>>> main:heinlein/manager/manager.py
     
     @staticmethod
     def update_manifest(path: pathlib.Path, *args, **kwargs) -> None:
