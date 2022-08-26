@@ -95,7 +95,6 @@ class Dataset:
         dtypes <str> or <list>: list of data types to return
         
         """
-        import matplotlib.pyplot as plt
         overlaps = self.get_region_overlaps(query_region, *args, **kwargs)
         overlaps = [o for o in overlaps if o.intersects(query_region)]
 

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "heinlein"
-version = "0.2.0"
+version = "0.2.3"
 description = "Library for interacting with large astronomical survey datasets"
 authors = ["Patrick Wells <pwells@ucdavis.edu>"]
 
@@ -14,6 +14,7 @@ astropy = "^5.1"
 appdirs = "^1.4.4"
 portalocker = "^2.5.1"
 spherical-geometry = "^1.2.22"
+dynaconf = "^3.1.9"
 
 [tool.poetry.dev-dependencies]
 

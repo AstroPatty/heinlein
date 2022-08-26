@@ -28,6 +28,24 @@ test = ["pytest (>=7.0)", "pytest-doctestplus (>=0.12)", "pytest-astropy-header 
 test_all = ["pytest (>=7.0)", "pytest-doctestplus (>=0.12)", "pytest-astropy-header (>=0.2.1)", "pytest-astropy (>=0.9)", "pytest-xdist", "objgraph", "ipython (>=4.2)", "coverage", "skyfield (>=1.20)", "sgp4 (>=2.3)"]
 
 [[package]]
+name = "dynaconf"
+version = "3.1.9"
+description = "The dynamic configurator for your Python Project"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.extras]
+all = ["redis", "ruamel.yaml", "configobj", "hvac"]
+configobj = ["configobj"]
+ini = ["configobj"]
+redis = ["redis"]
+test = ["pytest", "pytest-cov", "pytest-xdist", "pytest-mock", "flake8", "pep8-naming", "flake8-debugger", "flake8-print", "flake8-todo", "radon", "flask (>=0.12)", "django", "python-dotenv", "toml", "codecov", "redis", "hvac", "configobj"]
+toml = ["toml"]
+vault = ["hvac"]
+yaml = ["ruamel.yaml"]
+
+[[package]]
 name = "numpy"
 version = "1.23.1"
 description = "NumPy is the fundamental package for array computing with Python."
@@ -201,7 +219,7 @@ docs = ["numpydoc", "sphinx-automodapi", "sphinx"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "0ce9568d3f986bba32af8fd616f3a65b41f8b3e20880ac708dc0cde82992501b"
+content-hash = "11698e7c33919c9c809c31645f29eb9e4916b288ab1b1f981adeb60fce112a8a"
 
 [metadata.files]
 appdirs = [
@@ -209,6 +227,7 @@ appdirs = [
     {file = "appdirs-1.4.4.tar.gz", hash = "sha256:7d5d0167b2b1ba821647616af46a749d1c653740dd0d2415100fe26e27afdf41"},
 ]
 astropy = []
+dynaconf = []
 numpy = []
 packaging = [
     {file = "packaging-21.3-py3-none-any.whl", hash = "sha256:ef103e05f519cdc783ae24ea4e2e0f508a9c99b2d4969652eed6a2e1ea5bd522"},

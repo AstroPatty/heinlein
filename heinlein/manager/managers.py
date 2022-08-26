@@ -46,7 +46,7 @@ class FileManager(DataManager):
                 self.config_location = self.initialize_dataset()
                 with open(self.config_location, "r") as f:
                     self.config_data = json.load(f)
-                    self.data = {}
+                    self._data = {}
             else:
                 self.ready = False
         else:
@@ -54,7 +54,7 @@ class FileManager(DataManager):
             self.config_location = DATASET_CONFIG_DIR / cp
             base_config = BASE_DATASET_CONFIG_DIR / cp
             self.config_data = self.reconcile_configs(base_config, self.config_location)
-            self.data = self.config_data.pop("data", {})
+            self._data = self.config_data.pop("data", {})
             self.ready = True
     
     @staticmethod

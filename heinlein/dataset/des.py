@@ -15,7 +15,6 @@ def setup(self, *args, **kwargs):
 def load_regions():
     support_location = BASE_DATASET_CONFIG_DIR/ "support"
     pickled_path = support_location / "des_tiles.reg"
-    print(pickled_path)
     if pickled_path.exists():
         with open(pickled_path, 'rb') as f:
             regions = pickle.load(f)

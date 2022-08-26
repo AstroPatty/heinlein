@@ -145,7 +145,6 @@ class Catalog(Table):
         the additional information created.
         """
         maskables = {name: value[slice_] for name, value in self._maskable_objects.items()}
-        import matplotlib.pyplot as plt
         items = {"parmap": self._parmap, 'maskable_objects': maskables}
         new = super()._new_from_slice(slice_, *args, **kwargs)
         new.setup(**items)
@@ -163,7 +162,6 @@ class Catalog(Table):
     def _get_items_in_circular_region(self, region: CircularRegion):
         center = region.coordinate
         radius = region.radius
-        import matplotlib.pyplot as plt 
         mask = center.separation(self._skycoords) <= radius
         return self[mask]
 
