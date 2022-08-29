@@ -114,7 +114,7 @@ class Dataset:
         for dtype, values in data.items():
             #Now, we process into useful objects and filter further
             if data is None:
-                logger.error(f"Unable to find data of type{dtype}")
+                logger.error(f"Unable to find data of type {dtype}")
                 continue
 
             obj_ = get_data_object(dtype, values)

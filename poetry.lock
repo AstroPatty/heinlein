@@ -28,6 +28,17 @@ test = ["pytest (>=7.0)", "pytest-doctestplus (>=0.12)", "pytest-astropy-header 
 test_all = ["pytest (>=7.0)", "pytest-doctestplus (>=0.12)", "pytest-astropy-header (>=0.2.1)", "pytest-astropy (>=0.9)", "pytest-xdist", "objgraph", "ipython (>=4.2)", "coverage", "skyfield (>=1.20)", "sgp4 (>=2.3)"]
 
 [[package]]
+name = "cacheout"
+version = "0.14.1"
+description = "A caching library for Python"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.extras]
+dev = ["black", "build", "coverage", "docformatter", "flake8", "flake8-black", "flake8-bugbear", "flake8-isort", "invoke", "isort", "mypy", "pylint", "pytest", "pytest-asyncio", "pytest-cov", "sphinx", "sphinx-autodoc-typehints", "sphinx-rtd-theme", "tox", "twine", "wheel"]
+
+[[package]]
 name = "dynaconf"
 version = "3.1.9"
 description = "The dynamic configurator for your Python Project"
@@ -219,7 +230,7 @@ docs = ["numpydoc", "sphinx-automodapi", "sphinx"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "11698e7c33919c9c809c31645f29eb9e4916b288ab1b1f981adeb60fce112a8a"
+content-hash = "e13e09c3b377cb59419f51750869733a18c5a1692a459ddc8a1bcad3d5bcee54"
 
 [metadata.files]
 appdirs = [
@@ -227,6 +238,7 @@ appdirs = [
     {file = "appdirs-1.4.4.tar.gz", hash = "sha256:7d5d0167b2b1ba821647616af46a749d1c653740dd0d2415100fe26e27afdf41"},
 ]
 astropy = []
+cacheout = []
 dynaconf = []
 numpy = []
 packaging = [

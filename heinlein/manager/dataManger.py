@@ -13,6 +13,7 @@ import logging
 import pathlib
 import shutil
 import atexit
+from cacheout import LRUCache
 
 logger = logging.getLogger("manager")
 
@@ -277,24 +278,30 @@ class DataManager(ABC):
                 #No cache for this datatype, continue
                 continue
             storage = {}
-            for reg in region_overlaps:
-                try:
-                    data = dtype_cache[reg.name]
-                    storage.update({reg.name: data})
-                except KeyError:
-                    continue
-            cached_values.update({dtype: storage})
+            print(dtype_cache)
+            cached = dtype_cache.get_many([reg.name for reg in region_overlaps])
+            cached_values.update({dtype: cached})
         return cached_values
 
     def cache(self, data_storage: dict):
+        """
+        Top-level modules think in terms of datatypes, but the cache thinks in terms of regions
+        So we have to do a translation
+        
+        """
+
         for dtype, data in data_storage.items():
-            dtype_cache = self._cache.get(dtype, {})
-            dtype_cache.update({reg_name: d_obj for reg_name, d_obj in data.items()})
+            try:
+                dtype_cache = self._cache[dtype]
+            except KeyError:
+                dtype_cache = LRUCache(maxsize=0)
+                self._cache.update({dtype: dtype_cache})
+            dtype_cache.add_many({reg_name: d_obj for reg_name, d_obj in data.items()})
             self._cache.update({dtype: dtype_cache})
 
 
     @abstractmethod
-    def clear_all_data(self, *args, **kwargs): 
+    def clear_all_data(self, *args, **kwargs):  
         pass
 
     @abstractmethod

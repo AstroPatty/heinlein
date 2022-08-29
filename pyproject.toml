@@ -15,6 +15,7 @@ appdirs = "^1.4.4"
 portalocker = "^2.5.1"
 spherical-geometry = "^1.2.22"
 dynaconf = "^3.1.9"
+cacheout = "^0.14.1"
 
 [tool.poetry.dev-dependencies]
 

@@ -24,7 +24,6 @@ class BaseRegion(ABC):
         self.setup()
 
     def setup(self, *args, **kwargs):
-        self._cache = {}
         self._subregions = np.array([], dtype=object)
         self._covered = False
         self.load_config()
@@ -72,6 +71,3 @@ class BaseRegion(ABC):
     def center(self, *args, **kwargs):
         pass
         
-    def cache_split(self, subregions, *args, **kwargs):
-        pass
-
