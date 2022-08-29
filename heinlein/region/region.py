@@ -10,24 +10,33 @@ from spherical_geometry.polygon import SingleSphericalPolygon
 
 from heinlein.region.base import BaseRegion
 
-def Region(region: Union[SingleSphericalPolygon, dict] = None, *args, **kwargs) -> BaseRegion:
-    """
-    Factory function for building regions.
-    """
+class Region:
 
+    @staticmethod
+    def circle(center: Union[SkyCoord, tuple], radius: Union[u.Quantity, float], *args, **kwargs):
+        """
+        Return a circular region. Centered on center, radius of `radius`
+        The "center" is anything that can be parsed to a SkyCoord
+        If no units provided, will default to degrees
+        """
+        sky_center = center
+        sky_radius = radius
+        if type(center) == SkyCoord and type(radius) == u.Quantity:
+            return CircularRegion(center, radius)
+        elif type(center) == tuple:
+            try:
+                center_coord = SkyCoord(*sky_center)
+            except u.UnitTypeError:
+                center_coord = SkyCoord(*sky_center, unit="deg")
+        if type(sky_radius) != u.Quantity:
+            sky_radius = sky_radius*u.deg
+        return CircularRegion(center_coord, sky_radius, *args, **kwargs)
 
-    if type(region) == dict:
-        return build_compound_region(region, *args, **kwargs)
-    try:
-        name = kwargs['name']
-    except KeyError:
-        name = None
+    @staticmethod
+    def polygon(self, coords, *args, **kwargs):
+        if type(coords) == SingleSphericalPolygon:
+            return PolygonRegion(coords)
 
-    if 'center' in kwargs.keys():
-        center = kwargs['center']
-        radius = kwargs['radius']
-        return CircularRegion(center, radius, name)
-    return PolygonRegion(region, name)
 
 def build_compound_region(regions: dict, *args, **kwargs) -> BaseRegion:
     first = list(regions.values())[0]
@@ -51,29 +60,19 @@ class PolygonRegion(BaseRegion):
         return self._flat_geometry.centroid
 class CircularRegion(BaseRegion):
 
-    def __init__(self, center: Union[SkyCoord, tuple], radius: Union[u.Quantity, float], name: str, *args, **kwargs) -> None:
+    def __init__(self, center: SkyCoord, radius: u.Quantity, name = None, *args, **kwargs) -> None:
         """
         Circular region
         Accepts point-radius for initialization.
         Shapely does not techincally have a "spherical regions" object
         """
         
-        if type(center) == SkyCoord:
-            self._skypoint = center
-            self._center = Point(center.ra.value, center.dec.value)
-        else:
-            self._center = center
-            self._skypoint = SkyCoord(*center, unit="deg")
-        
-        if type(radius) == u.Quantity:
-            self._radius = radius.to(u.degree)
-        else: #assume deg
-            self._radius = radius*u.deg
+        self._skypoint = center
+        self._radius = radius
+        self._center = Point(center.ra.value, center.dec.value)
 
-        geometry = SingleSphericalPolygon.from_cone(self._center[0], self._center[1], self._radius.to(u.deg).value, *args, **kwargs)
-        low_res_geometry = SingleSphericalPolygon.from_cone(self._center[0], self._center[1], self._radius.to(u.deg).value, steps = 4)
+        geometry = SingleSphericalPolygon.from_cone(center.ra.to(u.deg).value, center.dec.to(u.deg).value, self._radius.to(u.deg).value, *args, **kwargs)
         super().__init__(geometry, "CircularRegion", name, *args, **kwargs)
-        self.low_res_geometry = low_res_geometry
 
     @property
     def center(self) -> Point:

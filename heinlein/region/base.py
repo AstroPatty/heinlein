@@ -13,7 +13,7 @@ from heinlein.locations import MAIN_CONFIG_DIR
 logger = logging.getLogger("region")
 class BaseRegion(ABC):
 
-    def __init__(self, geometry, type, name, *args, **kwargs):
+    def __init__(self, geometry, type, name = None, *args, **kwargs):
         """
         Base region object. Placed in its own file to get around
         circular imports

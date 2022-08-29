@@ -124,7 +124,7 @@ class Dataset:
         return return_data
 
     def cone_search(self, center, radius):
-        reg = Region(center=center, radius=radius)
+        reg = Region.circle(center=center, radius=radius)
         return self.get_data_from_region(reg)
 
 def load_dataset(name: str) -> Dataset:

@@ -278,7 +278,6 @@ class DataManager(ABC):
                 #No cache for this datatype, continue
                 continue
             storage = {}
-            print(dtype_cache)
             cached = dtype_cache.get_many([reg.name for reg in region_overlaps])
             cached_values.update({dtype: cached})
         return cached_values
