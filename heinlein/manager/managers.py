@@ -29,34 +29,9 @@ class FileManager(DataManager):
         """
         super().__init__(name, *args, **kwargs)
         self.setup()
-
-    def setup(self, *args, **kwargs) -> None:
-        """
-        Performs basic setup of the file manager
-        Loads datset if it exists, or prompts
-        user if dataset does not exist.
-        """
+    def setup(self, *args, **kwargs):
         self.ready = True
-        with open(MAIN_DATASET_CONFIG, "r") as f:
-            surveys = json.load(f)
 
-        if self.name not in surveys.keys():
-            write_new = warning_prompt_tf(f"Survey {self.name} not found, would you like to initialize it? ")
-            if write_new:
-                self.config_location = self.initialize_dataset()
-                with open(self.config_location, "r") as f:
-                    self.config_data = json.load(f)
-                    self._data = {}
-            else:
-                self.ready = False
-        else:
-            cp = surveys[self.name]['config_path']
-            self.config_location = DATASET_CONFIG_DIR / cp
-            base_config = BASE_DATASET_CONFIG_DIR / cp
-            self.config_data = self.reconcile_configs(base_config, self.config_location)
-            self._data = self.config_data.pop("data", {})
-            self.ready = True
-    
     @staticmethod
     def update_manifest(path: pathlib.Path, *args, **kwargs) -> None:
         """
@@ -191,7 +166,7 @@ class FileManager(DataManager):
                 raise NotImplementedError
         
         self.update_manifest(path)
-        self._data.update({dtype: str(path)})
+        self._data.update({dtype: {"path": str(path)}})
         self.write_config()
         return True
 

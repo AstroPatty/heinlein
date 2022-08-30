@@ -28,7 +28,7 @@ for key, data in commands.items():
     cmd_key = data.pop("function", key)
     f = getattr(cmds, cmd_key)
     options = data.pop('options')
-    p = sp.add_parser(cmd_key, help=data['help'])
+    p = sp.add_parser(key, help=data['help'])
     for opt_key, opt_values in options.items():
         flag = opt_values.pop("flag", False)
         if flag:

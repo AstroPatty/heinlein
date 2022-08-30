@@ -4,7 +4,7 @@ from heinlein.locations import INSTALL_DIR, MAIN_CONFIG_DIR
 from heinlein.config import globalConfig
 from heinlein.manager.managers import FileManager
 from heinlein.utilities import warning_prompt_tf, split_catalog
-from heinlein.manager.dataManger import get_all
+from heinlein import api
 import numpy as np
 from pathlib import Path
 
@@ -12,30 +12,16 @@ def add(args) -> bool:
     """
     Add a location on disk to a dataset
     """
-    cwd = Path.cwd()
     name = args.dataset_name
     dtype = args.dtype
-    path = args.path
-
-    if path != 'cwd':
-        path = cwd / path
-    else:
-        path = cwd
-    if not path.exists():
-        print(f"Error: {path} not found!")
-        return
-    manager = FileManager(name)
-    manager.add_data(dtype, path)
+    path = args.path    
+    api.add(name, dtype, path)
     return True
 
 def remove(args):
     name = args.dataset_name
-    if not FileManager.exists(name):
-        print(f"Error: dataset {name} does not exist!")
-        return True
     dtype = args.dtype
-    mgr = FileManager(name)
-    mgr.remove_data(dtype)
+    api.remove(name, dtype)
     return True
 
 def clear(args) -> bool:
@@ -55,24 +41,21 @@ def clear(args) -> bool:
         mgr.clear_all_data()
     return True
 
-def get(args) -> bool:
+def get_path(args) -> bool:
     """
     Get the path to a specific data type in a specific datset
     """
     name = args.dataset_name
+    dtype = args.dtype
     if not FileManager.exists(name):
         print(f"Error: dataset {name} does not exist!")
         return True
-    dtype = args.dtype
-    mgr = FileManager(name)
-    path = mgr.get_path(dtype)
-    if path:
+    path = api.get_path(name, dtype)
+    if path is not None:
         print(str(path))
-    return True
 
 def list_all(args) -> None:
-    surveys = get_all()
-    data = {name: d.get("data", []) for name, d in surveys.items()}
+    data = api.list_all()
     if len(data) == 0 or all([len(d) == 0 for d in data.values()]):
         print("No data found!")
         return

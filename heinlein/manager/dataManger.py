@@ -2,6 +2,7 @@ from abc import abstractmethod
 from glob import glob
 import json
 from os import stat
+from weakref import KeyedRef
 from heinlein.locations import BASE_DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, BUILTIN_DTYPES
 from abc import ABC
 from heinlein.region.base import BaseRegion
@@ -99,7 +100,6 @@ class DataManager(ABC):
         """
         with open(base_path, "r") as f:
             base_config_data = json.load(f)
-
         if base_path.exists() and not config_path.exists():
             shutil.copy(base_path, config_path)
             return base_config_data
@@ -124,6 +124,8 @@ class DataManager(ABC):
         for dtype, dconfig in data.items():
             if type(dconfig) != dict:
                 output.update({dtype: self._fix_dconfig(dtype, stored_config, base_config)})
+            elif dtype not in self._builtin_types.keys():
+                output.update({dtype: dconfig})
             else:
                 expected = set(self._builtin_types[dtype]['required_attributes'].keys())
                 found = set(dconfig.keys())
@@ -134,7 +136,10 @@ class DataManager(ABC):
         return output
 
     def _fix_dconfig(self, dtype: str, stored_survey_config: dict, base_survey_config: dict):
-        base_config = self._builtin_types[dtype]
+        try: 
+            base_config = self._builtin_types[dtype]
+        except KeyError:
+            base_config = {'required_attributes': {}}
         return_values = {}
         dconfig = stored_survey_config['data'][dtype]
         if type(dconfig) != dict:

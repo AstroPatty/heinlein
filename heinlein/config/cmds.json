@@ -52,7 +52,8 @@
             "dtype": {
                 "help": "The type of data being returned"
             }
-        }
+        },
+        "function": "get_path"
     },
     "list": {
         "help": "List available datsets, and the types of data available for each.",
