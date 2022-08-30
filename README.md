@@ -26,7 +26,7 @@ Now at any time, I can load objects from a particular location within the DES fo
 from heinlein import load_dataset
 import astropy.units as u
 
-des = load_dataset(des)
+des = load_dataset("des")
 des.cone_search((13.4349, -20.2091), radius=4*u.arcmin)
 ```
 
