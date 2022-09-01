@@ -8,6 +8,9 @@
     "dconfig": {
         "catalog": {
             "region": "TILENAME"
+        },
+        "mask": {
+            "mask_key": "MSK"
         }
     }
 }

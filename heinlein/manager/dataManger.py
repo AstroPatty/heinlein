@@ -2,8 +2,10 @@ from abc import abstractmethod
 from importlib import import_module
 from glob import glob
 import json
+from lib2to3.pytree import Base
 from heinlein.locations import BASE_DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, BUILTIN_DTYPES
 from abc import ABC
+from heinlein.region import base
 from heinlein.region.base import BaseRegion
 from heinlein.utilities import warning_prompt, warning_prompt_tf
 from heinlein.config.config import globalConfig
@@ -111,12 +113,12 @@ class DataManager(ABC):
         
         with open(config_path, "r") as f:
             stored_config_data = json.load(f)
-        
         update = {k: v for k, v in base_config_data.items() if k not in ["data", "dconfig"]}
         stored_config_data.update(update)
         if 'data' in stored_config_data.keys():
             data_config = self.reconcile_dconfig(stored_config_data, base_config_data)
             stored_config_data.update({'data': data_config})
+
         return stored_config_data
 
     def reconcile_dconfig(self, stored_config: dict, base_config: dict, *args, **kwargs):
@@ -126,27 +128,38 @@ class DataManager(ABC):
         with open(BUILTIN_DTYPES, "r") as f:
             self._builtin_types = json.load(f)
         output = {}
-        for dtype, dconfig in data.items():
-            if type(dconfig) != dict:
+        stored_data_config = stored_config['data']
+        for dtype, dconfig in base_config['dconfig'].items():
+            if dtype not in stored_data_config.keys():
+                #Case: No data of this type has been added
+                continue
+            if type(stored_data_config[dtype]) != dict:
+                #Provided for backward compatability
                 output.update({dtype: self._fix_dconfig(dtype, stored_config, base_config)})
             elif dtype not in self._builtin_types.keys():
-                output.update({dtype: dconfig})
+                #This is not a built_in type
+                output.update({dtype: data[dtype]})
+            
             else:
-                expected = set(self._builtin_types[dtype]['required_attributes'].keys())
-                found = set(dconfig.keys())
-                if not expected.issubset(found):
-                    output.update({dtype: self._fix_dconfig(dtype, dconfig, base_config)})
-                else:
-                    output.update({dtype: dconfig})
+                for key, value in dconfig.items():
+                    if key not in stored_data_config[dtype]:
+                        stored_data_config[dtype].update({key: value})
+                output.update({dtype: stored_data_config[dtype]})
+
+            expected = set(self._builtin_types[dtype]['required_attributes'].keys())
+            found = set(stored_data_config[dtype].keys())
+            if not expected.issubset(found):
+                output.update({dtype: self._fix_dconfig(dtype, stored_data_config[dtype], base_config)})
+            
+
         return output
 
-    def _fix_dconfig(self, dtype: str, stored_survey_config: dict, base_survey_config: dict):
+    def _fix_dconfig(self, dtype: str, dconfig: dict, base_survey_config: dict):
         try: 
             base_config = self._builtin_types[dtype]
         except KeyError:
             base_config = {'required_attributes': {}}
         return_values = {}
-        dconfig = stored_survey_config['data'][dtype]
         if type(dconfig) != dict:
             p = dconfig
             return_values.update({"path" : p})
@@ -243,7 +256,6 @@ class DataManager(ABC):
         return_types = []
         new_data = {}
         
-
         for dtype in dtypes:
             try:
                 path = self._data[dtype]
@@ -260,9 +272,8 @@ class DataManager(ABC):
                 regions_to_get = region_overlaps
 
             if len(regions_to_get) != 0:
-                data_ = self._handlers[dtype].get_data(regions_to_get)
+                data_ = self._handlers[dtype].get_data(regions_to_get, *args, **kwargs)
                 new_data.update({dtype: data_})
-
         if len(new_data) != 0:
             self.cache(new_data)
 
@@ -281,7 +292,7 @@ class DataManager(ABC):
                 data.update(new_d)
                 storage.update({k: data})
 
-        storage = self.parse_data(storage)
+        storage = self.parse_data(storage, *args, **kwargs)
         return storage
     
 

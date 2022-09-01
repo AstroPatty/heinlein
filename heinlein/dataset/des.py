@@ -63,9 +63,9 @@ class MaskHandler(Handler):
         regex = re.compile("|".join(names))
         mangle_matches = list(filter(lambda x, y=regex: regex.match(x.name), self.mangle_files))
         plane_matches = list(filter(lambda x, y=regex: regex.match(x.name), self.plane_files))
-        return self._get(names, mangle_matches, plane_matches)
+        return self._get(names, mangle_matches, plane_matches, *args, **kwargs)
     
-    def _get(self, regions, mangle_files, plane_files):
+    def _get(self, regions, mangle_files, plane_files, *args, **kwargs):
         output = {}
         for region in regions:
             mangle_file = list(filter(lambda x, y=region: y in x.name,mangle_files ))
@@ -83,10 +83,9 @@ class MaskHandler(Handler):
             mangle_msk = pymangle.Mangle(str(mangle_file[0]))
             plane_msk = fits.open(plane_file[0])
             output.update({region: [mangle_msk, plane_msk]})
-
         return output
 
     def get_data_object(self, data, *args, **kwargs):
         stack = np.array([v for v in data.values()], dtype="object")
         all_data = np.hstack(stack)
-        return Mask(all_data)
+        return Mask(all_data, **self._config)

@@ -11,6 +11,8 @@ from copy import copy
 from typing import TYPE_CHECKING
 import time
 
+from heinlein import dtypes
+
 if TYPE_CHECKING:
     from heinlein.region import BaseRegion
     from heinlein.region import CircularRegion, PolygonRegion
@@ -118,6 +120,9 @@ class Catalog(Table):
         self._search_tree = STRtree(points)
 
     def __getitem__(self, key):
+        if type(key) == dtypes.mask.Mask:
+            return key.mask(self)
+
         try:
             val =  super().__getitem__(key)
             return val
@@ -131,6 +136,10 @@ class Catalog(Table):
             return super().__setitem__(column, value)
         except (KeyError, AttributeError):
             return super().__setitem__(item, value)
+    
+    @property
+    def coords(self):
+        return self._skycoords
 
     def get_passthrough_items(self, *args, **kwargs):
         items = {}
