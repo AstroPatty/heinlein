@@ -1,5 +1,6 @@
 from heinlein import Region
 from heinlein.dtypes.handlers import Handler
+from heinlein.dtypes.mask import Mask
 from heinlein.locations import BASE_DATASET_CONFIG_DIR
 import numpy as np
 import re
@@ -83,9 +84,9 @@ class MaskHandler(Handler):
             plane_msk = fits.open(plane_file[0])
             output.update({region: [mangle_msk, plane_msk]})
 
-        print(output)
         return output
 
     def get_data_object(self, data, *args, **kwargs):
-        print("HI!")
-        return data
+        stack = np.array([v for v in data.values()], dtype="object")
+        all_data = np.hstack(stack)
+        return Mask(all_data)
