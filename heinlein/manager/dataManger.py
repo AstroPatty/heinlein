@@ -1,13 +1,13 @@
 from abc import abstractmethod
+from importlib import import_module
 from glob import glob
 import json
-from os import stat
-from weakref import KeyedRef
 from heinlein.locations import BASE_DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, BUILTIN_DTYPES
 from abc import ABC
 from heinlein.region.base import BaseRegion
 from heinlein.utilities import warning_prompt, warning_prompt_tf
 from heinlein.config.config import globalConfig
+
 import numpy as np
 from typing import Any
 import logging
@@ -68,9 +68,14 @@ class DataManager(ABC):
             except KeyError:
                 self._data = {}
                 self.config_data['data'] = self._data
+        try:
+            self.external = import_module(f".{self.config['slug']}", "heinlein.dataset")
+        except KeyError:
+            self.external = None
 
         self.load_handlers()
         self.validate_data()
+
 
     def get_path(self, dtype: str, *args, **kwargs):
         return pathlib.Path(self._data[dtype]['path'])
@@ -164,7 +169,7 @@ class DataManager(ABC):
 
     def load_handlers(self, *args, **kwargs):
         from heinlein.dtypes import get_file_handlers
-        self._handlers =  get_file_handlers(self.data)
+        self._handlers =  get_file_handlers(self.data, self.external)
 
     @property
     def data(self):
@@ -235,19 +240,17 @@ class DataManager(ABC):
         Get data of a specificed type
         The manager is responsible for finding the path, and the giving it to the handlers
         """
-
         return_types = []
         new_data = {}
         
-        cached = self.get_cached_values(dtypes, region_overlaps)
-
 
         for dtype in dtypes:
             try:
                 path = self._data[dtype]
                 return_types.append(dtype)
             except KeyError:
-                new_data.update({dtype: None})
+                print(f"No data of type {dtype} found for dataset {self.name}!")
+        cached = self.get_cached_values(dtypes, region_overlaps)
 
         for dtype in return_types:
             if dtype in cached.keys():
@@ -269,11 +272,31 @@ class DataManager(ABC):
         for k in keys:
             data = cached.get(k, {})
             new_d = new_data.get(k, {})
-            data.update(new_d)
-            storage.update({k: data})
+            if new_d is None and data is None:
+                path = self.get_path(k)
+                storage.update({k: path})
+            elif type(new_d) != dict:
+                storage.update({k: new_d})
+            else:
+                data.update(new_d)
+                storage.update({k: data})
 
+        storage = self.parse_data(storage)
         return storage
     
+
+    def parse_data(self, data, *args, **kwargs):
+        return_data = {}
+
+        for dtype, values in data.items():
+            #Now, we process into useful objects and filter further
+            if data is None:
+                logger.error(f"Unable to find data of type {dtype}")
+                continue
+            obj_ = self._handlers[dtype].get_data_object(values)
+            return_data.update({dtype: obj_})
+        return return_data
+
     def get_cached_values(self, dtypes: list, region_overlaps: list):
         cached_values = {}
         for dtype in dtypes:
@@ -293,8 +316,9 @@ class DataManager(ABC):
         So we have to do a translation
         
         """
-
         for dtype, data in data_storage.items():
+            if (data is None) or (type(data) != dict):
+                continue
             try:
                 dtype_cache = self._cache[dtype]
             except KeyError:

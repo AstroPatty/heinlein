@@ -5,7 +5,7 @@ import numpy as np
 import astropy.units as u
 from astropy.coordinates import SkyCoord, concatenate as scc
 from astropy.table import vstack
-from shapely.geometry import Point
+from shapely.geometry import Point, MultiPoint
 from shapely.strtree import STRtree
 from copy import copy
 from typing import TYPE_CHECKING
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 class Catalog(Table):
     
     def __init__(self, *args, **kwargs):
+
         super().__init__(*args, **kwargs)
         self._maskable_objects = {}
         if "masked" not in kwargs.keys() and len(self) != 0:
@@ -38,12 +39,12 @@ class Catalog(Table):
         except KeyError:
             self._init_points()
 
-        self._init_search_tree()
 
     @classmethod
     def from_rows(cls, rows, columns):
         t = Table(rows=rows, names=columns)
-        return cls(t)
+        c = cls(t)
+        return c
 
     def concatenate(self, others: list = [], *args, **kwargs):
 
@@ -69,7 +70,6 @@ class Catalog(Table):
             else:
                 all_others = np.hstack(other_objs)
                 new_obj = np.concatenate((new_obj, all_others))
-
                 data['maskable_objects'].update({name: new_obj})
 
         cats = [self]
@@ -106,10 +106,11 @@ class Catalog(Table):
         objects from particular regions.
         """
         self._skycoords = SkyCoord(self['ra'], self['dec'])
-        coordinates = list(zip(self._skycoords.ra.to(u.deg).value, self._skycoords.dec.to(u.deg).value))
-        self._cartesian_points = np.empty(len(coordinates), dtype=object)
-        self._cartesian_points[:] = [Point(p) for p in coordinates]
+
+        cartesian_points = list(zip(self._skycoords.ra.to(u.deg).value, self._skycoords.dec.to(u.deg).value))
+        self._cartesian_points = np.array(cartesian_points, dtype='f,f')
         self._maskable_objects.update({'_skycoords': self._skycoords, '_cartesian_points': self._cartesian_points})
+
 
     def _init_search_tree(self, *args, **kwargs):
         points = self._cartesian_points

@@ -10,20 +10,39 @@ import sys
 from abc import ABC, abstractmethod
 import logging
 import time
+from heinlein import dtypes
 
-def get_file_handlers(data: dict):
+def get_file_handlers(data: dict, external, *args, **kwargs):
+    if external is not None:
+        external_handlers = get_external_handlers(data, external)
+    else:
+        external_handlers = {dtype: None for dtype in data.keys()}
     handlers = {}
     for dtype, dconfig in data.items():
         path = dconfig['path']
         dc_ = {k: v for k,v in dconfig.items() if k != "path"}
-
-        if dtype == "catalog":
-            f = get_catalog_handler(Path(path), dc_)
+        if external_handlers[dtype] is not None:
+            cl = external_handlers[dtype](Path(path), dc_)
+        elif dtype == "catalog":
+            cl = get_catalog_handler(Path(path), dc_)
         else:
-            f = FileMaskHandler
-        handlers.update({dtype: f})
-    handlers.update({"mask": FileMaskHandler})
+            cl = FileMaskHandler(Path(path), dc_)
+        handlers.update({dtype: cl})
     return handlers
+
+def get_external_handlers(data, external):
+    output = {}
+    for dtype in data.keys():
+        function_key = f"{dtype.capitalize()}Handler"
+        try:
+            cl = getattr(external, function_key)
+            if not issubclass(cl, Handler):
+                raise NotImplementedError
+            output.update({dtype: cl})
+        except (AttributeError, NotImplementedError):
+            output.update({dtype: None})
+    return output
+
 
 def get_catalog_handler(path: Path, dconfig: dict):
     if not path.is_file():
@@ -34,13 +53,17 @@ def get_catalog_handler(path: Path, dconfig: dict):
         
 class Handler(ABC):
 
-    def __init__(self, path: Path, dconfig: dict, *args, **kwargs):
+    def __init__(self, path: Path, dconfig: dict, type: str, *args, **kwargs):
+        self._type = type
         self._path = path
         self._config = dconfig
 
     @abstractmethod
     def get_data(self, regions: list, *args, **kwargs):
         pass
+
+    def get_data_object(self, data, *args, **kwargs):
+        return dtypes.get_data_object(self._type, data)
 
 class CsvCatalogHandler(Handler):
 
@@ -78,11 +101,17 @@ class CsvCatalogHandler(Handler):
             raise NotImplementedError(f"File loader not implemented for file type {file_path.suffix}")
     
 class FileMaskHandler(Handler):
-    pass
+    
+    def __init__(self, path: Path, config: dict, *args ,**kwargs):
+        super().__init__(path, config)
+
+
+    def get_data(self, *args, **kwargs):
+        return self._path
 
 class SQLiteCatalogHandler(Handler):
     def __init__(self, path: Path, config: dict, *args, **kwargs):
-        super().__init__(path, config)
+        super().__init__(path, config, "catalog")
         self._initialize_connection()
     
     def _initialize_connection(self, *args, **kwargs):
@@ -92,6 +121,7 @@ class SQLiteCatalogHandler(Handler):
         self._tnames = [t[1] for t in cur.fetchall()]
     
     def get_data(self, regions: list, *args, **kwargs):
+        start = time.time()
         region_key = self._config['region']
         subregion_key = self._config.get("subregion", False)
         if subregion_key:
@@ -140,8 +170,11 @@ class SQLiteCatalogHandler(Handler):
         storage = {}
         for region in regions:
             if region in self._tnames:
+
                 table = self.get_all(region)
+
                 storage.update({region: table})
+
             elif len(self._tnames) == 1:
                 region_key = self._config['region']
                 table = self.get_where(self._tnames[0], {region_key: region.name})
@@ -179,6 +212,7 @@ class SQLiteCatalogHandler(Handler):
             return None
         columns = [d[0] for d in cursor.description]
         c = Catalog.from_rows(rows=rows, columns=columns)
+
         return c
 
 class FileHandler(ABC):

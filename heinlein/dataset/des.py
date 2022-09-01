@@ -1,11 +1,14 @@
 from heinlein import Region
+from heinlein.dtypes.handlers import Handler
 from heinlein.locations import BASE_DATASET_CONFIG_DIR
 import numpy as np
-
+import re
 from pathlib import Path
 import pandas as pd
 from spherical_geometry.polygon import SingleSphericalPolygon
 import pickle
+import pymangle
+from astropy.io import fits
 
 EXPORT = ["load_regions"]
 
@@ -46,4 +49,43 @@ def load_regions_from_pandas(support_location):
     return tiles    
 
 
+class MaskHandler(Handler):
+    def __init__(self, *args, **kwargs):
+        kwargs.update({"type": "mask"})
+        super().__init__(*args, **kwargs)
+        self.mangle_files = [f for f in (self._path / "mangle").glob("*.pol") if not f.name.startswith(".")]
+        self.plane_files = [f for f in (self._path / "plane").glob("*.fits") if not f.name.startswith(".")]
 
+    def get_data(self, regions, *args, **kwargs):
+        names = [r.name for r in regions]
+        nreg = len(names)
+        regex = re.compile("|".join(names))
+        mangle_matches = list(filter(lambda x, y=regex: regex.match(x.name), self.mangle_files))
+        plane_matches = list(filter(lambda x, y=regex: regex.match(x.name), self.plane_files))
+        return self._get(names, mangle_matches, plane_matches)
+    
+    def _get(self, regions, mangle_files, plane_files):
+        output = {}
+        for region in regions:
+            mangle_file = list(filter(lambda x, y=region: y in x.name,mangle_files ))
+            plane_file = list(filter(lambda x, y=region: y in x.name,plane_files ))
+            bad = False
+            if len(mangle_file) == 0:
+                print(f"Unable to find Mangle mask for region {region}")
+                bad = True
+            if len(plane_file) == 0:
+                print(f"Unable to find plane file for region {region}")
+                bad = True
+            if bad:
+                continue
+
+            mangle_msk = pymangle.Mangle(str(mangle_file[0]))
+            plane_msk = fits.open(plane_file[0])
+            output.update({region: [mangle_msk, plane_msk]})
+
+        print(output)
+        return output
+
+    def get_data_object(self, data, *args, **kwargs):
+        print("HI!")
+        return data
