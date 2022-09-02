@@ -16,6 +16,7 @@ import logging
 import pathlib
 import shutil
 import atexit
+import time
 from cacheout import LRUCache
 
 logger = logging.getLogger("manager")
@@ -150,7 +151,9 @@ class DataManager(ABC):
             found = set(stored_data_config[dtype].keys())
             if not expected.issubset(found):
                 output.update({dtype: self._fix_dconfig(dtype, stored_data_config[dtype], base_config)})
-            
+
+        unconfigured = {k:v for k, v in stored_data_config.items() if k not in output.keys()}
+        output.update(unconfigured)
 
         return output
 
@@ -263,8 +266,8 @@ class DataManager(ABC):
             except KeyError:
                 print(f"No data of type {dtype} found for dataset {self.name}!")
         cached = self.get_cached_values(dtypes, region_overlaps)
-
         for dtype in return_types:
+
             if dtype in cached.keys():
                 dtype_cache = cached[dtype]
                 regions_to_get = [r.name for r in region_overlaps if r.name not in dtype_cache.keys()]
@@ -274,8 +277,10 @@ class DataManager(ABC):
             if len(regions_to_get) != 0:
                 data_ = self._handlers[dtype].get_data(regions_to_get, *args, **kwargs)
                 new_data.update({dtype: data_})
+
         if len(new_data) != 0:
             self.cache(new_data)
+
 
         storage = {}
         keys = set(new_data.keys()).union(set(cached.keys()))
@@ -298,7 +303,6 @@ class DataManager(ABC):
 
     def parse_data(self, data, *args, **kwargs):
         return_data = {}
-
         for dtype, values in data.items():
             #Now, we process into useful objects and filter further
             if data is None:
