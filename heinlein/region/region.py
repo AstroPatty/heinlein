@@ -1,11 +1,9 @@
 from ast import Mult
 from functools import reduce
-from gettext import Catalog
-from typing import Any, Union
+from typing import Union
 import astropy.units as u
-from shapely.geometry import Point, Polygon, box, MultiPolygon
+from shapely.geometry import Point
 from astropy.coordinates import SkyCoord
-import numpy as np
 from spherical_geometry.polygon import SingleSphericalPolygon
 
 from heinlein.region.base import BaseRegion
@@ -28,14 +26,18 @@ class Region:
                 center_coord = SkyCoord(*sky_center)
             except u.UnitTypeError:
                 center_coord = SkyCoord(*sky_center, unit="deg")
+        elif type(center) == SkyCoord:
+            center_coord = center
+
         if type(sky_radius) != u.Quantity:
             sky_radius = sky_radius*u.deg
+
         return CircularRegion(center_coord, sky_radius, *args, **kwargs)
 
     @staticmethod
-    def polygon(self, coords, *args, **kwargs):
+    def polygon(coords, *args, **kwargs):
         if type(coords) == SingleSphericalPolygon:
-            return PolygonRegion(coords)
+            return PolygonRegion(coords, *args, **kwargs)
 
 
 def build_compound_region(regions: dict, *args, **kwargs) -> BaseRegion:
@@ -49,7 +51,7 @@ def build_compound_region(regions: dict, *args, **kwargs) -> BaseRegion:
     
 class PolygonRegion(BaseRegion):
 
-    def __init__(self, polygon: SingleSphericalPolygon, name: str, *args, **kwargs):
+    def __init__(self, polygon: SingleSphericalPolygon, name: str = None, *args, **kwargs):
         """
         Basic general-shape region object
         """
@@ -69,7 +71,7 @@ class CircularRegion(BaseRegion):
         
         self._skypoint = center
         self._radius = radius
-        self._center = Point(center.ra.value, center.dec.value)
+        self._center = Point(center.ra.to_value("deg"), center.dec.to_value("deg"))
 
         geometry = SingleSphericalPolygon.from_cone(center.ra.to(u.deg).value, center.dec.to(u.deg).value, self._radius.to(u.deg).value, *args, **kwargs)
         super().__init__(geometry, "CircularRegion", name, *args, **kwargs)

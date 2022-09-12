@@ -2,12 +2,10 @@ import logging
 from importlib import import_module
 import numpy as np
 from typing import Union
-from astropy.coordinates import SkyCoord
 
 from heinlein.manager.dataManger import DataManager
 
 from heinlein.region import BaseRegion, Region
-from heinlein.dtypes import get_data_object
 from heinlein.manager import get_manager
 
 from shapely.strtree import STRtree
@@ -34,11 +32,9 @@ class Dataset:
         if not external:
             return
         
-        try:
-            self.external = import_module(f".{self.config['slug']}", "heinlein.dataset")
-        except KeyError:
-            raise ModuleNotFoundError(f"Pointer to {self.config['name']} implementation not found in config!")
-
+        self.external = self.manager.external
+        if external is None:
+            raise NotImplementedError(f"No implementation code found for datset {self.name}")
         try:
             setup_f = getattr(self.external, "setup")
             setup_f(self)
@@ -110,22 +106,16 @@ class Dataset:
 
 
         return_data = {}
-
-        for dtype, values in data.items():
-            #Now, we process into useful objects and filter further
-            if data is None:
-                logger.error(f"Unable to find data of type {dtype}")
-                continue
-
-            obj_ = get_data_object(dtype, values)
-
-            return_data.update({dtype: obj_.get_data_from_region(query_region)})
-
+        for dtype, obj_ in data.items():
+            try:
+                return_data.update({dtype: obj_.get_data_from_region(query_region)})
+            except AttributeError:
+                return_data.update({dtype: obj_})
         return return_data
 
-    def cone_search(self, center, radius):
+    def cone_search(self, center, radius, *args, **kwargs):
         reg = Region.circle(center=center, radius=radius)
-        return self.get_data_from_region(reg)
+        return self.get_data_from_region(reg, *args, **kwargs)
 
 def load_dataset(name: str) -> Dataset:
     manager = get_manager(name)

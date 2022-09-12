@@ -1,19 +1,22 @@
 from abc import abstractmethod
+from importlib import import_module
 from glob import glob
 import json
-from os import stat
-from weakref import KeyedRef
+from lib2to3.pytree import Base
 from heinlein.locations import BASE_DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, BUILTIN_DTYPES
 from abc import ABC
+from heinlein.region import base
 from heinlein.region.base import BaseRegion
 from heinlein.utilities import warning_prompt, warning_prompt_tf
 from heinlein.config.config import globalConfig
+
 import numpy as np
 from typing import Any
 import logging
 import pathlib
 import shutil
 import atexit
+import time
 from cacheout import LRUCache
 
 logger = logging.getLogger("manager")
@@ -68,9 +71,14 @@ class DataManager(ABC):
             except KeyError:
                 self._data = {}
                 self.config_data['data'] = self._data
+        try:
+            self.external = import_module(f".{self.config['slug']}", "heinlein.dataset")
+        except KeyError:
+            self.external = None
 
         self.load_handlers()
         self.validate_data()
+
 
     def get_path(self, dtype: str, *args, **kwargs):
         return pathlib.Path(self._data[dtype]['path'])
@@ -106,12 +114,12 @@ class DataManager(ABC):
         
         with open(config_path, "r") as f:
             stored_config_data = json.load(f)
-        
         update = {k: v for k, v in base_config_data.items() if k not in ["data", "dconfig"]}
         stored_config_data.update(update)
         if 'data' in stored_config_data.keys():
             data_config = self.reconcile_dconfig(stored_config_data, base_config_data)
             stored_config_data.update({'data': data_config})
+
         return stored_config_data
 
     def reconcile_dconfig(self, stored_config: dict, base_config: dict, *args, **kwargs):
@@ -121,27 +129,40 @@ class DataManager(ABC):
         with open(BUILTIN_DTYPES, "r") as f:
             self._builtin_types = json.load(f)
         output = {}
-        for dtype, dconfig in data.items():
-            if type(dconfig) != dict:
+        stored_data_config = stored_config['data']
+        for dtype, dconfig in base_config['dconfig'].items():
+            if dtype not in stored_data_config.keys():
+                #Case: No data of this type has been added
+                continue
+            if type(stored_data_config[dtype]) != dict:
+                #Provided for backward compatability
                 output.update({dtype: self._fix_dconfig(dtype, stored_config, base_config)})
             elif dtype not in self._builtin_types.keys():
-                output.update({dtype: dconfig})
+                #This is not a built_in type
+                output.update({dtype: data[dtype]})
+            
             else:
-                expected = set(self._builtin_types[dtype]['required_attributes'].keys())
-                found = set(dconfig.keys())
-                if not expected.issubset(found):
-                    output.update({dtype: self._fix_dconfig(dtype, dconfig, base_config)})
-                else:
-                    output.update({dtype: dconfig})
+                for key, value in dconfig.items():
+                    if key not in stored_data_config[dtype]:
+                        stored_data_config[dtype].update({key: value})
+                output.update({dtype: stored_data_config[dtype]})
+
+            expected = set(self._builtin_types[dtype]['required_attributes'].keys())
+            found = set(stored_data_config[dtype].keys())
+            if not expected.issubset(found):
+                output.update({dtype: self._fix_dconfig(dtype, stored_data_config[dtype], base_config)})
+
+        unconfigured = {k:v for k, v in stored_data_config.items() if k not in output.keys()}
+        output.update(unconfigured)
+
         return output
 
-    def _fix_dconfig(self, dtype: str, stored_survey_config: dict, base_survey_config: dict):
+    def _fix_dconfig(self, dtype: str, dconfig: dict, base_survey_config: dict):
         try: 
             base_config = self._builtin_types[dtype]
         except KeyError:
             base_config = {'required_attributes': {}}
         return_values = {}
-        dconfig = stored_survey_config['data'][dtype]
         if type(dconfig) != dict:
             p = dconfig
             return_values.update({"path" : p})
@@ -164,7 +185,7 @@ class DataManager(ABC):
 
     def load_handlers(self, *args, **kwargs):
         from heinlein.dtypes import get_file_handlers
-        self._handlers =  get_file_handlers(self.data)
+        self._handlers =  get_file_handlers(self.data, self.external)
 
     @property
     def data(self):
@@ -235,21 +256,18 @@ class DataManager(ABC):
         Get data of a specificed type
         The manager is responsible for finding the path, and the giving it to the handlers
         """
-
         return_types = []
         new_data = {}
         
-        cached = self.get_cached_values(dtypes, region_overlaps)
-
-
         for dtype in dtypes:
             try:
                 path = self._data[dtype]
                 return_types.append(dtype)
             except KeyError:
-                new_data.update({dtype: None})
-
+                print(f"No data of type {dtype} found for dataset {self.name}!")
+        cached = self.get_cached_values(dtypes, region_overlaps)
         for dtype in return_types:
+
             if dtype in cached.keys():
                 dtype_cache = cached[dtype]
                 regions_to_get = [r.name for r in region_overlaps if r.name not in dtype_cache.keys()]
@@ -257,11 +275,12 @@ class DataManager(ABC):
                 regions_to_get = region_overlaps
 
             if len(regions_to_get) != 0:
-                data_ = self._handlers[dtype].get_data(regions_to_get)
+                data_ = self._handlers[dtype].get_data(regions_to_get, *args, **kwargs)
                 new_data.update({dtype: data_})
 
         if len(new_data) != 0:
             self.cache(new_data)
+
 
         storage = {}
         keys = set(new_data.keys()).union(set(cached.keys()))
@@ -269,11 +288,30 @@ class DataManager(ABC):
         for k in keys:
             data = cached.get(k, {})
             new_d = new_data.get(k, {})
-            data.update(new_d)
-            storage.update({k: data})
+            if new_d is None and data is None:
+                path = self.get_path(k)
+                storage.update({k: path})
+            elif type(new_d) != dict:
+                storage.update({k: new_d})
+            else:
+                data.update(new_d)
+                storage.update({k: data})
 
+        storage = self.parse_data(storage, *args, **kwargs)
         return storage
     
+
+    def parse_data(self, data, *args, **kwargs):
+        return_data = {}
+        for dtype, values in data.items():
+            #Now, we process into useful objects and filter further
+            if data is None:
+                logger.error(f"Unable to find data of type {dtype}")
+                continue
+            obj_ = self._handlers[dtype].get_data_object(values)
+            return_data.update({dtype: obj_})
+        return return_data
+
     def get_cached_values(self, dtypes: list, region_overlaps: list):
         cached_values = {}
         for dtype in dtypes:
@@ -293,8 +331,9 @@ class DataManager(ABC):
         So we have to do a translation
         
         """
-
         for dtype, data in data_storage.items():
+            if (data is None) or (type(data) != dict):
+                continue
             try:
                 dtype_cache = self._cache[dtype]
             except KeyError:
