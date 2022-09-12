@@ -1,13 +1,19 @@
 from pathlib import Path
 import numpy as np
+from heinlein.dtypes.mask import Mask
 from heinlein.locations import BASE_DATASET_CONFIG_DIR
 from spherical_geometry.polygon import SingleSphericalPolygon
 from heinlein.region import Region
+from heinlein.dtypes import handlers
+import regions as reg
 import re
 import math
 import operator
 import pickle
-
+import time
+import regions as reg
+from shapely import geometry
+from shapely import affinity
 
 def setup(self, *args, **kwargs):
     reg = load_regions()
@@ -126,3 +132,60 @@ def _patch_tuple_to_int(patch_tuple):
         return patch_tuple[1]
     else:
         return 100*patch_tuple[0] + patch_tuple[1]
+
+def _patch_int_to_tuple(patch_int):
+    if patch_int < 0:
+        return (0, patch_int)
+    else:
+        return (patch_int // 100, patch_int %100)
+
+class MaskHandler(handlers.Handler):
+
+    def __init__(self, *args, **kwargs):
+        kwargs.update({"type": "mask"})
+        super().__init__(*args, **kwargs)
+
+    def get_data(self, regions, *args, **kwargs):
+        names = [r.name for r in regions]
+        vals = {}
+
+        for index, name in enumerate(names):
+            split = name.split(".")
+            basename = "BrightStarMask-{}-{},{}-HSC-R.reg"
+            patch_tuple = _patch_int_to_tuple(int(split[1]))
+
+            fname = basename.format(split[0], patch_tuple[0], patch_tuple[1])
+            path = self._path / split[0] / fname
+            start = time.time()
+
+            mask = reg.Regions.read(str(path))
+
+            new_masks = np.empty(len(mask), dtype=object)
+
+            for i,r in enumerate(mask):
+                if type(r) == reg.CircleSkyRegion:
+                    new_reg = Region.circle(r.center, r.radius.to_value("deg"))
+                elif type(r) == reg.RectangleSkyRegion:
+                    center = r.center
+                    x = center.ra.to_value("deg")
+                    y = center.dec.to_value("deg")
+                    width = r.width.to_value("deg")
+                    height = r.height.to_value("deg")
+                    angle = r.angle.to_value("deg")
+                    box = geometry.box(x - width, y - height, x + width, y + height)
+                    new_reg = affinity.rotate(box, angle)
+                    x_coords, y_coords = new_reg.exterior.xy
+                    inside = (x,y)
+    
+                    new_reg = SingleSphericalPolygon.from_lonlat(x_coords, y_coords, center = inside)
+                    new_reg = Region.polygon(new_reg)
+
+                new_masks[i] = new_reg
+
+
+            vals.update({name: new_masks})
+        return vals
+
+    def get_data_object(self, objs):
+        input_objs = np.array(list(objs.values()), dtype=object)
+        return Mask(input_objs)

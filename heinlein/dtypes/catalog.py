@@ -5,11 +5,12 @@ import numpy as np
 import astropy.units as u
 from astropy.coordinates import SkyCoord, concatenate as scc
 from astropy.table import vstack
-from shapely.geometry import Point
 from shapely.strtree import STRtree
+from spherical_geometry.vector import lonlat_to_vector
 from copy import copy
 from typing import TYPE_CHECKING
-import time
+
+from heinlein.dtypes import mask
 
 if TYPE_CHECKING:
     from heinlein.region import BaseRegion
@@ -19,14 +20,13 @@ if TYPE_CHECKING:
 class Catalog(Table):
     
     def __init__(self, *args, **kwargs):
+
         super().__init__(*args, **kwargs)
         self._maskable_objects = {}
         if "masked" not in kwargs.keys() and len(self) != 0:
             self.setup(*args, **kwargs)
 
     def setup(self, *args, **kwargs):
-
-
         try:
             self._parmap = kwargs['parmap']
         except KeyError:
@@ -38,12 +38,12 @@ class Catalog(Table):
         except KeyError:
             self._init_points()
 
-        self._init_search_tree()
 
     @classmethod
     def from_rows(cls, rows, columns):
         t = Table(rows=rows, names=columns)
-        return cls(t)
+        c = cls(t)
+        return c
 
     def concatenate(self, others: list = [], *args, **kwargs):
 
@@ -67,9 +67,11 @@ class Catalog(Table):
                 data['maskable_objects'].update({'_skycoords': new_obj})
 
             else:
-                all_others = np.hstack(other_objs)
+                try:
+                    all_others = np.hstack(other_objs)
+                except ValueError:
+                    all_others = np.vstack(other_objs)
                 new_obj = np.concatenate((new_obj, all_others))
-
                 data['maskable_objects'].update({name: new_obj})
 
         cats = [self]
@@ -106,17 +108,15 @@ class Catalog(Table):
         objects from particular regions.
         """
         self._skycoords = SkyCoord(self['ra'], self['dec'])
-        coordinates = list(zip(self._skycoords.ra.to(u.deg).value, self._skycoords.dec.to(u.deg).value))
-        self._cartesian_points = np.empty(len(coordinates), dtype=object)
-        self._cartesian_points[:] = [Point(p) for p in coordinates]
+        lon = self._skycoords.ra.to_value("deg")
+        lat = self._skycoords.dec.to_value("deg")
+        self._cartesian_points = np.dstack(lonlat_to_vector(lon, lat))[0]
         self._maskable_objects.update({'_skycoords': self._skycoords, '_cartesian_points': self._cartesian_points})
 
-    def _init_search_tree(self, *args, **kwargs):
-        points = self._cartesian_points
-        self._point_dictionary = {id(p): i for i,p in enumerate(self._cartesian_points)}
-        self._search_tree = STRtree(points)
-
     def __getitem__(self, key):
+        if type(key) == mask.Mask:
+            return key.mask(self)
+
         try:
             val =  super().__getitem__(key)
             return val
@@ -130,6 +130,10 @@ class Catalog(Table):
             return super().__setitem__(column, value)
         except (KeyError, AttributeError):
             return super().__setitem__(item, value)
+    
+    @property
+    def coords(self):
+        return self._skycoords
 
     def get_passthrough_items(self, *args, **kwargs):
         items = {}

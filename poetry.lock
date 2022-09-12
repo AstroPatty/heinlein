@@ -191,6 +191,23 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
+name = "regions"
+version = "0.6"
+description = "Astropy coordinated package for region handling"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.dependencies]
+astropy = ">=5.0"
+numpy = ">=1.18"
+
+[package.extras]
+all = ["matplotlib (>=3.1)", "shapely"]
+docs = ["matplotlib (>=3.1)", "shapely", "sphinx-astropy"]
+test = ["pytest-astropy", "pytest-arraydiff"]
+
+[[package]]
 name = "shapely"
 version = "1.8.2"
 description = "Geometric objects, predicates, and operations"
@@ -230,7 +247,7 @@ docs = ["numpydoc", "sphinx-automodapi", "sphinx"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "e13e09c3b377cb59419f51750869733a18c5a1692a459ddc8a1bcad3d5bcee54"
+content-hash = "ef8473e57460a415016270fa8e2424f0d1285181af7c33d491545ea79826beae"
 
 [metadata.files]
 appdirs = [
@@ -323,6 +340,18 @@ pyyaml = [
     {file = "PyYAML-6.0-cp39-cp39-win32.whl", hash = "sha256:b5b9eccad747aabaaffbc6064800670f0c297e52c12754eb1d976c57e4f74dcb"},
     {file = "PyYAML-6.0-cp39-cp39-win_amd64.whl", hash = "sha256:b3d267842bf12586ba6c734f89d1f5b871df0273157918b0ccefa29deb05c21c"},
     {file = "PyYAML-6.0.tar.gz", hash = "sha256:68fb519c14306fec9720a2a5b45bc9f0c8d1b9c72adf45c37baedfcd949c35a2"},
+]
+regions = [
+    {file = "regions-0.6-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:ebc96d47c18da0ada00d75acdd3bf6d7a70115c846aa700a8dc07d9ab18a8339"},
+    {file = "regions-0.6-cp310-cp310-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:868bdb64c9e66ed8808d3a6128a4332489a46c433ae6dcaa47478ef166a0c6a3"},
+    {file = "regions-0.6-cp310-cp310-win_amd64.whl", hash = "sha256:b334ac307a9373ae1a429c9c09a35fd69819927fa63bffa495cff62a6044ebae"},
+    {file = "regions-0.6-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:9ecdda79d843bcc2615ca4eaa1c380922acfc51661cc690f2cb311ecfc73fdbf"},
+    {file = "regions-0.6-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:635af54cece597875997de005b820bc0decae37be2c372082a4e78ef26b06547"},
+    {file = "regions-0.6-cp38-cp38-win_amd64.whl", hash = "sha256:1e0f4610abba71f12d6c13c8310f79597faa2c2a2030144bc4c3d7b1620d03e7"},
+    {file = "regions-0.6-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:fd8d5d18af92820f7cb129a186eecf324b078136080ab79c1323ce1e6232df8f"},
+    {file = "regions-0.6-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1f3602fa5bee7dc49e11aacd89c778b5d143f162ed23e273a8164ea19e8ce265"},
+    {file = "regions-0.6-cp39-cp39-win_amd64.whl", hash = "sha256:a862f804245e7ecdc2f40fb9bb6f5605d3bde82a5bad6d50d6ae00a68f32e605"},
+    {file = "regions-0.6.tar.gz", hash = "sha256:80328580ae254f848db44048bc711365cab8dcfe47fa00b309ed35c27b5f255d"},
 ]
 shapely = [
     {file = "Shapely-1.8.2-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:7c9e3400b716c51ba43eea1678c28272580114e009b6c78cdd00c44df3e325fa"},
