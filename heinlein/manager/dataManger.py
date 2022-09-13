@@ -270,7 +270,7 @@ class DataManager(ABC):
 
             if dtype in cached.keys():
                 dtype_cache = cached[dtype]
-                regions_to_get = [r.name for r in region_overlaps if r.name not in dtype_cache.keys()]
+                regions_to_get = [r for r in region_overlaps if r.name not in dtype_cache.keys()]
             else:
                 regions_to_get = region_overlaps
 
@@ -308,6 +308,7 @@ class DataManager(ABC):
             if data is None:
                 logger.error(f"Unable to find data of type {dtype}")
                 continue
+                
             obj_ = self._handlers[dtype].get_data_object(values)
             return_data.update({dtype: obj_})
         return return_data

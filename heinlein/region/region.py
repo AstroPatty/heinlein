@@ -3,10 +3,12 @@ from functools import reduce
 from typing import Union
 import astropy.units as u
 from shapely.geometry import Point
+from shapely.geometry.base import BaseGeometry
 from astropy.coordinates import SkyCoord
 from spherical_geometry.polygon import SingleSphericalPolygon
 
 from heinlein.region.base import BaseRegion
+from . import sampling
 
 class Region:
 
@@ -38,7 +40,12 @@ class Region:
     def polygon(coords, *args, **kwargs):
         if type(coords) == SingleSphericalPolygon:
             return PolygonRegion(coords, *args, **kwargs)
+        elif issubclass(type(coords), BaseGeometry):
+            points = list(coords.exterior.coords)
+            poly = SingleSphericalPolygon(points)
+            return PolygonRegion(poly)
 
+            
 
 def build_compound_region(regions: dict, *args, **kwargs) -> BaseRegion:
     first = list(regions.values())[0]
@@ -56,10 +63,22 @@ class PolygonRegion(BaseRegion):
         Basic general-shape region object
         """
         super().__init__(polygon, "PolygonRegion", name)
+        self._sampler = None
 
     @property
     def center(self) -> Point:
         return self._flat_geometry.centroid
+
+    def generate_circular_tile(self, radius):
+        if self._sampler is None:
+            self._get_sampler()
+        return self._sampler.get_circular_sample(radius)
+    
+
+    def _get_sampler(self, *args, **kwargs):
+        self._sampler = sampling.Sampler(self)
+
+
 class CircularRegion(BaseRegion):
 
     def __init__(self, center: SkyCoord, radius: u.Quantity, name = None, *args, **kwargs) -> None:

@@ -1,6 +1,7 @@
 from asyncio import Handle
 from cgi import parse_header
 from pathlib import Path
+from re import M
 import sqlite3
 from typing import Any
 from heinlein.region import BaseRegion
@@ -11,6 +12,7 @@ from abc import ABC, abstractmethod
 import logging
 import time
 from heinlein import dtypes
+import numpy as np
 
 def get_file_handlers(data: dict, external, *args, **kwargs):
     if external is not None:
@@ -208,11 +210,11 @@ class SQLiteCatalogHandler(Handler):
     
     def _parse_return(self, cursor, *args, **kwargs):
         rows = cursor.fetchall()
-        if len(rows) == 0:
-            return None
+        rows = np.array(rows, dtype=object)
+        missing_values = np.where(rows == None)
+        rows[missing_values] = -1
         columns = [d[0] for d in cursor.description]
         c = Catalog.from_rows(rows=rows, columns=columns)
-
         return c
 
 class FileHandler(ABC):

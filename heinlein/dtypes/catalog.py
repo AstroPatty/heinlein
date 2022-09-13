@@ -8,7 +8,7 @@ from astropy.table import vstack
 from shapely.strtree import STRtree
 from spherical_geometry.vector import lonlat_to_vector
 from copy import copy
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Type
 
 from heinlein.dtypes import mask
 
@@ -20,12 +20,12 @@ if TYPE_CHECKING:
 class Catalog(Table):
     
     def __init__(self, *args, **kwargs):
-
         super().__init__(*args, **kwargs)
         self._maskable_objects = {}
-        if "masked" not in kwargs.keys() and len(self) != 0:
+        derivative = [m in kwargs.keys() for m in ["masked", "copy"]]
+        if not any(derivative) and len(self) != 0:
             self.setup(*args, **kwargs)
-
+        
     def setup(self, *args, **kwargs):
         try:
             self._parmap = kwargs['parmap']
@@ -38,6 +38,10 @@ class Catalog(Table):
         except KeyError:
             self._init_points()
 
+    def __copy__(self, *args, **kwargs):
+        cp = super().__copy__()
+        cp.setup(maskable_object = self._maskable_objects, parmap = self._parmap)
+        return cp
 
     @classmethod
     def from_rows(cls, rows, columns):
@@ -83,6 +87,15 @@ class Catalog(Table):
         new_cat.setup(**data)
 
         return new_cat
+    
+    def update_coords(self, coords, *args, **kwargs):
+        self._skycoords = coords
+        self['ra'] = coords.ra
+        self['dec'] = coords.dec
+        lon = self['ra'].to(u.deg)
+        lat = self['dec'].to(u.deg)
+        self._cartesian_points = np.dstack(lonlat_to_vector(lon, lat))[0]
+        self._maskable_objects.update({'_skycoords': self._skycoords, '_cartesian_points': self._cartesian_points})
 
 
     def _find_coords(self, *args, **kwargs):
@@ -97,9 +110,28 @@ class Catalog(Table):
         elif "RA" in columns and "DEC" in columns:
             ra_par = CatalogParam("RA", "ra")
             dec_par = CatalogParam("DEC", "dec")
-        self._parmap = ParameterMap([ra_par, dec_par])
-        self['ra'] = self['ra']*u.deg
-        self['dec'] = self['dec']*u.deg
+        
+        try:
+            self._parmap.update([ra_par, dec_par])
+        except AttributeError:
+            self._parmap = ParameterMap([ra_par, dec_par])
+
+        try:
+            self['ra'].to(u.deg)
+        except u.UnitConversionError:
+            self['ra'] = self['ra']*u.deg
+        try:
+            self['dec'].to(u.deg)
+        except u.UnitConversionError:
+            self['dec'] = self['dec']*u.deg
+
+    def add_alias(self, column_name, alias_name, *args, **kwargs):
+        par = CatalogParam(column_name, alias_name)
+        self._parmap.update(par)
+
+    def add_aliases(self, aliases, *args, **kwargs):
+        pars = [CatalogParam(k, v) for k, v in aliases.items()]
+        self._parmap.update(pars)
 
     def _init_points(self, *args, **kwargs):
         """
@@ -296,3 +328,4 @@ class ParameterMap:
             
             self._params.update({p.standard: p})
             self._colmap.update({p.col: p.standard})
+

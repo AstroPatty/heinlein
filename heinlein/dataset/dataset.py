@@ -69,6 +69,11 @@ class Dataset:
         """
         return self.manager.get_path(dtype)
 
+    def add_aliases(self, dtype: str, aliases, *args, **kwargs):
+        try:
+            self._aliases.update({dtype: aliases})
+        except AttributeError:
+            self._aliases = {dtype: aliases}
 
     def get_region_overlaps(self, other: BaseRegion, *args, **kwargs) -> list:
         """
@@ -111,6 +116,19 @@ class Dataset:
                 return_data.update({dtype: obj_.get_data_from_region(query_region)})
             except AttributeError:
                 return_data.update({dtype: obj_})
+        
+        for dtype, d_ in return_data.items():
+            try:
+                aliases = self._aliases
+            except AttributeError:
+                aliases = {}
+                self._aliases = aliases
+            try:
+                alias = aliases[dtype]
+                d_.add_aliases(alias)
+            except KeyError:
+                continue
+        
         return return_data
 
     def cone_search(self, center, radius, *args, **kwargs):

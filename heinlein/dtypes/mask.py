@@ -93,8 +93,8 @@ class _fitsMask(_mask):
 
         negative_check = (x < 0) | (y < 0)
         #Note: We already inverted indices above
-        x_limit_check = x > x_limit
-        y_limit_check = y > y_limit
+        x_limit_check = x >= x_limit
+        y_limit_check = y >= y_limit
         to_skip = negative_check | x_limit_check | y_limit_check
 
         masked[to_skip] = False
