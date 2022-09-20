@@ -1,5 +1,6 @@
 from heinlein.config.config import globalConfig
-from heinlein import dataset
+import heinlein
+from heinlein import api
 import functools
 from pathlib import Path
 import multiprocessing as mp
@@ -10,7 +11,7 @@ def split_catalog(args) -> None:
     files = [file for file in args.input_path.glob(f"*{args.input_format}")]
     files = [f for f in files if not f.name.startswith(".")]
     print(f"Found {len(files)} to read from")
-    ds = dataset.load_current_config(args.survey_name)
+    ds = heinlein.dataset.load_current_config(args.survey_name)
     catalog_config = ds['data']['catalog']
     region_key = catalog_config['region']
     subregion_key = catalog_config.get("subregion", False)
@@ -35,9 +36,15 @@ def split_catalog(args) -> None:
     else:
         raise NotImplementedError("Splitting from non-csv files not yet supported")
 
-    
     with mp.Pool(args.threads) as p:
         p.map(f, files)
+
+    added = api.add(args.survey_name, "catalog", output_path, overwrite=True)
+    if added:
+        print(f"Sucessfully built database for survey {args.survey_name}")
+    else:
+        print(f"Error: Dataset was sucessfully split but couldn't add it!")
+
 
 def _split_from_csv(file_path: Path, region_key, subregion_key, output_func, ):
     print(f"Working on file {file_path}")

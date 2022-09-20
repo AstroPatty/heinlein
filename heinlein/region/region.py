@@ -69,7 +69,7 @@ class PolygonRegion(BaseRegion):
     def center(self) -> Point:
         return self._flat_geometry.centroid
 
-    def generate_circular_tile(self, radius):
+    def generate_circular_tile(self, radius, *args, **kwargs):
         if self._sampler is None:
             self._get_sampler()
         return self._sampler.get_circular_sample(radius)
