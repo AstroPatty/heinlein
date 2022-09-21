@@ -28,8 +28,6 @@ class FileManager(DataManager):
         """
         A file manager manages files on local disk.
         This is in contrast to data stored in the cloud
-        Or data in a database
-
         Params:
 
         name: the name of the dataset

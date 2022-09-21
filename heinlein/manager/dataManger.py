@@ -34,13 +34,19 @@ class DataManager(ABC):
         The datamanger keeps track of where data is located, either on disk or 
         otherwise.
         It also keeps a manifest, so it knows when files have been moved or changed.
-        
+        Managers should generally not be instatiated directly. They are used by Dataset
+        objects to find data.
+
+        parameters:
+
+        name: <str> The name of the dataset
         """
         self.name = name
         self.globalConfig = globalConfig
         self._setup()
-        write_atexit = lambda x=self.config_data, y = self.config_location: write_config_atexit(x, y)
         self._cache = {}
+
+        write_atexit = lambda x=self.config_data, y = self.config_location: write_config_atexit(x, y)
         atexit.register(write_atexit)
 
     
@@ -53,7 +59,7 @@ class DataManager(ABC):
 
         surveys = self.get_config_paths()
 
-        if self.name not in surveys.keys():
+        if self.name not in surveys.keys(): #If this dataset does not exist
             if self.globalConfig.interactive:
                 write_new = warning_prompt_tf(f"Survey {self.name} not found, would you like to initialize it? ")
                 if write_new:
@@ -61,7 +67,7 @@ class DataManager(ABC):
                 else:
                     self.ready = False
             else: raise OSError(f"Dataset {self.name} does not exist!")
-        else:
+        else: #If it DOES exist, get the config data
             cp = surveys[self.name]['config_path']
             self.config_location = DATASET_CONFIG_DIR / cp
             base_config = BASE_DATASET_CONFIG_DIR / cp

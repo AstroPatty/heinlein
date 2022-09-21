@@ -11,6 +11,9 @@ def Sampler(region):
 class BaseSampler(ABC):
 
     def __init__(self, region, *args, **kwargs):
+        """
+        A sampler that 
+        """
         self._region = region
 
     @abstractmethod
@@ -21,10 +24,20 @@ class BaseSampler(ABC):
 class PolygonSampler(BaseSampler):
     
     def __init__(self, region, *args, **kwargs):
+        """
+        Sampler that works with generically-shaped polygon regions
+        parameters:
+
+        region <heinlien.region.PolygonRegion>: The region being sampled on
+        """
         super().__init__(region)
         self.setup()
 
     def setup(self, *args, **kwargs):
+        """
+        Performs setup for the sampler.
+        """
+
         bounds = self._region.geometry.bounds
         ra1,ra2 = bounds[0], bounds[2]
         dec1, dec2 = bounds[1], bounds[3]
@@ -44,6 +57,15 @@ class PolygonSampler(BaseSampler):
 
         
     def get_circular_sample(self, radius, *args, **kwargs):
+        """
+        The sampler samples over the bounding box that contains the region.
+        This means it certain cases it may return a region that is outside the
+        actual requested region. It is up to the caller to perform validation.
+
+        parameters:
+
+        radius <astropy.units.quantity>: The size of the region
+        """
         vals = self._sampler.uniform(self._low_sampler_range, self._high_sampler_range)
         ra = np.degrees(vals[0])
         theta = np.degrees(np.arccos(vals[1]))

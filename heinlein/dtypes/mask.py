@@ -41,6 +41,7 @@ class Mask:
         that handles interfacing with all these different formats.
         """
         self._masks = get_mask_objects(masks, *args, **kwargs)
+
     def mask(self, catalog, *args, **kwargs):
         for mask in self._masks:
             catalog = mask.mask(catalog)
@@ -49,14 +50,23 @@ class Mask:
 class _mask(ABC):
 
     def __init__(self, mask, *args, **kwargs):
+        """
+        Basic mask object. Handles a single mask of an arbitary type.
+        """
         self._mask = mask
 
     @abstractmethod
     def mask(self, *args, **kwargs):
+        """
+        For subclasses, the actual masking logic will be implmeneted here.
+        """
         pass
 
 class _mangleMask(_mask):
     def __init__(self, mask, *args, **kwargs):
+        """
+        Implementation for masks in mangle format
+        """
         super().__init__(mask)
 
     def mask(self, catalog, *args, **kwargs):
@@ -72,6 +82,7 @@ class _fitsMask(_mask):
         If the mask is stored in a fits file, we assume we can 
         get the WCS info from the header in HDU 0, but we need to
         know where the actual mask is located, so we pass a key.
+        A fits mask assumes masked pixels have a value > 0
         """
         self._mask_key = mask_key
         super().__init__(mask)
@@ -103,6 +114,9 @@ class _fitsMask(_mask):
 
 class _regionMask(_mask):
     def __init__(self, mask, *args, **kwargs):
+        """
+        Implementation for masks defined as regions.
+        """
         super().__init__(mask)
         self._init_tree()
     
@@ -125,6 +139,9 @@ class _regionMask(_mask):
 
 class _shapelyMask(_mask):
     def __init__(self, mask, *args, **kwargs):
+        """
+        Implmentations for masks defined as shapely polygons
+        """
         super().__init__(mask)
         self._init_region_tree
 
@@ -134,8 +151,3 @@ class _shapelyMask(_mask):
     def mask(self, catalog):
         ras = catalog.coords.ra.to_value("deg")
         decs = catalog.coords.dec.to_value("deg")
-
-class _sphericalGeometryMask(_mask):
-    def __init__(self, mask, *args, **kwargs):
-        input_mask = SphericalPolygon(mask)
-        super().__init__(input_mask)

@@ -5,6 +5,10 @@ from heinlein.manager.dataManger import get_all
 import numpy as np
 from pathlib import Path
 
+"""
+Backend API functions
+"""
+
 def add(name, dtype, path, *args, **kwargs) -> bool:
     """
     Add a location on disk to a dataset
@@ -24,6 +28,9 @@ def add(name, dtype, path, *args, **kwargs) -> bool:
     return True
 
 def remove(name: str, dtype: str):
+    """
+    Remove a datatype from a dataset
+    """
     if not manager.managers.FileManager.exists(name):
         print(f"Error: dataset {name} does not exist!")
         return True
@@ -46,6 +53,9 @@ def get_path(name: str, dtype:str) -> pathlib.Path:
         print(f"No data of dtype {dtype} found for dataset {name}")
 
 def list_all():
+    """
+    List all available data
+    """
     surveys = get_all()
     data = {name: d.get("data", []) for name, d in surveys.items()}
     return data
