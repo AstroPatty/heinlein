@@ -1,5 +1,5 @@
 from heinlein import Region
-from heinlein.dtypes.handlers import Handler
+from heinlein.dtypes.handlers.handler import Handler
 from heinlein.dtypes.mask import Mask
 from heinlein.locations import BASE_DATASET_CONFIG_DIR
 import numpy as np

@@ -18,11 +18,12 @@ def load_config(*args, **kwargs):
     """
     config_location = MAIN_CONFIG_DIR / "region" / "region.json"
     with open(config_location, "r") as f:
-        return json.load(f)
+        config = json.load(f)
+        return config
 
-
+current_config = load_config()
 class BaseRegion(ABC):
-    _config = load_config()
+    _config = current_config
     def __init__(self, geometry, type, name = None, *args, **kwargs):
         """
         Base region object.
@@ -53,6 +54,7 @@ class BaseRegion(ABC):
         Fixes reading pickled regions
         """
         self.__dict__.update(state)
+        self._config = current_config
 
     def __getattr__(self, __name: str) -> Any:
         """

@@ -78,6 +78,7 @@ class DataManager(ABC):
                 self._data = {}
                 self.config_data['data'] = self._data
         try:
+            #Find the external implementation for this dataset, if it exists.
             self.external = import_module(f".{self.config['slug']}", "heinlein.dataset")
         except KeyError:
             self.external = None
@@ -295,10 +296,7 @@ class DataManager(ABC):
             else:
                 regions_to_get = region_overlaps
             if len(regions_to_get) != 0:
-                start = time.time()
                 data_ = self._handlers[dtype].get_data(regions_to_get, *args, **kwargs)
-                end = time.time()
-                print(f"Getting data of type {dtype} took {end - start} seconds")
                 new_data.update({dtype: data_})
 
         if len(new_data) != 0:
