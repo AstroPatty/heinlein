@@ -8,25 +8,40 @@ from astropy.table import vstack
 from shapely.strtree import STRtree
 from spherical_geometry.vector import lonlat_to_vector
 from copy import copy
-from typing import TYPE_CHECKING
-
+from typing import TYPE_CHECKING, Type
+import json
 from heinlein.dtypes import mask
+from heinlein.locations import MAIN_CONFIG_DIR
 
 if TYPE_CHECKING:
     from heinlein.region import BaseRegion
     from heinlein.region import CircularRegion, PolygonRegion
 
 
+def load_config():
+    catalog_config_location = MAIN_CONFIG_DIR / "dtypes"/"catalog.json"
+    with open(catalog_config_location, "rb") as f:
+        data = json.load(f)
+    return data
 class Catalog(Table):
-    
+    _config = load_config()
     def __init__(self, *args, **kwargs):
-
+        """
+        Stores catalog data. Can be used like an astropy table, but includes
+        some additional functionality.
+        """
         super().__init__(*args, **kwargs)
         self._maskable_objects = {}
-        if "masked" not in kwargs.keys() and len(self) != 0:
+        derivative = [m in kwargs.keys() for m in ["masked", "copy"]]
+        #Checks if this has been derived from another catalog (either by masking or copying)
+        #If so, we have to be careful about how we perform setup.
+        if not any(derivative) and len(self) != 0:
             self.setup(*args, **kwargs)
-
+        
     def setup(self, *args, **kwargs):
+        """
+        Performs setup.
+        """
         try:
             self._parmap = kwargs['parmap']
         except KeyError:
@@ -38,7 +53,39 @@ class Catalog(Table):
         except KeyError:
             self._init_points()
 
+    def __copy__(self, *args, **kwargs):
+        """
+        Ensures extra objects are passed to a new table.
+        """
+        cp = super().__copy__()
+        cp.setup(maskable_object = self._maskable_objects, parmap = self._parmap)
+        return cp
 
+    def __getitem__(self, key):
+        """
+        Implements masking using heinlein masks, as well
+        as column aliases.
+        """
+        if type(key) == mask.Mask:
+            return key.mask(self)
+
+        try:
+            val =  super().__getitem__(key)
+            return val
+        except KeyError:
+            column = self._parmap.get(key)
+            return super().__getitem__(column)
+
+    def __setitem__(self, item, value):
+        """
+        Implements setting with column aliases
+        """
+        try:
+            column = self._parmap.get(item)
+            return super().__setitem__(column, value)
+        except (KeyError, AttributeError):
+            return super().__setitem__(item, value)
+    
     @classmethod
     def from_rows(cls, rows, columns):
         t = Table(rows=rows, names=columns)
@@ -46,6 +93,13 @@ class Catalog(Table):
         return c
 
     def concatenate(self, others: list = [], *args, **kwargs):
+        """
+        heinlein objects need a concatenate method, so that 
+        they can be combined when doing a query.
+
+        This implements concatenate for catalogs, ensures extra
+        objects don't have to be re-created. 
+        """
 
         if len(others) == 0:
             return self
@@ -83,23 +137,76 @@ class Catalog(Table):
         new_cat.setup(**data)
 
         return new_cat
+    
+    def update_coords(self, coords: SkyCoord, *args, **kwargs):
+        """
+        Re-defines coordinates in the catalog using passed skycoords.
+        This is primarily for use in lenskappa
+        """
+        self._skycoords = coords
+        self['ra'] = coords.ra
+        self['dec'] = coords.dec
+        lon = self['ra'].to(u.deg)
+        lat = self['dec'].to(u.deg)
+        self._cartesian_points = np.dstack(lonlat_to_vector(lon, lat))[0]
+        self._maskable_objects.update({'_skycoords': self._skycoords, '_cartesian_points': self._cartesian_points})
 
 
     def _find_coords(self, *args, **kwargs):
         """
         Searches through the catalog to try to find
         columns that could be coordinates.
+
+        Known column aliases can be found in
+        heinlein/config/dtypes/catalog.json
         """
-        columns = self.colnames
-        if "ra" in columns and "dec" in columns:
-            ra_par = CatalogParam("ra", "ra")
-            dec_par = CatalogParam("dec", "dec")
-        elif "RA" in columns and "DEC" in columns:
-            ra_par = CatalogParam("RA", "ra")
-            dec_par = CatalogParam("DEC", "dec")
-        self._parmap = ParameterMap([ra_par, dec_par])
-        self['ra'] = self['ra']*u.deg
-        self['dec'] = self['dec']*u.deg
+        columns = set(self.colnames)
+        ras = set(self._config['columns']['ra'])
+        dec = set(self._config['columns']['dec'])
+        ra_col = columns.intersection(ras)
+        dec_col = columns.intersection(dec)
+
+        if len(ra_col) == 1 and len(dec_col) == 1:
+            ra_par = CatalogParam(list(ra_col)[0], "ra")
+            dec_par = CatalogParam(list(dec_col)[0], "dec")
+        else:
+            raise KeyError("Unable to find a unique RA and DEC column")
+
+        try:
+            self._parmap.update([ra_par, dec_par])
+        except AttributeError:
+            self._parmap = ParameterMap([ra_par, dec_par])
+
+        try:
+            self['ra'].to(u.deg)
+        except u.UnitConversionError:
+            self['ra'] = self['ra']*u.deg
+        try:
+            self['dec'].to(u.deg)
+        except u.UnitConversionError:
+            self['dec'] = self['dec']*u.deg
+
+    def add_alias(self, column_name, alias_name, *args, **kwargs):
+        """
+        Adds a column alias. Once the alias has been added, the column
+        can be accessed with it's actual name or the alias.
+
+        params:
+
+        column_name: <str> The name of the column
+        alias_name: <str> The alias for the column
+        """
+        par = CatalogParam(column_name, alias_name)
+        self._parmap.update(par)
+
+    def add_aliases(self, aliases, *args, **kwargs):
+        """
+        Add several aliases.
+
+        aliases: <dict> {column_name: alias_name}
+        """
+        pars = [CatalogParam(k, v) for k, v in aliases.items()]
+        self._parmap.update(pars)
 
     def _init_points(self, *args, **kwargs):
         """
@@ -113,24 +220,7 @@ class Catalog(Table):
         self._cartesian_points = np.dstack(lonlat_to_vector(lon, lat))[0]
         self._maskable_objects.update({'_skycoords': self._skycoords, '_cartesian_points': self._cartesian_points})
 
-    def __getitem__(self, key):
-        if type(key) == mask.Mask:
-            return key.mask(self)
-
-        try:
-            val =  super().__getitem__(key)
-            return val
-        except KeyError:
-            column = self._parmap.get(key)
-            return super().__getitem__(column)
-
-    def __setitem__(self, item, value):
-        try:
-            column = self._parmap.get(item)
-            return super().__setitem__(column, value)
-        except (KeyError, AttributeError):
-            return super().__setitem__(item, value)
-    
+ 
     @property
     def coords(self):
         return self._skycoords
@@ -176,7 +266,7 @@ class CatalogParam:
 
     def __init__(self, col_name: str, std_name: str,  *args, **kwargs):
         """
-        A class for handling catalog parameters. Note, this particular class DOES NOT
+        A class for handling catalog aliases. Note, this particular class DOES NOT
         check that the data frame actually contains the column until the values are requested.
 
         Arguments:
@@ -203,36 +293,13 @@ class CatalogParam:
     def col(self):
         return self._col_name
     
-class QuantParam(CatalogParam):
-    """
-    Class for handling parameters with numerical data.
-    Can deal with logs
-    Can also accept an astropy unit.
-    The reason for this is that Pandas dataframes has some weird buggy
-    interactions with astropy units.
-    """
-    def __init__(self, col_name, std_name, unit = None, is_log = False, *args, **kwargs):
-        super().__init__(col_name, std_name, *args, **kwargs)
-        self._is_log = False
-        self._unit = unit
-    
-    @property
-    def unit(self):
-        return self._unit
-        
-    def get_values(self, cat, *args, **kwargs):
-        vals = np.array(super().get_values(cat, *args, **kwargs))
-        if self._is_log:
-            vals = np.power(10, vals)
-        if self._unit is not None:
-            return vals*self._unit
-        else:
-            return vals
-
 class ParameterMap:
 
     logger = logging.getLogger("Parameters")
     def __init__(self, params = [], *args, **kwargs):
+        """
+        Holds all the aliases for a catalog.
+        """
         self._setup_params(params)
 
     @property
@@ -296,3 +363,4 @@ class ParameterMap:
             
             self._params.update({p.standard: p})
             self._colmap.update({p.col: p.standard})
+

@@ -11,9 +11,16 @@ from heinlein.manager.dataManger import DataManager
 
 logger = logging.getLogger("manager")
 
+active_managers = {}
+
 def get_manager(name):
-    #to-do: mogodb data
-    return FileManager(name)
+    try:
+        am = active_managers[name]
+        return am
+    except KeyError:
+        mgr = FileManager(name)
+        active_managers.update({name: mgr})
+        return mgr
 
 class FileManager(DataManager):
 
@@ -21,8 +28,6 @@ class FileManager(DataManager):
         """
         A file manager manages files on local disk.
         This is in contrast to data stored in the cloud
-        Or data in a database
-
         Params:
 
         name: the name of the dataset
@@ -133,7 +138,7 @@ class FileManager(DataManager):
             json.dump(output, f, indent=4)
 
 
-    def add_data(self, dtype: str, path: pathlib.Path) -> bool:
+    def add_data(self, dtype: str, path: pathlib.Path, overwrite=False) -> bool:
         """
         Add data to a datset. Note that this only gives the manager
         a path to the data. The manager itself does not know what kind
@@ -156,7 +161,7 @@ class FileManager(DataManager):
         except AttributeError:
             data = {}
 
-        if dtype in data.keys():
+        if dtype in data.keys() and not overwrite:
             msg = f"Datatype {dtype} already found for survey {self.name}."
             options = ["Overwrite", "Merge", "Abort"]
             choice = warning_prompt(msg, options)        

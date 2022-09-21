@@ -1,48 +1,14 @@
-from asyncio import Handle
-from cgi import parse_header
+
 from pathlib import Path
-import sqlite3
-from typing import Any
-from heinlein.region import BaseRegion
-from heinlein.dtypes.catalog import Catalog
-from astropy.io import ascii
-import sys
-from abc import ABC, abstractmethod
 import logging
-import time
-from heinlein import dtypes
+import sqlite3
+import numpy as np
+from heinlein.dtypes.handlers import handler
+from heinlein.dtypes.catalog import Catalog
 
-def get_file_handlers(data: dict, external, *args, **kwargs):
-    if external is not None:
-        external_handlers = get_external_handlers(data, external)
-    else:
-        external_handlers = {dtype: None for dtype in data.keys()}
-    handlers = {}
-    for dtype, dconfig in data.items():
-        path = dconfig['path']
-        dc_ = {k: v for k,v in dconfig.items() if k != "path"}
-        if external_handlers[dtype] is not None:
-            cl = external_handlers[dtype](Path(path), dc_)
-        elif dtype == "catalog":
-            cl = get_catalog_handler(Path(path), dc_)
-        else:
-            cl = FileMaskHandler(Path(path), dc_)
-        handlers.update({dtype: cl})
-    return handlers
+from astropy.io import ascii
 
-def get_external_handlers(data, external):
-    output = {}
-    for dtype in data.keys():
-        function_key = f"{dtype.capitalize()}Handler"
-        try:
-            cl = getattr(external, function_key)
-            if not issubclass(cl, Handler):
-                raise NotImplementedError
-            output.update({dtype: cl})
-        except (AttributeError, NotImplementedError):
-            output.update({dtype: None})
-    return output
-
+from heinlein.dtypes import catalog
 
 def get_catalog_handler(path: Path, dconfig: dict):
     if not path.is_file():
@@ -50,66 +16,48 @@ def get_catalog_handler(path: Path, dconfig: dict):
     elif path.suffix == ".db":
         return SQLiteCatalogHandler(path, dconfig)
 
-        
-class Handler(ABC):
 
-    def __init__(self, path: Path, dconfig: dict, type: str, *args, **kwargs):
-        self._type = type
-        self._path = path
-        self._config = dconfig
-
-    @abstractmethod
-    def get_data(self, regions: list, *args, **kwargs):
-        pass
-
-    def get_data_object(self, data, *args, **kwargs):
-        return dtypes.get_data_object(self._type, data)
-
-class CsvCatalogHandler(Handler):
+class CsvCatalogHandler(handler.Handler):
 
     def __init__(self, path: Path, config: dict, *args, **kwargs):
-        super().__init__(path, config)
+        super().__init__(path, config, "catalog")
     
     def get_data(self, regions: list, *args, **kwargs):
         """
         Default handler for a catalog.
         Loads a single catalog, assuming the region name can be found in the file name.
         """
+        storage = {}
         parent_region = kwargs.get("parent_region", False)
         if not self._path.exists():
             print(f"Path {self._path} does not exist! Perhaps it is in an external storage device that isn't attached.")
             return None
-
+        names = [r.name for r in regions]
         if not self._path.is_file():
-            files = [f for f in self._path.glob(f"*{region.name}*") if not f.name.startswith('.')]
-            if len(files) > 1:
-                raise NotImplementedError
-            if len(files) == 0:
-                new_path = self._path / str(parent_region.name)
-                files = [f for f in new_path.glob(f"*{region.name}*") if not f.name.startswith('.')]
-            try:
-                file_path = files[0]
-            except IndexError:
-                logging.error(f"No file found for dtype catalog in region {region.name}!")
+            for name in names:
+                files = [f for f in self._path.glob(f"*{name}*") if not f.name.startswith('.')]
+                if len(files) > 1:
+                    raise NotImplementedError
+                if len(files) == 0:
+                    new_path = self._path / str(parent_region.name)
+                    files = [f for f in new_path.glob(f"*{name}*") if not f.name.startswith('.')]
+                try:
+                    file_path = files[0]
+                    data = ascii.read(file_path)
+                    storage.update({name: Catalog(data)})
+                except IndexError:
+                    logging.error(f"No file found for dtype catalog in region {name}!")
         else:
             file_path = self._path
-
-        if file_path.suffix == ".csv":
-            data = ascii.read(file_path)
-            return Catalog(data)
-        else:
-            raise NotImplementedError(f"File loader not implemented for file type {file_path.suffix}")
-    
-class FileMaskHandler(Handler):
-    
-    def __init__(self, path: Path, config: dict, *args ,**kwargs):
-        super().__init__(path, config)
+            if file_path.suffix == ".csv":
+                data = ascii.read(file_path)
+                for name in names:
+                    mask = data[self._config['region']] == name
+                    storage.update({name: Catalog(data[mask])})
+        return storage
 
 
-    def get_data(self, *args, **kwargs):
-        return self._path
-
-class SQLiteCatalogHandler(Handler):
+class SQLiteCatalogHandler(handler.Handler):
     def __init__(self, path: Path, config: dict, *args, **kwargs):
         super().__init__(path, config, "catalog")
         self._initialize_connection()
@@ -121,7 +69,6 @@ class SQLiteCatalogHandler(Handler):
         self._tnames = [t[1] for t in cur.fetchall()]
     
     def get_data(self, regions: list, *args, **kwargs):
-        start = time.time()
         region_key = self._config['region']
         subregion_key = self._config.get("subregion", False)
         if subregion_key:
@@ -208,47 +155,9 @@ class SQLiteCatalogHandler(Handler):
     
     def _parse_return(self, cursor, *args, **kwargs):
         rows = cursor.fetchall()
-        if len(rows) == 0:
-            return None
+        rows = np.array(rows, dtype=object)
+        missing_values = np.where(rows == None)
+        rows[missing_values] = -1
         columns = [d[0] for d in cursor.description]
         c = Catalog.from_rows(rows=rows, columns=columns)
-
         return c
-
-class FileHandler(ABC):
-
-    def __init__(self, dtype: str, *args, **kwargs):
-        self.type = dtype
-        self.region_id = None
-
-    def __call__(self, path: Path, query_region: BaseRegion, *args, **kwargs):
-        if self.region_id is not None:
-            return self.get_file(path / str(self.region_id), query_region.name)
-        return self.get_file(path, query_region.name)
-
-    def set_subregion(self, region_id: str) -> None:
-        self.region_id = region_id
-    
-    @abstractmethod
-    def get_file(self, path: Path, region: str) -> any:
-        pass
-
-def get_handler(survey_mod, dtype):
-    """
-    Returns a function to get data from a particular region.
-    This allows for lazy evaluation, which is useful with large datasets.
-    """
-    try:
-        h_name = f"get_{dtype}"
-        handler = getattr(survey_mod, h_name)
-        return handler
-    except AttributeError:
-        return get_defualt_handler(dtype)
-
-def get_defualt_handler(dtype):
-    try:
-        this = sys.modules[__name__]
-        handler = getattr(this, f"get_{dtype}")
-        return handler()
-    except AttributeError:
-        raise NotImplementedError(f"Data type {dtype} does not have a default handler")

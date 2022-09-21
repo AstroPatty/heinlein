@@ -3,7 +3,8 @@ from importlib import import_module
 from glob import glob
 import json
 from lib2to3.pytree import Base
-from heinlein.locations import BASE_DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, BUILTIN_DTYPES
+from tkinter.tix import MAIN
+from heinlein.locations import BASE_DATASET_CONFIG_DIR, DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, BUILTIN_DTYPES
 from abc import ABC
 from heinlein.region import base
 from heinlein.region.base import BaseRegion
@@ -33,13 +34,19 @@ class DataManager(ABC):
         The datamanger keeps track of where data is located, either on disk or 
         otherwise.
         It also keeps a manifest, so it knows when files have been moved or changed.
-        
+        Managers should generally not be instatiated directly. They are used by Dataset
+        objects to find data.
+
+        parameters:
+
+        name: <str> The name of the dataset
         """
         self.name = name
         self.globalConfig = globalConfig
         self._setup()
-        write_atexit = lambda x=self.config_data, y = self.config_location: write_config_atexit(x, y)
         self._cache = {}
+
+        write_atexit = lambda x=self.config_data, y = self.config_location: write_config_atexit(x, y)
         atexit.register(write_atexit)
 
     
@@ -50,10 +57,9 @@ class DataManager(ABC):
         user if dataset does not exist.
         """
 
-        with open(MAIN_DATASET_CONFIG, "r") as f:
-            surveys = json.load(f)
+        surveys = self.get_config_paths()
 
-        if self.name not in surveys.keys():
+        if self.name not in surveys.keys(): #If this dataset does not exist
             if self.globalConfig.interactive:
                 write_new = warning_prompt_tf(f"Survey {self.name} not found, would you like to initialize it? ")
                 if write_new:
@@ -61,7 +67,7 @@ class DataManager(ABC):
                 else:
                     self.ready = False
             else: raise OSError(f"Dataset {self.name} does not exist!")
-        else:
+        else: #If it DOES exist, get the config data
             cp = surveys[self.name]['config_path']
             self.config_location = DATASET_CONFIG_DIR / cp
             base_config = BASE_DATASET_CONFIG_DIR / cp
@@ -72,12 +78,28 @@ class DataManager(ABC):
                 self._data = {}
                 self.config_data['data'] = self._data
         try:
+            #Find the external implementation for this dataset, if it exists.
             self.external = import_module(f".{self.config['slug']}", "heinlein.dataset")
         except KeyError:
             self.external = None
-
         self.load_handlers()
         self.validate_data()
+    
+    def get_config_paths(self):
+        base_config_location = BASE_DATASET_CONFIG_DIR / "surveys.json"
+        stored_config_location = MAIN_DATASET_CONFIG
+        with open(base_config_location, "rb") as f:
+            base_config = json.load(f)
+        with open(stored_config_location, "rb") as f:
+            stored_config = json.load(f)
+
+        for key, value in base_config.items():
+            if key not in stored_config.keys():
+                stored_config.update({key: value})
+
+        with open(stored_config_location, "w") as f:
+            json.dump(stored_config, f, indent=4)
+        return stored_config
 
 
     def get_path(self, dtype: str, *args, **kwargs):
@@ -125,7 +147,7 @@ class DataManager(ABC):
     def reconcile_dconfig(self, stored_config: dict, base_config: dict, *args, **kwargs):
         data = stored_config['data']
         if len(data) == 0:
-            return stored_config
+            return data
         with open(BUILTIN_DTYPES, "r") as f:
             self._builtin_types = json.load(f)
         output = {}
@@ -184,8 +206,8 @@ class DataManager(ABC):
         
 
     def load_handlers(self, *args, **kwargs):
-        from heinlein.dtypes import get_file_handlers
-        self._handlers =  get_file_handlers(self.data, self.external)
+        from heinlein.dtypes import handlers
+        self._handlers =  handlers.get_file_handlers(self.data, self.external)
 
     @property
     def data(self):
@@ -270,10 +292,9 @@ class DataManager(ABC):
 
             if dtype in cached.keys():
                 dtype_cache = cached[dtype]
-                regions_to_get = [r.name for r in region_overlaps if r.name not in dtype_cache.keys()]
+                regions_to_get = [r for r in region_overlaps if r.name not in dtype_cache.keys()]
             else:
                 regions_to_get = region_overlaps
-
             if len(regions_to_get) != 0:
                 data_ = self._handlers[dtype].get_data(regions_to_get, *args, **kwargs)
                 new_data.update({dtype: data_})
@@ -308,6 +329,7 @@ class DataManager(ABC):
             if data is None:
                 logger.error(f"Unable to find data of type {dtype}")
                 continue
+                
             obj_ = self._handlers[dtype].get_data_object(values)
             return_data.update({dtype: obj_})
         return return_data

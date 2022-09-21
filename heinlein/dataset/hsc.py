@@ -4,7 +4,7 @@ from heinlein.dtypes.mask import Mask
 from heinlein.locations import BASE_DATASET_CONFIG_DIR
 from spherical_geometry.polygon import SingleSphericalPolygon
 from heinlein.region import Region
-from heinlein.dtypes import handlers
+from heinlein.dtypes.handlers.handler import Handler
 import regions as reg
 import re
 import math
@@ -139,7 +139,7 @@ def _patch_int_to_tuple(patch_int):
     else:
         return (patch_int // 100, patch_int %100)
 
-class MaskHandler(handlers.Handler):
+class MaskHandler(Handler):
 
     def __init__(self, *args, **kwargs):
         kwargs.update({"type": "mask"})

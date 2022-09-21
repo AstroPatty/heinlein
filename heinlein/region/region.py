@@ -3,10 +3,12 @@ from functools import reduce
 from typing import Union
 import astropy.units as u
 from shapely.geometry import Point
+from shapely.geometry.base import BaseGeometry
 from astropy.coordinates import SkyCoord
 from spherical_geometry.polygon import SingleSphericalPolygon
 
 from heinlein.region.base import BaseRegion
+from . import sampling
 
 class Region:
 
@@ -36,37 +38,63 @@ class Region:
 
     @staticmethod
     def polygon(coords, *args, **kwargs):
+        """
+        Return a generically-shaped region:
+
+        
+        """
         if type(coords) == SingleSphericalPolygon:
             return PolygonRegion(coords, *args, **kwargs)
+        elif issubclass(type(coords), BaseGeometry):
+            points = coords.exterior.xy
+            poly = SingleSphericalPolygon.from_radec(points[0], points[1])
+            return PolygonRegion(poly, *args, **kwargs)
 
-
-def build_compound_region(regions: dict, *args, **kwargs) -> BaseRegion:
-    first = list(regions.values())[0]
-    second = list(regions.values())[1]
-    a = first.union(second)
-    full_region = reduce(lambda first, second: first.union(second), regions.values())
-    region_obj = Region(points = b.boundary.coords)
-    region_obj.add_subregions(regions)
-    return region_obj
-    
 class PolygonRegion(BaseRegion):
 
     def __init__(self, polygon: SingleSphericalPolygon, name: str = None, *args, **kwargs):
         """
-        Basic general-shape region object
+        Basic general-shape region object.
+
+        Parameters:
+
+        polygon <spherical_geometry.SingleSphericalPolygon>: The spherical polygon representing the region
+        name <str>: a name for the region (optional)
         """
         super().__init__(polygon, "PolygonRegion", name)
+        self._sampler = None
 
     @property
     def center(self) -> Point:
+        """
+        Return the center of the region
+        """
         return self._flat_geometry.centroid
+
+    def generate_circular_tile(self, radius, *args, **kwargs):
+        """
+        Return a circular tile, drawn randomly from the region.
+        """
+        if self._sampler is None:
+            self._get_sampler()
+        return self._sampler.get_circular_sample(radius)
+    
+
+    def _get_sampler(self, *args, **kwargs):
+        self._sampler = sampling.Sampler(self)
+
+
 class CircularRegion(BaseRegion):
 
     def __init__(self, center: SkyCoord, radius: u.Quantity, name = None, *args, **kwargs) -> None:
         """
-        Circular region
-        Accepts point-radius for initialization.
-        Shapely does not techincally have a "spherical regions" object
+        Circular region. Accepts point-radius for initialization.
+
+        parameters:
+
+        center <SkyCoord>: The center of the region
+        radius <astropy.units.quantity>: The radius of the region
+        name <str>: a name for the region (optional)
         """
         
         self._skypoint = center
