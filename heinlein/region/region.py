@@ -41,9 +41,9 @@ class Region:
         if type(coords) == SingleSphericalPolygon:
             return PolygonRegion(coords, *args, **kwargs)
         elif issubclass(type(coords), BaseGeometry):
-            points = list(coords.exterior.coords)
-            poly = SingleSphericalPolygon(points)
-            return PolygonRegion(poly)
+            points = coords.exterior.xy
+            poly = SingleSphericalPolygon.from_radec(points[0], points[1])
+            return PolygonRegion(poly, *args, **kwargs)
 
             
 

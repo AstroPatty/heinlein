@@ -61,3 +61,7 @@ def write_split_output_file(dfs, output):
 
         with portalocker.Lock(fpath, 'w') as of:
             output_df.to_csv(of, index=False)
+
+
+def reconcile_base_configs():
+    pass

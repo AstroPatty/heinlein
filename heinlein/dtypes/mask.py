@@ -41,7 +41,6 @@ class Mask:
         that handles interfacing with all these different formats.
         """
         self._masks = get_mask_objects(masks, *args, **kwargs)
-
     def mask(self, catalog, *args, **kwargs):
         for mask in self._masks:
             catalog = mask.mask(catalog)
@@ -99,7 +98,7 @@ class _fitsMask(_mask):
 
         masked[to_skip] = False
         pixel_values = self._mask_plane[x[~to_skip], y[~to_skip]] 
-        masked[~to_skip] = pixel_values != 0
+        masked[~to_skip] = pixel_values > 0
         return catalog[~masked]
 
 class _regionMask(_mask):

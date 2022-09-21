@@ -1,0 +1,8 @@
+
+{
+    "columns": {
+        "ra": ["ra", "RA", "ALPHA_J2000"],
+        "dec": ["dec", "DEC", "DELTA_J2000"]
+    }
+
+}

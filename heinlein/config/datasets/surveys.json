@@ -4,5 +4,8 @@
     },
     "des": {
         "config_path": "des.json"
+    },
+    "cfht": {
+        "config_path": "cfht.json"
     }
 }

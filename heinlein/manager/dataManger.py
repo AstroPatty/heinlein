@@ -3,7 +3,8 @@ from importlib import import_module
 from glob import glob
 import json
 from lib2to3.pytree import Base
-from heinlein.locations import BASE_DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, BUILTIN_DTYPES
+from tkinter.tix import MAIN
+from heinlein.locations import BASE_DATASET_CONFIG_DIR, DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, BUILTIN_DTYPES
 from abc import ABC
 from heinlein.region import base
 from heinlein.region.base import BaseRegion
@@ -50,8 +51,7 @@ class DataManager(ABC):
         user if dataset does not exist.
         """
 
-        with open(MAIN_DATASET_CONFIG, "r") as f:
-            surveys = json.load(f)
+        surveys = self.get_config_paths()
 
         if self.name not in surveys.keys():
             if self.globalConfig.interactive:
@@ -75,9 +75,24 @@ class DataManager(ABC):
             self.external = import_module(f".{self.config['slug']}", "heinlein.dataset")
         except KeyError:
             self.external = None
-
         self.load_handlers()
         self.validate_data()
+    
+    def get_config_paths(self):
+        base_config_location = BASE_DATASET_CONFIG_DIR / "surveys.json"
+        stored_config_location = MAIN_DATASET_CONFIG
+        with open(base_config_location, "rb") as f:
+            base_config = json.load(f)
+        with open(stored_config_location, "rb") as f:
+            stored_config = json.load(f)
+
+        for key, value in base_config.items():
+            if key not in stored_config.keys():
+                stored_config.update({key: value})
+
+        with open(stored_config_location, "w") as f:
+            json.dump(stored_config, f, indent=4)
+        return stored_config
 
 
     def get_path(self, dtype: str, *args, **kwargs):
@@ -125,7 +140,7 @@ class DataManager(ABC):
     def reconcile_dconfig(self, stored_config: dict, base_config: dict, *args, **kwargs):
         data = stored_config['data']
         if len(data) == 0:
-            return stored_config
+            return data
         with open(BUILTIN_DTYPES, "r") as f:
             self._builtin_types = json.load(f)
         output = {}
@@ -184,8 +199,8 @@ class DataManager(ABC):
         
 
     def load_handlers(self, *args, **kwargs):
-        from heinlein.dtypes import get_file_handlers
-        self._handlers =  get_file_handlers(self.data, self.external)
+        from heinlein.dtypes import handlers
+        self._handlers =  handlers.get_file_handlers(self.data, self.external)
 
     @property
     def data(self):
@@ -273,9 +288,11 @@ class DataManager(ABC):
                 regions_to_get = [r for r in region_overlaps if r.name not in dtype_cache.keys()]
             else:
                 regions_to_get = region_overlaps
-
             if len(regions_to_get) != 0:
+                start = time.time()
                 data_ = self._handlers[dtype].get_data(regions_to_get, *args, **kwargs)
+                end = time.time()
+                print(f"Getting data of type {dtype} took {end - start} seconds")
                 new_data.update({dtype: data_})
 
         if len(new_data) != 0:

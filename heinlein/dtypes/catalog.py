@@ -9,16 +9,22 @@ from shapely.strtree import STRtree
 from spherical_geometry.vector import lonlat_to_vector
 from copy import copy
 from typing import TYPE_CHECKING, Type
-
+import json
 from heinlein.dtypes import mask
+from heinlein.locations import MAIN_CONFIG_DIR
 
 if TYPE_CHECKING:
     from heinlein.region import BaseRegion
     from heinlein.region import CircularRegion, PolygonRegion
 
 
+def load_config():
+    catalog_config_location = MAIN_CONFIG_DIR / "dtypes"/"catalog.json"
+    with open(catalog_config_location, "rb") as f:
+        data = json.load(f)
+    return data
 class Catalog(Table):
-    
+    _config = load_config()
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._maskable_objects = {}
@@ -103,14 +109,18 @@ class Catalog(Table):
         Searches through the catalog to try to find
         columns that could be coordinates.
         """
-        columns = self.colnames
-        if "ra" in columns and "dec" in columns:
-            ra_par = CatalogParam("ra", "ra")
-            dec_par = CatalogParam("dec", "dec")
-        elif "RA" in columns and "DEC" in columns:
-            ra_par = CatalogParam("RA", "ra")
-            dec_par = CatalogParam("DEC", "dec")
-        
+        columns = set(self.colnames)
+        ras = set(self._config['columns']['ra'])
+        dec = set(self._config['columns']['dec'])
+        ra_col = columns.intersection(ras)
+        dec_col = columns.intersection(dec)
+
+        if len(ra_col) == 1 and len(dec_col) == 1:
+            ra_par = CatalogParam(list(ra_col)[0], "ra")
+            dec_par = CatalogParam(list(dec_col)[0], "dec")
+        else:
+            raise KeyError("Unable to find a unique RA and DEC column")
+
         try:
             self._parmap.update([ra_par, dec_par])
         except AttributeError:

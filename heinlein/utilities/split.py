@@ -50,7 +50,11 @@ def _split_from_csv(file_path: Path, region_key, subregion_key, output_func, ):
     print(f"Working on file {file_path}")
     df = pd.read_csv(file_path)
     output = {}
-    region = df[region_key].unique()
+    try:
+        region = df[region_key].unique()
+    except:
+        print(file_path)
+        return
     region_splits = {reg: df[df[region_key] == reg] for reg in region}
     output_func(region_splits)
 
@@ -58,7 +62,7 @@ def output_to_csv():
     pass
 
 def output_to_db(data, subregion_key, output_path, accessed):
-    con = sqlite3.Connection(output_path)
+    con = sqlite3.Connection(output_path, timeout=30)
     for region_key, region_values in data.items():
         if type(region_values) == pd.DataFrame: 
             try:
@@ -77,4 +81,4 @@ def output_to_db(data, subregion_key, output_path, accessed):
             region_values.to_sql(str(region_key), con=con, if_exists = "append")
             if accessed:
                 accessed[region_key] = False
-    
+    return
