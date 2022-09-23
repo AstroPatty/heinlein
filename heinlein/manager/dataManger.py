@@ -82,7 +82,6 @@ class DataManager(ABC):
             self.external = import_module(f".{self.config['slug']}", "heinlein.dataset")
         except KeyError:
             self.external = None
-        self.load_handlers()
         self.validate_data()
     
     def get_config_paths(self):
@@ -207,7 +206,8 @@ class DataManager(ABC):
 
     def load_handlers(self, *args, **kwargs):
         from heinlein.dtypes import handlers
-        self._handlers =  handlers.get_file_handlers(self.data, self.external)
+        if not hasattr(self, "_handlers"):
+            self._handlers =  handlers.get_file_handlers(self.data, self.external)
 
     @property
     def data(self):
@@ -280,7 +280,8 @@ class DataManager(ABC):
         """
         return_types = []
         new_data = {}
-        
+        self.load_handlers()
+
         for dtype in dtypes:
             try:
                 path = self._data[dtype]
