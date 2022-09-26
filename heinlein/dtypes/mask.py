@@ -46,6 +46,8 @@ class Mask:
     def mask(self, catalog, *args, **kwargs):
         for mask in self._masks:
             catalog = mask.mask(catalog)
+            if len(catalog) == 0:
+                return catalog
         return catalog
 
     def append(self, other):
