@@ -63,7 +63,7 @@ class SQLiteCatalogHandler(handler.Handler):
         self._initialize_connection()
     
     def _initialize_connection(self, *args, **kwargs):
-        self._con = sqlite3.connect(self._path)
+        self._con = sqlite3.connect(self._path, cached_statements=1)
         sql = "SELECT * FROM sqlite_master where type='table'"
         cur = self._con.execute(sql)
         self._tnames = [t[1] for t in cur.fetchall()]
@@ -143,12 +143,12 @@ class SQLiteCatalogHandler(handler.Handler):
         query =  base_query + " AND ".join(output_conditions)
         return self.execute_query(query)
 
+
     def get_all(self, tname):
         query = f"SELECT * FROM \"{tname}\""
         return self.execute_query(query)
-
-
     def execute_query(self, query):
+
         cur = self._con.execute(query)
         table = self._parse_return(cur)
         return table

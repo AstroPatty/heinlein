@@ -56,7 +56,7 @@ class MaskHandler(Handler):
         super().__init__(*args, **kwargs)
         self.mangle_files = [f for f in (self._path / "mangle").glob("*.pol") if not f.name.startswith(".")]
         self.plane_files = [f for f in (self._path / "plane").glob("*.fits") if not f.name.startswith(".")]
-
+    
     def get_data(self, regions, *args, **kwargs):
         names = [r.name for r in regions]
         nreg = len(names)
@@ -64,7 +64,7 @@ class MaskHandler(Handler):
         mangle_matches = list(filter(lambda x, y=regex: regex.match(x.name), self.mangle_files))
         plane_matches = list(filter(lambda x, y=regex: regex.match(x.name), self.plane_files))
         return self._get(names, mangle_matches, plane_matches, *args, **kwargs)
-    
+
     def _get(self, regions, mangle_files, plane_files, *args, **kwargs):
         output = {}
         for region in regions:
@@ -81,11 +81,10 @@ class MaskHandler(Handler):
                 continue
 
             mangle_msk = pymangle.Mangle(str(mangle_file[0]))
-            plane_msk = fits.open(plane_file[0])
-            output.update({region: [mangle_msk, plane_msk]})
+            plane_msk = fits.open(plane_file[0], memmap=True)
+            output.update({region: Mask([mangle_msk, plane_msk], pixarray=True, **self._config)})
         return output
-
+    
     def get_data_object(self, data, *args, **kwargs):
-        stack = np.array([v for v in data.values()], dtype="object")
-        all_data = np.hstack(stack)
-        return Mask(all_data, **self._config)
+        masks = list(data.values())
+        return masks[0].append(masks[1:])

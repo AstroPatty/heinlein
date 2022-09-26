@@ -10,7 +10,6 @@ from heinlein.manager import get_manager
 
 from shapely.strtree import STRtree
 
-
 logger = logging.getLogger("Dataset")
 class Dataset:
 
@@ -86,6 +85,7 @@ class Dataset:
         overlaps = [o for o in overlaps if o.intersects(other)]
         return overlaps
 
+    
     def get_data_from_region(self, query_region: BaseRegion, dtypes: Union[str, list] = "catalog", *args, **kwargs) -> dict:
         """
         Get data of type dtypes from a particular region
@@ -109,15 +109,15 @@ class Dataset:
 
         data = self.manager.get_data(dtypes, query_region, overlaps)
 
-
         return_data = {}
         for dtype, obj_ in data.items():
             try:
                 return_data.update({dtype: obj_.get_data_from_region(query_region)})
             except AttributeError:
                 return_data.update({dtype: obj_})
-        
+
         for dtype, d_ in return_data.items():
+
             try:
                 aliases = self._aliases
             except AttributeError:
@@ -128,7 +128,7 @@ class Dataset:
                 d_.add_aliases(alias)
             except KeyError:
                 continue
-        
+
         return return_data
 
     def cone_search(self, center, radius, *args, **kwargs):

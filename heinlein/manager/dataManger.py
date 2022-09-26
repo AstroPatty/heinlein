@@ -1,6 +1,5 @@
 from abc import abstractmethod
 from importlib import import_module
-from glob import glob
 import json
 from lib2to3.pytree import Base
 from tkinter.tix import MAIN
@@ -8,9 +7,9 @@ from heinlein.locations import BASE_DATASET_CONFIG_DIR, DATASET_CONFIG_DIR, MAIN
 from abc import ABC
 from heinlein.region import base
 from heinlein.region.base import BaseRegion
-from heinlein.utilities import warning_prompt, warning_prompt_tf
+from heinlein.utilities import warning_prompt_tf
 from heinlein.config.config import globalConfig
-
+import multiprocessing as mp
 import numpy as np
 from typing import Any
 import logging
@@ -19,7 +18,6 @@ import shutil
 import atexit
 import time
 from cacheout import LRUCache
-
 logger = logging.getLogger("manager")
 
 def write_config_atexit(config, path):
@@ -45,6 +43,7 @@ class DataManager(ABC):
         self.globalConfig = globalConfig
         self._setup()
         self._cache = {}
+        self._cache_lock = mp.Lock()
 
         write_atexit = lambda x=self.config_data, y = self.config_location: write_config_atexit(x, y)
         atexit.register(write_atexit)
@@ -321,7 +320,6 @@ class DataManager(ABC):
 
         storage = self.parse_data(storage, *args, **kwargs)
         return storage
-    
 
     def parse_data(self, data, *args, **kwargs):
         return_data = {}
@@ -337,15 +335,16 @@ class DataManager(ABC):
 
     def get_cached_values(self, dtypes: list, region_overlaps: list):
         cached_values = {}
-        for dtype in dtypes:
-            try:
-                dtype_cache = self._cache[dtype]
-            except KeyError:
-                #No cache for this datatype, continue
-                continue
-            storage = {}
-            cached = dtype_cache.get_many([reg.name for reg in region_overlaps])
-            cached_values.update({dtype: cached})
+        with self._cache_lock:
+            for dtype in dtypes:
+                try:
+                    dtype_cache = self._cache[dtype]
+                except KeyError:
+                    #No cache for this datatype, continue
+                    continue
+                storage = {}
+                cached = dtype_cache.get_many([reg.name for reg in region_overlaps])
+                cached_values.update({dtype: cached})
         return cached_values
 
     def cache(self, data_storage: dict):
@@ -354,17 +353,18 @@ class DataManager(ABC):
         So we have to do a translation
         
         """
-        for dtype, data in data_storage.items():
-            if (data is None) or (type(data) != dict):
-                continue
-            try:
-                dtype_cache = self._cache[dtype]
-            except KeyError:
-                dtype_cache = LRUCache(maxsize=0)
+        with self._cache_lock:
+            for dtype, data in data_storage.items():
+                if (data is None) or (type(data) != dict):
+                    continue
+                try:
+                    dtype_cache = self._cache[dtype]
+                except KeyError:
+                    dtype_cache = LRUCache(maxsize=0)
+                    self._cache.update({dtype: dtype_cache})
+                dtype_cache.add_many({reg_name: d_obj for reg_name, d_obj in data.items()})
                 self._cache.update({dtype: dtype_cache})
-            dtype_cache.add_many({reg_name: d_obj for reg_name, d_obj in data.items()})
-            self._cache.update({dtype: dtype_cache})
-
+    
 
     @abstractmethod
     def clear_all_data(self, *args, **kwargs):  

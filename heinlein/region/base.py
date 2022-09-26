@@ -7,6 +7,7 @@ from shapely.strtree import STRtree
 import numpy as np
 from functools import partial
 from shapely.geometry import Polygon
+from spherical_geometry.vector import vector_to_lonlat
 import json
 
 from heinlein.locations import MAIN_CONFIG_DIR
@@ -48,6 +49,12 @@ class BaseRegion(ABC):
         self._covered = False
         points = self._spherical_geometry.points
         self._flat_geometry = Polygon(points)
+        points = self._spherical_geometry.points
+        v = vector_to_lonlat(points[:,0], points[:,1], points[:,2])
+        ra = [r.round(2) for r in v[0]]
+        dec = [d.round(2) for d in v[1]]
+        self._flat_sky_geometry = Polygon(list(zip(ra, dec)))
+        
 
     def __setstate__(self, state):
         """
@@ -79,9 +86,16 @@ class BaseRegion(ABC):
     @property
     def geometry(self, *args, **kwargs):
         """
-        Returns the flattened geometry for the object
+        Returns the flattened 3D geometry for the object
         """
         return self._flat_geometry
+    
+    @property
+    def sky_geometry(self, *args, **kwargs):
+        """
+        Returns the flat geometry, using sky coordinates
+        """
+        return self._flat_sky_geometry
     
     @property
     def spherical_geometry(self):
@@ -89,6 +103,7 @@ class BaseRegion(ABC):
         Returns the correct spherical geometry for the object
         """
         return self._spherical_geometry
+
 
     @property
     def type(self) -> str:

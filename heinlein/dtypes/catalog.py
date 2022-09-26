@@ -25,6 +25,7 @@ def load_config():
     return data
 class Catalog(Table):
     _config = load_config()
+
     def __init__(self, *args, **kwargs):
         """
         Stores catalog data. Can be used like an astropy table, but includes

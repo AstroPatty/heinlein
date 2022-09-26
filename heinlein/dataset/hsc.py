@@ -182,10 +182,13 @@ class MaskHandler(Handler):
 
                 new_masks[i] = new_reg
 
+            obj = np.empty(1, dtype=object)
+            obj[0] = new_masks
+            vals.update({name: Mask(obj)})
 
-            vals.update({name: new_masks})
         return vals
 
     def get_data_object(self, objs):
-        input_objs = np.array(list(objs.values()), dtype=object)
-        return Mask(input_objs)
+        objs_ = list(objs.values())
+        return objs_[0].append(objs_[1:])
+        

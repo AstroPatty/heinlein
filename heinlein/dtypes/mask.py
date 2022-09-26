@@ -19,14 +19,15 @@ def get_mask_objects(input_list, *args, **kwargs):
     output_data = np.empty(len(input_list), dtype="object")
     for index, obj in enumerate(input_list):
         if type(obj) == HDUList:
-            output_data[index] = _fitsMask(obj, *args, **kwargs)
+            if kwargs.get("pixarray", False):
+                output_data[index] = _pixelArrayMask(obj, *args, **kwargs)
+            else:
+                output_data[index] = _fitsMask(obj, *args, **kwargs)
         elif type(obj) == pymangle.Mangle:
             output_data[index] = _mangleMask(obj)
         elif type(obj) == np.ndarray:
             if isinstance(obj[0], BaseGeometry):
                 output_data[index] = _shapelyMask(obj)
-            elif isinstance(obj[0], SingleSphericalPolygon):
-                output_data[index] = _sphericalGeometryMask(obj)
             elif isinstance(obj[0], BaseRegion):
                 output_data[index] = _regionMask(obj)
 
@@ -46,6 +47,18 @@ class Mask:
         for mask in self._masks:
             catalog = mask.mask(catalog)
         return catalog
+
+    def append(self, other):
+
+        if len(other) == 0:
+            return self
+        else:
+            for m_ in other:
+                sub_masks = m_._masks
+                self._masks = np.concatenate((self._masks, sub_masks))
+        return self
+        
+        
 
 class _mask(ABC):
 
@@ -76,20 +89,49 @@ class _mangleMask(_mask):
         contains = self._mask.contains(ra, dec)
         return catalog[~contains]
 
-class _fitsMask(_mask):
+class _pixelArrayMask(_mask):
     def __init__(self, mask, mask_key, *args, **kwargs):
+        super().__init__(mask)
+        self._wcs = WCS(mask[0].header)
+        self._mask_key = mask_key
+        self._init_pixel_array()
+
+    def _init_pixel_array(self, *args, **kwargs):
+        mask = self._mask[self._mask_key].data
+        
+        pixels = np.where(mask > 0)
+        pixel_coords = np.ones(mask.shape, dtype=bool)
+        pixel_coords[pixels] = False
+        self._mask.close()
+        self._mask = pixel_coords
+
+
+    def mask(self, catalog, *args, **kwargs):
+        coords = catalog.coords
+        pix_coords = self._wcs.world_to_pixel(coords)
+        shape = self._mask.shape
+        x = np.round(pix_coords[0], 0).astype(int)
+        y = np.round(pix_coords[1], 0).astype(int)
+        x_lims = (x < 0) | (x >= shape[0])
+        y_lims = (y < 0) | (y >= shape[1])
+        m_ = x_lims | y_lims #These objects are outside this particular mask
+
+        unmasked_objects = np.ones(len(coords), dtype=bool )
+        unmasked_objects[~m_] = self._mask[x[~m_], y[~m_]]
+        return catalog[unmasked_objects]
+class _fitsMask(_mask):
+    def __init__(self, mask, mask_key, pixarray = False, *args, **kwargs):
         """
         If the mask is stored in a fits file, we assume we can 
         get the WCS info from the header in HDU 0, but we need to
         know where the actual mask is located, so we pass a key.
         A fits mask assumes masked pixels have a value > 0
         """
-        self._mask_key = mask_key
         super().__init__(mask)
-        start = time.time()
-        self._wcs = WCS(self._mask[0].header)
+
+        self._wcs = WCS(mask[0].header)
+        self._mask_key = mask_key
         self._mask_plane = self._mask[self._mask_key].data
-        end = time.time()
 
     def mask(self, catalog, *args, **kwargs):
         coords = catalog.coords
@@ -109,7 +151,7 @@ class _fitsMask(_mask):
 
         masked[to_skip] = False
         pixel_values = self._mask_plane[x[~to_skip], y[~to_skip]] 
-        masked[~to_skip] = pixel_values > 0
+        masked[~to_skip] = (pixel_values > 0)
         return catalog[~masked]
 
 class _regionMask(_mask):

@@ -38,7 +38,7 @@ class PolygonSampler(BaseSampler):
         Performs setup for the sampler.
         """
 
-        bounds = self._region.geometry.bounds
+        bounds = self._region.sky_geometry.bounds
         ra1,ra2 = bounds[0], bounds[2]
         dec1, dec2 = bounds[1], bounds[3]
         ra_range = (min(ra1, ra2), max(ra1, ra2))

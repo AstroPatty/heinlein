@@ -4,11 +4,12 @@ from typing import Union
 import astropy.units as u
 from shapely.geometry import Point
 from shapely.geometry.base import BaseGeometry
+from shapely import geometry
 from astropy.coordinates import SkyCoord
 from spherical_geometry.polygon import SingleSphericalPolygon
 
 from heinlein.region.base import BaseRegion
-from . import sampling
+from heinlein.region import sampling
 
 class Region:
 
@@ -50,9 +51,26 @@ class Region:
             poly = SingleSphericalPolygon.from_radec(points[0], points[1])
             return PolygonRegion(poly, *args, **kwargs)
 
+
+    @staticmethod
+    def box(bounds, *args, **kwargs):
+        if not (type(bounds) == list or len(args) == 3):
+            print("Error box region expects 4 inputs")
+            return
+        if len(args) == 3:
+            bounds_ = [bounds] + list(args)
+        else:
+            bounds_ = bounds
+        box_ = geometry.box(*bounds_)
+        b_ = Region.polygon(box_)
+        b_.box_ = box_
+        return b_
+
+
+
 class PolygonRegion(BaseRegion):
 
-    def __init__(self, polygon: SingleSphericalPolygon, name: str = None, *args, **kwargs):
+    def __init__(self, polygon, name: str = None, *args, **kwargs):
         """
         Basic general-shape region object.
 
@@ -83,6 +101,8 @@ class PolygonRegion(BaseRegion):
     def _get_sampler(self, *args, **kwargs):
         self._sampler = sampling.Sampler(self)
 
+class BoxRegion(BaseRegion):
+    pass
 
 class CircularRegion(BaseRegion):
 

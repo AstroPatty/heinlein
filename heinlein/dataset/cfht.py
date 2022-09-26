@@ -42,7 +42,8 @@ class MaskHandler(Handler):
             data = fits.open(matches[0])
             out = np.empty(1, dtype="object")
             out[0] = data
-            output.update({n.name: out for n in regions_[name]})
+            mask_obj = mask.Mask(out, **self._config)
+            output.update({n.name: mask_obj for n in regions_[name]})
         
         return output
 
@@ -54,7 +55,7 @@ class MaskHandler(Handler):
         i = 0
         for value in data.values():
             if id(value) not in found:
-                storage[i] = value[0]
+                storage[i] = value
                 found.append(id(value))
                 i += 1
-        return mask.Mask(storage, **self._config)
+        return storage[0].append(storage[1:])
