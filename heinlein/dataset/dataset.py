@@ -10,6 +10,7 @@ from heinlein.region import BaseRegion, Region
 from heinlein.manager import get_manager
 
 from shapely.strtree import STRtree
+from typing import List
 
 logger = logging.getLogger("Dataset")
 class Dataset:
@@ -147,12 +148,25 @@ class Dataset:
     def get_overlapping_region_names(self, query_region: BaseRegion):
         return [r.name for r in self._get_region_overlaps(query_region)]
 
-    def get_region_by_name(self, name: str):
+    def get_region_by_name(self, name: str, override = False):
         matches = self._regions[self._region_names == name]
         if len(matches) == 0:
             print(f"No regions with name {name} found in survey {self.name}")
+        if len(matches) > 1 and not override:
+            print("Error: multiple regions found with this name")
+            print("Call with \"override = True\" to silence this message and return the regions")
+        elif override:
+            return matches
+        else:
+            return matches[0]
+    
+    def get_regions_by_name(self, names: List[str]):
+        matches = self._regions[np.in1d(self._region_names, names)]
+        if len(matches) == 0:
+            print(f"No matches were found in dataset {self.name}")
         else:
             return matches
+
     
     @singledispatchmethod
     def mask_fraction(self, region_name: str, *args, **kwargs):
