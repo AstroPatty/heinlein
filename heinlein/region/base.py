@@ -45,15 +45,19 @@ class BaseRegion(ABC):
         """
         Perform setup for the region
         """
-        self._subregions = np.array([], dtype=object)
-        self._covered = False
-        points = self._spherical_geometry.points
-        self._flat_geometry = Polygon(points)
-        points = self._spherical_geometry.points
-        v = vector_to_lonlat(points[:,0], points[:,1], points[:,2])
-        ra = [r.round(2) for r in v[0]]
-        dec = [d.round(2) for d in v[1]]
-        self._flat_sky_geometry = Polygon(list(zip(ra, dec)))
+        try:
+            flat_geometry = self._flat_geometry
+        except AttributeError:
+            points = self._spherical_geometry.points
+            self._flat_geometry = Polygon(points)
+        try:
+            flat_sky_geometry = self._flat_sky_geometry
+        except AttributeError:                
+            points = self._spherical_geometry.points
+            v = vector_to_lonlat(points[:,0], points[:,1], points[:,2])
+            ra = [r.round(2) for r in v[0]]
+            dec = [d.round(2) for d in v[1]]
+            self._flat_sky_geometry = Polygon(list(zip(ra, dec)))
         
 
     def __setstate__(self, state):
@@ -62,6 +66,7 @@ class BaseRegion(ABC):
         """
         self.__dict__.update(state)
         self._config = current_config
+        self.setup()
 
     def __getattr__(self, __name: str) -> Any:
         """

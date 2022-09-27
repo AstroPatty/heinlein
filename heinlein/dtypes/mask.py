@@ -1,17 +1,18 @@
 from abc import ABC, abstractmethod
+from functools import  singledispatchmethod
+from gettext import Catalog
 import numpy as np
 import pymangle
 from astropy.io.fits import HDUList
 from astropy.wcs import WCS, utils
 from astropy.utils.exceptions import AstropyWarning
 import warnings
-import time
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry import MultiPoint
 from shapely.strtree import STRtree
 from heinlein.region import BaseRegion
+from astropy.coordinates import SkyCoord
 
-from spherical_geometry.polygon import SingleSphericalPolygon, SphericalPolygon
 
 warnings.simplefilter('ignore', category=AstropyWarning)
 
@@ -43,12 +44,13 @@ class Mask:
         """
         self._masks = get_mask_objects(masks, *args, **kwargs)
 
-    def mask(self, catalog, *args, **kwargs):
+    def mask(self, catalog: Catalog, *args, **kwargs):
         for mask in self._masks:
             catalog = mask.mask(catalog)
             if len(catalog) == 0:
                 return catalog
         return catalog
+
 
     def append(self, other):
 
@@ -84,12 +86,22 @@ class _mangleMask(_mask):
         """
         super().__init__(mask)
 
-    def mask(self, catalog, *args, **kwargs):
+    @singledispatchmethod
+    def mask(self, catalog: Catalog, *args, **kwargs):
         coords = catalog.coords
+        contains = self._check(coords)
+        return catalog[~contains]
+
+    @mask.register
+    def _(self, coords: SkyCoord):
+        contains = self._check(coords)
+        return coords[~contains]
+
+    def _check(self, coords):
         ra = coords.ra.to("deg").value
         dec = coords.dec.to("deg").value
         contains = self._mask.contains(ra, dec)
-        return catalog[~contains]
+        return contains
 
 class _pixelArrayMask(_mask):
     def __init__(self, mask, mask_key, *args, **kwargs):
@@ -107,9 +119,7 @@ class _pixelArrayMask(_mask):
         self._mask.close()
         self._mask = pixel_coords
 
-
-    def mask(self, catalog, *args, **kwargs):
-        coords = catalog.coords
+    def _check(self, coords, *args, **kwargs):
         pix_coords = self._wcs.world_to_pixel(coords)
         shape = self._mask.shape
         x = np.round(pix_coords[0], 0).astype(int)
@@ -120,7 +130,19 @@ class _pixelArrayMask(_mask):
 
         unmasked_objects = np.ones(len(coords), dtype=bool )
         unmasked_objects[~m_] = self._mask[x[~m_], y[~m_]]
-        return catalog[unmasked_objects]
+        return unmasked_objects
+
+    @singledispatchmethod
+    def mask(self, catalog: Catalog, *args, **kwargs):
+        coords = catalog.coords
+        mask = self._check(coords)
+        return catalog[mask]
+    
+    @mask.register
+    def _(self, coords: SkyCoord):
+        mask = self._check(coords)
+        return coords[mask]
+
 class _fitsMask(_mask):
     def __init__(self, mask, mask_key, pixarray = False, *args, **kwargs):
         """
@@ -135,8 +157,7 @@ class _fitsMask(_mask):
         self._mask_key = mask_key
         self._mask_plane = self._mask[self._mask_key].data
 
-    def mask(self, catalog, *args, **kwargs):
-        coords = catalog.coords
+    def _check(self, coords):
         x, y = utils.skycoord_to_pixel(coords, self._wcs)
         x = np.round(x,0).astype(int)
         y = np.round(y,0).astype(int)
@@ -154,8 +175,18 @@ class _fitsMask(_mask):
         masked[to_skip] = False
         pixel_values = self._mask_plane[x[~to_skip], y[~to_skip]] 
         masked[~to_skip] = (pixel_values > 0)
-        return catalog[~masked]
+        return ~masked
 
+    @singledispatchmethod
+    def mask(self, catalog: Catalog, *args, **kwargs):
+        coords = catalog.coords
+        mask = self._check(coords)
+        return catalog[mask]
+
+    @mask.register
+    def _(self, coords: SkyCoord):
+        mask = self._check(coords)
+        return coords[mask]
 class _regionMask(_mask):
     def __init__(self, mask, *args, **kwargs):
         """

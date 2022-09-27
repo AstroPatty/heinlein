@@ -271,12 +271,8 @@ class DataManager(ABC):
     @abstractmethod
     def remove_data(self, *args, **kwargs):
         pass
-
-    def get_data(self, dtypes: list, query_region: BaseRegion, region_overlaps: list, *args, **kwargs) -> dict:
-        """
-        Get data of a specificed type
-        The manager is responsible for finding the path, and the giving it to the handlers
-        """
+    
+    def get_from(self, dtypes: list, region_overlaps: list, *args, **kwargs):
         return_types = []
         new_data = {}
         self.load_handlers()
@@ -317,7 +313,15 @@ class DataManager(ABC):
             else:
                 data.update(new_d)
                 storage.update({k: data})
+        return storage
 
+    def get_data(self, dtypes: list, query_region: BaseRegion, region_overlaps: list, *args, **kwargs) -> dict:
+        """
+        Get data of a specificed type
+        The manager is responsible for finding the path, and the giving it to the handlers
+        """
+
+        storage = self.get_from(dtypes, region_overlaps, *args, **kwargs)
         storage = self.parse_data(storage, *args, **kwargs)
         return storage
 
