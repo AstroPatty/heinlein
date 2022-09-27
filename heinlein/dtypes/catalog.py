@@ -225,6 +225,10 @@ class Catalog(Table):
     @property
     def coords(self):
         return self._skycoords
+    
+    @property
+    def points(self):
+        return self._cartesian_points
 
     def get_passthrough_items(self, *args, **kwargs):
         items = {}

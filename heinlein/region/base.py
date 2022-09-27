@@ -1,5 +1,5 @@
 from __future__ import annotations
-from abc import ABC
+from abc import ABC, abstractmethod
 import logging
 from typing import Any
 from xml.dom.minidom import Attr
@@ -120,4 +120,23 @@ class BaseRegion(ABC):
     def center(self, *args, **kwargs):
         pass
 
+
+    def get_grid(self, density, *args, **kwargs):
+        try:
+            return self._grids[density]
+
+        except KeyError:
+            g = self.initialize_grid(density)
+            self._grids[density] = g
+            return g
+
+        except AttributeError:
+            self._grids = {}
+            g = self.initialize_grid(density)
+            self._grids[density] = g
+            return g
+    
+    @abstractmethod
+    def initialize_grid(self, density, *args, **kwargs):
+        pass
         

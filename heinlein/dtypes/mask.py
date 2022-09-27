@@ -12,6 +12,7 @@ from shapely.geometry import MultiPoint
 from shapely.strtree import STRtree
 from heinlein.region import BaseRegion
 from astropy.coordinates import SkyCoord
+from spherical_geometry.vector import lonlat_to_vector
 
 
 warnings.simplefilter('ignore', category=AstropyWarning)
@@ -201,16 +202,30 @@ class _regionMask(_mask):
         self._geo_idx = indices
         self._geo_tree = STRtree(geo_list)
 
-    def mask(self, catalog):
-        mp = MultiPoint(catalog._cartesian_points)
-        not_masked = np.ones(len(catalog), dtype=bool)   
-        for index, p in enumerate(mp.geoms):     
+    @singledispatchmethod
+    def mask(self, catalog: Catalog):
+        mp = MultiPoint(catalog.points)
+        mask = self._check(mp)
+        return catalog[mask]
+
+    @mask.register
+    def _(self, coords: SkyCoord):
+        ra = coords.ra.to_value("deg")
+        dec = coords.dec.to_value("deg")
+        points = np.dstack(lonlat_to_vector(ra, dec))[0]
+        mp = MultiPoint(points)
+        mask = self._check(mp)
+        return coords[mask]
+
+    def _check(self, points):
+        mask = np.ones(len(points.geoms), dtype=bool)   
+        for index, p in enumerate(points.geoms):     
             a = self._geo_tree.query(p)
             for geo in a:
                 if geo.contains(p):
-                    not_masked[index] = False
+                    mask[index] = False
                     break
-        return catalog[not_masked]
+        return mask
 
 class _shapelyMask(_mask):
     def __init__(self, mask, *args, **kwargs):

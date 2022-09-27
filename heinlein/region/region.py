@@ -101,23 +101,13 @@ class PolygonRegion(BaseRegion):
     def _get_sampler(self, *args, **kwargs):
         self._sampler = sampling.Sampler(self)
 
-    def get_grid(self, density, *args, **kwargs):
-        try:
-            return self._grids[density]
-        except AttributeError:
-            self._grids = {}
-            self.initialize_grid(density)
-            return self._grids[density]
-        except KeyError:
-            self.initialize_grid(density)
-            return self._grids[density]
-
 
     def initialize_grid(self, density=1000, *args, **kwargs):
         bounds = self.sky_geometry.bounds
         area = self.sky_geometry.area
         coords = initialize_grid(bounds, area, density)
-        self._grids[density] = coords
+        return coords
+
 class CircularRegion(BaseRegion):
 
     def __init__(self, center: SkyCoord, radius: u.Quantity, name = None, *args, **kwargs) -> None:
@@ -150,3 +140,9 @@ class CircularRegion(BaseRegion):
     def radius(self) -> u.quantity:
         return self._radius
     
+    def initialize_grid(self, density, *args, **kwargs):
+        bounds = self.sky_geometry.bounds
+        area = geometry.box(*bounds).area
+        grid = initialize_grid(bounds, area, density)
+        center = self.coordinate
+        return grid[center.separation(grid) < self.radius]

@@ -1,3 +1,4 @@
+from functools import singledispatchmethod
 import logging
 from importlib import import_module
 import numpy as np
@@ -146,7 +147,8 @@ class Dataset:
     def get_overlapping_region_names(self, query_region: BaseRegion):
         return [r.name for r in self._get_region_overlaps(query_region)]
 
-    def mask_fraction(self, region_name, *args, **kwargs):
+    @singledispatchmethod
+    def mask_fraction(self, region_name: str, *args, **kwargs):
         """
         Returns the fraction of the named region covered by some sort of mask.
         Initializes a grid of points, then masks them to get an approximate
@@ -157,8 +159,19 @@ class Dataset:
         reg = self._regions[self._region_names == region_name]
         mask = self.get_data_from_named_region(region_name, dtypes=["mask"])["mask"][region_name]
         grid = reg[0].get_grid(density=10000)
+        return self._mask_fraction(mask, grid)
+
+    @mask_fraction.register
+    def _(self, region: BaseRegion, *args, **kwargs):
+        mask = self.get_data_from_region(region, dtypes=["mask"])["mask"]
+        grid = region.get_grid(density=200000)
+        return self._mask_fraction(mask, grid)
+    
+    @staticmethod
+    def _mask_fraction(mask, grid):
         masked_grid = mask.mask(grid)
         return round(1 - len(masked_grid) / len(grid), 3)
+
 
 def load_dataset(name: str) -> Dataset:
     manager = get_manager(name)
