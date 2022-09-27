@@ -147,6 +147,13 @@ class Dataset:
     def get_overlapping_region_names(self, query_region: BaseRegion):
         return [r.name for r in self._get_region_overlaps(query_region)]
 
+    def get_region_by_name(self, name: str):
+        matches = self._regions[self._region_names == name]
+        if len(matches) == 0:
+            print(f"No regions with name {name} found in survey {self.name}")
+        else:
+            return matches
+    
     @singledispatchmethod
     def mask_fraction(self, region_name: str, *args, **kwargs):
         """
@@ -169,6 +176,7 @@ class Dataset:
     
     @staticmethod
     def _mask_fraction(mask, grid):
+        import matplotlib.pyplot as plt
         masked_grid = mask.mask(grid)
         return round(1 - len(masked_grid) / len(grid), 3)
 
