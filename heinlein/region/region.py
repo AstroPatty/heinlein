@@ -1,8 +1,5 @@
-from ast import Mult
-from functools import reduce
 from math import ceil
 from typing import Union
-from xml.dom.minidom import Attr
 import astropy.units as u
 from shapely.geometry import Point
 from shapely.geometry.base import BaseGeometry
@@ -12,6 +9,7 @@ from spherical_geometry.polygon import SingleSphericalPolygon
 
 from heinlein.region.base import BaseRegion
 from heinlein.region import sampling
+from heinlein.utilities.utilities import initialize_grid
 import numpy as np
 
 class Region:
@@ -117,29 +115,9 @@ class PolygonRegion(BaseRegion):
 
     def initialize_grid(self, density=1000, *args, **kwargs):
         bounds = self.sky_geometry.bounds
-        ra1,ra2 = bounds[0], bounds[2]
-        dec1, dec2 = bounds[1], bounds[3]
-        dra = ra2 - ra1
-        ddec = dec2 - dec1
         area = self.sky_geometry.area
-        npoints = round(density*area)
-        ratio = ddec/dra
-        nra = np.sqrt(npoints/ratio)
-        ndec = nra*ratio
-        nra = ceil(nra) + 1
-        ndec = ceil(ndec) + 1
-        dra_ = dra/(nra+1)
-        ddec_ = ddec/(ndec+1)
-        gra = [ra1 + i*dra_ for i in range(1, nra+1)]
-        gdec = [dec1 + i*ddec_ for i in range(1, ndec+1)]
-        x_, y_= np.meshgrid(gra, gdec)
-        cpoints = np.vstack([x_.ravel(), y_.ravel()])
-        coords = SkyCoord(cpoints[0], cpoints[1], unit="deg")
+        coords = initialize_grid(bounds, area, density)
         self._grids[density] = coords
-    
-class BoxRegion(BaseRegion):
-    pass
-
 class CircularRegion(BaseRegion):
 
     def __init__(self, center: SkyCoord, radius: u.Quantity, name = None, *args, **kwargs) -> None:
