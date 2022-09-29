@@ -1,5 +1,5 @@
 from __future__ import annotations
-from abc import ABC
+from abc import ABC, abstractmethod
 import logging
 from typing import Any
 from xml.dom.minidom import Attr
@@ -45,15 +45,19 @@ class BaseRegion(ABC):
         """
         Perform setup for the region
         """
-        self._subregions = np.array([], dtype=object)
-        self._covered = False
-        points = self._spherical_geometry.points
-        self._flat_geometry = Polygon(points)
-        points = self._spherical_geometry.points
-        v = vector_to_lonlat(points[:,0], points[:,1], points[:,2])
-        ra = [r.round(2) for r in v[0]]
-        dec = [d.round(2) for d in v[1]]
-        self._flat_sky_geometry = Polygon(list(zip(ra, dec)))
+        try:
+            flat_geometry = self._flat_geometry
+        except AttributeError:
+            points = self._spherical_geometry.points
+            self._flat_geometry = Polygon(points)
+        try:
+            flat_sky_geometry = self._flat_sky_geometry
+        except AttributeError:                
+            points = self._spherical_geometry.points
+            v = vector_to_lonlat(points[:,0], points[:,1], points[:,2])
+            ra = [r.round(2) for r in v[0]]
+            dec = [d.round(2) for d in v[1]]
+            self._flat_sky_geometry = Polygon(list(zip(ra, dec)))
         
 
     def __setstate__(self, state):
@@ -62,6 +66,7 @@ class BaseRegion(ABC):
         """
         self.__dict__.update(state)
         self._config = current_config
+        self.setup()
 
     def __getattr__(self, __name: str) -> Any:
         """
@@ -115,4 +120,23 @@ class BaseRegion(ABC):
     def center(self, *args, **kwargs):
         pass
 
+
+    def get_grid(self, density, *args, **kwargs):
+        try:
+            return self._grids[density]
+
+        except KeyError:
+            g = self.initialize_grid(density)
+            self._grids[density] = g
+            return g
+
+        except AttributeError:
+            self._grids = {}
+            g = self.initialize_grid(density)
+            self._grids[density] = g
+            return g
+    
+    @abstractmethod
+    def initialize_grid(self, density, *args, **kwargs):
+        pass
         

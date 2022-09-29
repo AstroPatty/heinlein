@@ -1,5 +1,5 @@
+from functools import singledispatchmethod
 import logging
-from importlib import import_module
 import numpy as np
 from typing import Union
 
@@ -9,6 +9,7 @@ from heinlein.region import BaseRegion, Region
 from heinlein.manager import get_manager
 
 from shapely.strtree import STRtree
+from typing import List
 
 logger = logging.getLogger("Dataset")
 class Dataset:
@@ -47,6 +48,7 @@ class Dataset:
         try:
             regions = self._regions
             self._regions = np.array(self._regions, dtype=object)
+            self._region_names = np.array([reg.name for reg in self._regions], dtype=str)
         except AttributeError:
             logging.error(f"No region found for survey {self.name}")
     
@@ -74,7 +76,7 @@ class Dataset:
         except AttributeError:
             self._aliases = {dtype: aliases}
 
-    def get_region_overlaps(self, other: BaseRegion, *args, **kwargs) -> list:
+    def _get_region_overlaps(self, other: BaseRegion, *args, **kwargs) -> list:
         """
         Find the subregions inside a dataset that overlap with a given region
         Uses the shapely STRTree for speed.
@@ -84,7 +86,14 @@ class Dataset:
         overlaps = [self._regions[self._geo_idx[i]] for i in idxs]
         overlaps = [o for o in overlaps if o.intersects(other)]
         return overlaps
+    
+    def get_data_from_named_region(self, name: str, dtypes: Union[str, list] = "catalog"):
+        if name not in self._region_names:
+            print(f"Unable to find region named {name} in dataset {self.name}")
+            return
 
+        regs_ = self._regions[self._region_names == name]
+        return self.manager.get_from(dtypes, regs_)
     
     def get_data_from_region(self, query_region: BaseRegion, dtypes: Union[str, list] = "catalog", *args, **kwargs) -> dict:
         """
@@ -96,7 +105,7 @@ class Dataset:
         dtypes <str> or <list>: list of data types to return
         
         """
-        overlaps = self.get_region_overlaps(query_region, *args, **kwargs)
+        overlaps = self._get_region_overlaps(query_region, *args, **kwargs)
         overlaps = [o for o in overlaps if o.intersects(query_region)]
 
         if len(overlaps) == 0:
@@ -134,6 +143,56 @@ class Dataset:
     def cone_search(self, center, radius, *args, **kwargs):
         reg = Region.circle(center=center, radius=radius)
         return self.get_data_from_region(reg, *args, **kwargs)
+
+    def get_overlapping_region_names(self, query_region: BaseRegion):
+        return [r.name for r in self._get_region_overlaps(query_region)]
+
+    def get_region_by_name(self, name: str, override = False):
+        matches = self._regions[self._region_names == name]
+        if len(matches) == 0:
+            print(f"No regions with name {name} found in survey {self.name}")
+        if len(matches) > 1 and not override:
+            print("Error: multiple regions found with this name")
+            print("Call with \"override = True\" to silence this message and return the regions")
+        elif override:
+            return matches
+        else:
+            return matches[0]
+    
+    def get_regions_by_name(self, names: List[str]):
+        matches = self._regions[np.in1d(self._region_names, names)]
+        if len(matches) == 0:
+            print(f"No matches were found in dataset {self.name}")
+        else:
+            return matches
+
+    
+    @singledispatchmethod
+    def mask_fraction(self, region_name: str, *args, **kwargs):
+        """
+        Returns the fraction of the named region covered by some sort of mask.
+        Initializes a grid of points, then masks them to get an approximate
+        
+        """
+        if region_name not in self._region_names:
+            print(f"Unable to find region named {region_name} for dataset {self.name}")
+        reg = self._regions[self._region_names == region_name]
+        mask = self.get_data_from_named_region(region_name, dtypes=["mask"])["mask"][region_name]
+        grid = reg[0].get_grid(density=10000)
+        return self._mask_fraction(mask, grid)
+
+    @mask_fraction.register
+    def _(self, region: BaseRegion, *args, **kwargs):
+        mask = self.get_data_from_region(region, dtypes=["mask"])["mask"]
+        grid = region.get_grid(density=200000)
+        return self._mask_fraction(mask, grid)
+    
+    @staticmethod
+    def _mask_fraction(mask, grid):
+        import matplotlib.pyplot as plt
+        masked_grid = mask.mask(grid)
+        return round(1 - len(masked_grid) / len(grid), 3)
+
 
 def load_dataset(name: str) -> Dataset:
     manager = get_manager(name)

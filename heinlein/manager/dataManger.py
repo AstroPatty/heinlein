@@ -1,24 +1,22 @@
 from abc import abstractmethod
 from importlib import import_module
 import json
-from lib2to3.pytree import Base
-from tkinter.tix import MAIN
+
+import portalocker
 from heinlein.locations import BASE_DATASET_CONFIG_DIR, DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, BUILTIN_DTYPES
 from abc import ABC
-from heinlein.region import base
 from heinlein.region.base import BaseRegion
 from heinlein.utilities import warning_prompt_tf
 from heinlein.config.config import globalConfig
 import multiprocessing as mp
-import numpy as np
-from typing import Any
 import logging
 import pathlib
 import shutil
 import atexit
-import time
 from cacheout import LRUCache
+
 logger = logging.getLogger("manager")
+
 
 def write_config_atexit(config, path):
     with open(path, 'w') as f:
@@ -86,16 +84,16 @@ class DataManager(ABC):
     def get_config_paths(self):
         base_config_location = BASE_DATASET_CONFIG_DIR / "surveys.json"
         stored_config_location = MAIN_DATASET_CONFIG
-        with open(base_config_location, "rb") as f:
+        with portalocker.Lock(base_config_location, "rb") as f:
             base_config = json.load(f)
-        with open(stored_config_location, "rb") as f:
+        with portalocker.Lock(stored_config_location, "rb") as f:
             stored_config = json.load(f)
 
         for key, value in base_config.items():
             if key not in stored_config.keys():
                 stored_config.update({key: value})
 
-        with open(stored_config_location, "w") as f:
+        with portalocker.Lock(stored_config_location, "w") as f:
             json.dump(stored_config, f, indent=4)
         return stored_config
 
@@ -271,12 +269,8 @@ class DataManager(ABC):
     @abstractmethod
     def remove_data(self, *args, **kwargs):
         pass
-
-    def get_data(self, dtypes: list, query_region: BaseRegion, region_overlaps: list, *args, **kwargs) -> dict:
-        """
-        Get data of a specificed type
-        The manager is responsible for finding the path, and the giving it to the handlers
-        """
+    
+    def get_from(self, dtypes: list, region_overlaps: list, *args, **kwargs):
         return_types = []
         new_data = {}
         self.load_handlers()
@@ -317,7 +311,15 @@ class DataManager(ABC):
             else:
                 data.update(new_d)
                 storage.update({k: data})
+        return storage
 
+    def get_data(self, dtypes: list, query_region: BaseRegion, region_overlaps: list, *args, **kwargs) -> dict:
+        """
+        Get data of a specificed type
+        The manager is responsible for finding the path, and the giving it to the handlers
+        """
+
+        storage = self.get_from(dtypes, region_overlaps, *args, **kwargs)
         storage = self.parse_data(storage, *args, **kwargs)
         return storage
 
@@ -388,4 +390,4 @@ def get_all():
         except FileNotFoundError:
             missing.append(name)
         storage.update({name: survey_data})
-    return storage
+    return storage  

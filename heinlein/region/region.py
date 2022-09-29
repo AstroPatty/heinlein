@@ -1,5 +1,4 @@
-from ast import Mult
-from functools import reduce
+from math import ceil
 from typing import Union
 import astropy.units as u
 from shapely.geometry import Point
@@ -10,6 +9,8 @@ from spherical_geometry.polygon import SingleSphericalPolygon
 
 from heinlein.region.base import BaseRegion
 from heinlein.region import sampling
+from heinlein.utilities.utilities import initialize_grid
+import numpy as np
 
 class Region:
 
@@ -97,12 +98,15 @@ class PolygonRegion(BaseRegion):
             self._get_sampler()
         return self._sampler.get_circular_sample(radius)
     
-
     def _get_sampler(self, *args, **kwargs):
         self._sampler = sampling.Sampler(self)
 
-class BoxRegion(BaseRegion):
-    pass
+
+    def initialize_grid(self, density=1000, *args, **kwargs):
+        bounds = self.sky_geometry.bounds
+        area = self.sky_geometry.area
+        coords = initialize_grid(bounds, area, density)
+        return coords
 
 class CircularRegion(BaseRegion):
 
@@ -136,3 +140,9 @@ class CircularRegion(BaseRegion):
     def radius(self) -> u.quantity:
         return self._radius
     
+    def initialize_grid(self, density, *args, **kwargs):
+        bounds = self.sky_geometry.bounds
+        area = geometry.box(*bounds).area
+        grid = initialize_grid(bounds, area, density)
+        center = self.coordinate
+        return grid[center.separation(grid) < self.radius]
