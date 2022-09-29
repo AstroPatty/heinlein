@@ -84,8 +84,11 @@ class DataManager(ABC):
     def get_config_paths(self):
         base_config_location = BASE_DATASET_CONFIG_DIR / "surveys.json"
         stored_config_location = MAIN_DATASET_CONFIG
-        with portalocker.Lock(base_config_location, "rb") as f:
+        with open(base_config_location, "rb") as f:
             base_config = json.load(f)
+
+        with open(stored_config_location, "r") as f2:
+            stored_config = json.load(f2)
 
         with open(stored_config_location, "r") as f2:
             stored_config = json.load(f2)
