@@ -14,8 +14,8 @@ from heinlein.region import BaseRegion
 from astropy.coordinates import SkyCoord
 from spherical_geometry.vector import lonlat_to_vector
 
-
 warnings.simplefilter('ignore', category=AstropyWarning)
+
 
 def get_mask_objects(input_list, *args, **kwargs):
     output_data = np.empty(len(input_list), dtype="object")
@@ -37,13 +37,18 @@ def get_mask_objects(input_list, *args, **kwargs):
 
 class Mask:
 
-    def __init__(self, masks, *args, **kwargs):
+    def __init__(self, masks = [], *args, **kwargs):
         """
         Masks are much less regular than catalogs. There are many different
         formats, and some surveys mix formats. The "Mask" object is a wraper class
         that handles interfacing with all these different formats.
         """
         self._masks = get_mask_objects(masks, *args, **kwargs)
+
+    @classmethod
+    def from_masks(cls, masks, *args, **kwargs):
+        m = cls()
+        m._masks = masks
 
     def mask(self, catalog: Catalog, *args, **kwargs):
         for mask in self._masks:
@@ -57,11 +62,12 @@ class Mask:
 
         if len(other) == 0:
             return self
-        else:
-            for m_ in other:
-                sub_masks = m_._masks
-                self._masks = np.concatenate((self._masks, sub_masks))
-        return self
+
+        masks = np.empty(1 + len(other), dtype=object)
+        for index, m_ in enumerate(other):
+            masks[index] = m_._masks
+        all_masks = np.hstack(masks)
+        return Mask.from_masks(all_masks)
         
         
 

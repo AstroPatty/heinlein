@@ -1,6 +1,5 @@
 from functools import singledispatchmethod
 import logging
-from importlib import import_module
 import numpy as np
 from typing import Union
 
