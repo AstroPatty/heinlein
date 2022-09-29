@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "heinlein"
-version = "0.3.6"
+version = "0.3.9"
 description = "Library for interacting with large astronomical survey datasets"
 authors = ["Patrick Wells <pwells@ucdavis.edu>"]
 exclude = ["heinlein/config/support/hsc_regions.csv", "heinlein/config/support/**/*.txt"]
