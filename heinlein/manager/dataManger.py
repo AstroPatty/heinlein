@@ -84,10 +84,11 @@ class DataManager(ABC):
     def get_config_paths(self):
         base_config_location = BASE_DATASET_CONFIG_DIR / "surveys.json"
         stored_config_location = MAIN_DATASET_CONFIG
-        with portalocker.Lock(base_config_location, "rb") as f:
+        with open(base_config_location, "rb") as f:
             base_config = json.load(f)
-        with portalocker.Lock(stored_config_location, "rb") as f:
-            stored_config = json.load(f)
+
+        with open(stored_config_location, "r") as f2:
+            stored_config = json.load(f2)
 
         for key, value in base_config.items():
             if key not in stored_config.keys():
