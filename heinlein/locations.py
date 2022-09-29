@@ -1,5 +1,4 @@
 from pathlib import Path
-from tkinter.tix import MAIN
 import appdirs
 
 base = Path(__file__).parents[0]

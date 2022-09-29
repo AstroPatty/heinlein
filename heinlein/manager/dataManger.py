@@ -86,9 +86,9 @@ class DataManager(ABC):
         stored_config_location = MAIN_DATASET_CONFIG
         with portalocker.Lock(base_config_location, "rb") as f:
             base_config = json.load(f)
-        with portalocker.Lock(stored_config_location, "rb") as f:
-            stored_config = json.load(f)
 
+        with open(stored_config_location, "r") as f2:
+            stored_config = json.load(f2)
         for key, value in base_config.items():
             if key not in stored_config.keys():
                 stored_config.update({key: value})
@@ -391,3 +391,4 @@ def get_all():
             missing.append(name)
         storage.update({name: survey_data})
     return storage  
+
