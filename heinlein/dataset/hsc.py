@@ -10,7 +10,6 @@ import re
 import math
 import operator
 import pickle
-import time
 import regions as reg
 from shapely import geometry
 from shapely import affinity
@@ -151,15 +150,12 @@ class MaskHandler(Handler):
 
         for index, name in enumerate(names):
             split = name.split(".")
-            basename = "BrightStarMask-{}-{},{}-HSC-R.reg"
+            basename = "BrightStarMask-{}-{},{}-HSC-I.reg"
             patch_tuple = _patch_int_to_tuple(int(split[1]))
 
             fname = basename.format(split[0], patch_tuple[0], patch_tuple[1])
             path = self._path / split[0] / fname
-            start = time.time()
-
             mask = reg.Regions.read(str(path))
-
             new_masks = np.empty(len(mask), dtype=object)
 
             for i,r in enumerate(mask):
@@ -172,11 +168,10 @@ class MaskHandler(Handler):
                     width = r.width.to_value("deg")
                     height = r.height.to_value("deg")
                     angle = r.angle.to_value("deg")
-                    box = geometry.box(x - width, y - height, x + width, y + height)
+                    box = geometry.box(x - width/2, y - height/2, x + width/2, y + height/2)
                     new_reg = affinity.rotate(box, angle)
                     x_coords, y_coords = new_reg.exterior.xy
                     inside = (x,y)
-    
                     new_reg = SingleSphericalPolygon.from_lonlat(x_coords, y_coords, center = inside)
                     new_reg = Region.polygon(new_reg)
 

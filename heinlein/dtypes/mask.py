@@ -49,6 +49,7 @@ class Mask:
     def from_masks(cls, masks, *args, **kwargs):
         m = cls()
         m._masks = masks
+        return m
 
     def mask(self, catalog: Catalog, *args, **kwargs):
         for mask in self._masks:
@@ -65,7 +66,8 @@ class Mask:
 
         masks = np.empty(1 + len(other), dtype=object)
         for index, m_ in enumerate(other):
-            masks[index] = m_._masks
+            masks[index+1] = m_._masks
+        masks[0] = self._masks
         all_masks = np.hstack(masks)
         return Mask.from_masks(all_masks)
         
