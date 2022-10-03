@@ -10,9 +10,13 @@ import sqlite3
 def split_catalog(args) -> None:
     files = [file for file in args.input_path.glob(f"*{args.input_format}")]
     files = [f for f in files if not f.name.startswith(".")]
-    print(f"Found {len(files)} to read from")
+    print(f"Found {len(files)} files to read from")
     ds = heinlein.dataset.load_current_config(args.survey_name)
-    catalog_config = ds['data']['catalog']
+    try:
+        catalog_config = ds['data']['catalog']
+    except KeyError:
+        catalog_config = ds['dconfig']['catalog']
+
     region_key = catalog_config['region']
     subregion_key = catalog_config.get("subregion", False)
     if args.threads > 1:
