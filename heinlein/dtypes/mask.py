@@ -214,7 +214,8 @@ class _regionMask(_mask):
 
     @singledispatchmethod
     def mask(self, catalog: Catalog):
-        mp = MultiPoint(catalog.points)
+        import time
+        mp = {'skycoords': catalog.coords, "points": MultiPoint(catalog.points)}
         mask = self._check(mp)
         return catalog[mask]
 
@@ -223,17 +224,19 @@ class _regionMask(_mask):
         ra = coords.ra.to_value("deg")
         dec = coords.dec.to_value("deg")
         points = np.dstack(lonlat_to_vector(ra, dec))[0]
-        mp = MultiPoint(points)
+        mp = {'skycoords': coords, 'points': MultiPoint(points)}
         mask = self._check(mp)
         return coords[mask]
 
-    def _check(self, points):
+    def _check(self, points_dict):
+        points = points_dict['points']
+        skycoords = points_dict['skycoords']
         mask = np.ones(len(points.geoms), dtype=bool)
         for index, p in enumerate(points.geoms):
             a = self._geo_tree.query(p)
             for geo in a:
-                if self._mask[self._geo_idx[id(geo)]].contains(p):
-                    mask[index] = False
+                if geo.contains(p):
+                    mask[index] = True
                     break
         return mask
 

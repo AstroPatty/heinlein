@@ -1,3 +1,4 @@
+from functools import singledispatchmethod
 from math import ceil
 from typing import Union
 import astropy.units as u
@@ -140,10 +141,15 @@ class CircularRegion(BaseRegion):
     def radius(self) -> u.quantity:
         return self._radius
     
-    def contains(self, point, *args, **kwargs):
-        lonlat = vector_to_lonlat(point.x, point.y, point.z)
-        separation = SkyCoord(*lonlat, unit="deg").separation(self.coordinate)
+    @singledispatchmethod
+    def contains(self, point: SkyCoord):
+        separation = point.separation(self.coordinate)
         return separation <= self.radius
+
+    @contains.register
+    def _(self, point: geometry.Point, *args, **kwargs):
+        lonlat = vector_to_lonlat(point.x, point.y, point.z)
+        return self.contains(SkyCoord(*lonlat, unit="deg"))
 
     def initialize_grid(self, density, *args, **kwargs):
         bounds = self.sky_geometry.bounds

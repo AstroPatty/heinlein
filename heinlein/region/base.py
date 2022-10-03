@@ -136,9 +136,15 @@ class BaseRegion(ABC):
             self._grids[density] = g
             return g
     
+    @singledispatchmethod
     def contains(self, point, *args, **kwargs):
         return self._spherical_geometry.contains_point(point)
     
+    @contains.register
+    def _(self, point: SkyCoord):
+        vec = lonlat_to_vector(point.ra, point.dec)
+        return self.contains(vec)
+
     @abstractmethod
     def initialize_grid(self, density, *args, **kwargs):
         pass
