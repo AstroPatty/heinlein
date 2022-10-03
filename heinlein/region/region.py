@@ -6,7 +6,7 @@ from shapely.geometry.base import BaseGeometry
 from shapely import geometry
 from astropy.coordinates import SkyCoord
 from spherical_geometry.polygon import SingleSphericalPolygon
-
+from spherical_geometry.vector import vector_to_lonlat
 from heinlein.region.base import BaseRegion
 from heinlein.region import sampling
 from heinlein.utilities.utilities import initialize_grid
@@ -140,6 +140,11 @@ class CircularRegion(BaseRegion):
     def radius(self) -> u.quantity:
         return self._radius
     
+    def contains(self, point, *args, **kwargs):
+        lonlat = vector_to_lonlat(point.x, point.y, point.z)
+        separation = SkyCoord(*lonlat, unit="deg").separation(self.coordinate)
+        return separation <= self.radius
+
     def initialize_grid(self, density, *args, **kwargs):
         bounds = self.sky_geometry.bounds
         area = geometry.box(*bounds).area

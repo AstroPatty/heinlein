@@ -12,7 +12,9 @@ from shapely.geometry import MultiPoint
 from shapely.strtree import STRtree
 from heinlein.region import BaseRegion
 from astropy.coordinates import SkyCoord
-from spherical_geometry.vector import lonlat_to_vector
+from spherical_geometry.vector import lonlat_to_vector, vector_to_lonlat
+from shapely import geometry
+from heinlein.region.region import CircularRegion
 
 warnings.simplefilter('ignore', category=AstropyWarning)
 
@@ -226,11 +228,11 @@ class _regionMask(_mask):
         return coords[mask]
 
     def _check(self, points):
-        mask = np.ones(len(points.geoms), dtype=bool)   
-        for index, p in enumerate(points.geoms):     
+        mask = np.ones(len(points.geoms), dtype=bool)
+        for index, p in enumerate(points.geoms):
             a = self._geo_tree.query(p)
             for geo in a:
-                if geo.contains(p):
+                if self._mask[self._geo_idx[id(geo)]].contains(p):
                     mask[index] = False
                     break
         return mask
@@ -249,3 +251,12 @@ class _shapelyMask(_mask):
     def mask(self, catalog):
         ras = catalog.coords.ra.to_value("deg")
         decs = catalog.coords.dec.to_value("deg")
+        points = geometry.MultiPoint(list(zip(ras, decs)))
+        mask = np.ones(len(catalog), dtype=bool)
+        for index, point in enumerate(points.geoms):
+            if mask[index]:
+                for submask in self._mask:
+                    if submask.contains(point):
+                        mask[index] = False
+        
+        return catalog[mask]

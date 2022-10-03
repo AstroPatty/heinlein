@@ -5,11 +5,11 @@ from typing import Any
 from xml.dom.minidom import Attr
 from shapely.strtree import STRtree
 import numpy as np
-from functools import partial
+from functools import partial, singledispatchmethod
 from shapely.geometry import Polygon
-from spherical_geometry.vector import vector_to_lonlat
+from spherical_geometry.vector import vector_to_lonlat, lonlat_to_vector
 import json
-
+from astropy.coordinates import SkyCoord
 from heinlein.locations import MAIN_CONFIG_DIR
 logger = logging.getLogger("region")
 
@@ -135,6 +135,9 @@ class BaseRegion(ABC):
             g = self.initialize_grid(density)
             self._grids[density] = g
             return g
+    
+    def contains(self, point, *args, **kwargs):
+        return self._spherical_geometry.contains_point(point)
     
     @abstractmethod
     def initialize_grid(self, density, *args, **kwargs):

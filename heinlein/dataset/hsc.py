@@ -13,6 +13,7 @@ import pickle
 import regions as reg
 from shapely import geometry
 from shapely import affinity
+import astropy.units as u
 
 def setup(self, *args, **kwargs):
     reg = load_regions()
@@ -160,6 +161,8 @@ class MaskHandler(Handler):
 
             for i,r in enumerate(mask):
                 if type(r) == reg.CircleSkyRegion:
+        
+
                     new_reg = Region.circle(r.center, r.radius.to_value("deg"))
                 elif type(r) == reg.RectangleSkyRegion:
                     center = r.center
