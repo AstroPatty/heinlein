@@ -155,6 +155,8 @@ class SQLiteCatalogHandler(handler.Handler):
     
     def _parse_return(self, cursor, *args, **kwargs):
         rows = cursor.fetchall()
+        if len(rows) == 0:
+            return Catalog()
         rows = np.array(rows, dtype=object)
         missing_values = np.where(rows == None)
         rows[missing_values] = -1

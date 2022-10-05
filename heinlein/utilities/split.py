@@ -82,7 +82,12 @@ def output_to_db(data, subregion_key, output_path, accessed):
                     if not a:
                         accessed[region_key] = True
                         break
-            region_values.to_sql(str(region_key), con=con, if_exists = "append")
+            while True:
+                try:
+                    region_values.to_sql(str(region_key), con=con, if_exists = "append")
+                    break
+                except sqlite3.OperationalError:
+                    continue
             if accessed:
                 accessed[region_key] = False
     return

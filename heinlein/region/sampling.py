@@ -71,4 +71,6 @@ class PolygonSampler(BaseSampler):
         theta = np.degrees(np.arccos(vals[1]))
         dec = 90 - theta
         new_region = reg.Region.circle((ra,dec), radius)
+        if not self._region.contains(new_region):
+            return self.get_circular_sample(radius)
         return new_region

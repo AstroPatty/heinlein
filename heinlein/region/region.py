@@ -102,6 +102,8 @@ class PolygonRegion(BaseRegion):
     def _get_sampler(self, *args, **kwargs):
         self._sampler = sampling.Sampler(self)
 
+    def contains(self, reg: BaseRegion):
+        return self.sky_geometry.contains(reg.sky_geometry)
 
     def initialize_grid(self, density=1000, *args, **kwargs):
         bounds = self.sky_geometry.bounds
