@@ -47,6 +47,9 @@ class Mask:
         """
         self._masks = get_mask_objects(masks, *args, **kwargs)
 
+    def __len__(self):
+        return len(self._masks)
+
     @classmethod
     def from_masks(cls, masks, *args, **kwargs):
         m = cls()

@@ -43,8 +43,6 @@ class Region:
     def polygon(coords, *args, **kwargs):
         """
         Return a generically-shaped region:
-
-        
         """
         if type(coords) == SingleSphericalPolygon:
             return PolygonRegion(coords, *args, **kwargs)

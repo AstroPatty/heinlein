@@ -69,7 +69,6 @@ class SQLiteCatalogHandler(handler.Handler):
         self._tnames = [t[1] for t in cur.fetchall()]
     
     def get_data(self, regions: list, *args, **kwargs):
-        region_key = self._config['region']
         subregion_key = self._config.get("subregion", False)
         if subregion_key:
             splits = [str(reg.name).split(".") for reg in regions]
@@ -90,18 +89,17 @@ class SQLiteCatalogHandler(handler.Handler):
     def get_with_subregions(self, regions: dict):
         subregion_key = self._config['subregion']
         region_key = self._config.get('region', False)
-
         storage = {}
         for region, subregions in regions.items():
+            region_names = [".".join([region, sr]) for sr in subregions]
             if str(region) in self._tnames:
                 table = self.get_where(region, {subregion_key: subregions})
-                if table is not None:
-                    region_names = [".".join([region, sr]) for sr in subregions]
+                if len(table) != 0:
                     for index, sr in enumerate(subregions):
                         mask = (table[region_key].astype(str) == region) & (table[subregion_key].astype(str) == sr)
                         storage.update({region_names[index]: table[mask]})
                 else:
-                    storage.update({region: self.get_all(region.name)})
+                    storage.update({sr: Catalog() for sr in region_names})                    
                     #This needs to be fixed
             elif len(self._tnames) == 1:
                 region_names = [".".join([region, sr]) for sr in subregions]
@@ -110,7 +108,8 @@ class SQLiteCatalogHandler(handler.Handler):
                 for index, sr in enumerate(subregions):
                     mask = table[subregion_key] == sr
                     storage.update({region_names[index]: table[mask]})
-
+            else:
+                storage.update({sr: Catalog() for sr in region_names})
         return storage
     
     def _get(self, regions: list):
@@ -147,6 +146,7 @@ class SQLiteCatalogHandler(handler.Handler):
     def get_all(self, tname):
         query = f"SELECT * FROM \"{tname}\""
         return self.execute_query(query)
+
     def execute_query(self, query):
 
         cur = self._con.execute(query)

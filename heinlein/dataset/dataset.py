@@ -117,7 +117,6 @@ class Dataset:
         
 
         data = self.manager.get_data(dtypes, query_region, overlaps)
-
         return_data = {}
         for dtype, obj_ in data.items():
             try:
@@ -126,7 +125,8 @@ class Dataset:
                 return_data.update({dtype: obj_})
 
         for dtype, d_ in return_data.items():
-
+            if len(d_) == 0:
+                continue
             try:
                 aliases = self._aliases
             except AttributeError:

@@ -333,9 +333,11 @@ class DataManager(ABC):
             if data is None:
                 logger.error(f"Unable to find data of type {dtype}")
                 continue
-                
-            obj_ = self._handlers[dtype].get_data_object(values)
-            return_data.update({dtype: obj_})
+            try:
+                obj_ = self._handlers[dtype].get_data_object(values)
+                return_data.update({dtype: obj_})
+            except IndexError:
+                return_data.update({dtype: None})
         return return_data
 
     def get_cached_values(self, dtypes: list, region_overlaps: list):

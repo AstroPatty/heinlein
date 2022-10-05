@@ -101,9 +101,12 @@ class Catalog(Table):
         This implements concatenate for catalogs, ensures extra
         objects don't have to be re-created. 
         """
-
-        if len(others) == 0:
+        good_others = list(filter(lambda x: len(x) != 0, others))
+        if len(good_others) == 0:
             return self
+        elif len(self) == 0:
+            return good_others[0].concatenate(good_others[1:])
+
         others = [o for o in others if o is not None]
         data = {"parmap": self._parmap}
 
@@ -171,6 +174,8 @@ class Catalog(Table):
             ra_par = CatalogParam(list(ra_col)[0], "ra")
             dec_par = CatalogParam(list(dec_col)[0], "dec")
         else:
+            print(self)
+            print(len(self))
             raise KeyError("Unable to find a unique RA and DEC column")
 
         try:
@@ -250,6 +255,8 @@ class Catalog(Table):
         return new
 
     def get_data_from_region(self, region: BaseRegion):
+        if len(self) == 0:
+            return self
         if not hasattr(self, "_cartesian_points"):
             self._find_coords()
             self._init_points()
