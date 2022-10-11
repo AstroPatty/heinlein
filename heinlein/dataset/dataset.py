@@ -14,6 +14,15 @@ from typing import List
 
 logger = logging.getLogger("Dataset")
 
+def check_overload(f):
+    def wrapper(self, *args, **kwargs):
+        overload = self.manager.get_external(f.__name__)
+        bypass = kwargs.get("bypass", False)
+        if bypass or overload is None:
+            return f(self, *args, **kwargs)
+        else:
+            return overload(self, *args, **kwargs)
+    return wrapper
 
 class Dataset:
 
@@ -80,6 +89,7 @@ class Dataset:
         except AttributeError:
             self._aliases = {dtype: aliases}
 
+    @check_overload
     def _get_region_overlaps(self, other: BaseRegion, *args, **kwargs) -> list:
         """
         Find the subregions inside a dataset that overlap with a given region
