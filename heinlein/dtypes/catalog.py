@@ -107,12 +107,9 @@ class Catalog(Table):
         elif len(self) == 0:
             return good_others[0].concatenate(good_others[1:])
 
-        others = [o for o in others if o is not None]
         data = {"parmap": self._parmap}
 
-
-
-        maskables = [o._maskable_objects for o in others]
+        maskables = [o._maskable_objects for o in good_others]
         data['maskable_objects'] = {}
         for name, obj_ in self._maskable_objects.items():
 
@@ -125,10 +122,7 @@ class Catalog(Table):
                 data['maskable_objects'].update({'_skycoords': new_obj})
 
             else:
-                try:
-                    all_others = np.hstack(other_objs)
-                except ValueError:
-                    all_others = np.vstack(other_objs)
+                all_others = np.vstack(other_objs)
                 new_obj = np.concatenate((new_obj, all_others))
                 data['maskable_objects'].update({name: new_obj})
 
