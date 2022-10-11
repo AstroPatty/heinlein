@@ -1,10 +1,11 @@
 from functools import singledispatchmethod
 import logging
+from pickle import FROZENSET
 import numpy as np
 from typing import Union
 
 from heinlein.manager.dataManger import DataManager
-
+from inspect import getmembers, isclass, isfunction
 from heinlein.region import BaseRegion, Region
 from heinlein.manager import get_manager
 
@@ -12,34 +13,37 @@ from shapely.strtree import STRtree
 from typing import List
 
 logger = logging.getLogger("Dataset")
+
+
 class Dataset:
 
     def __init__(self, manager: DataManager, *args, **kwargs):
         self.manager = manager
         self.config = manager.config
-        self.setup()
+        self._setup()
 
     @property
     def name(self):
         return self.manager.name
 
-    def setup(self, *args, **kwargs) -> None:
+    def _setup(self, *args, **kwargs) -> None:
         """
         Searches for an external implementation of the datset
         This is used for datasets with specific needs (i.e. specific surveys)
         """
         external = self.config['implementation']
         if not external:
+            self.external = None
             return
         
-        self.external = self.manager.external
-        if external is None:
+        elif not self.manager.has_external:
             raise NotImplementedError(f"No implementation code found for datset {self.name}")
+
         try:
-            setup_f = getattr(self.external, "setup")
+            setup_f = self.manager.get_external("setup")
             setup_f(self)
             self._validate_setup()
-        except AttributeError:
+        except KeyError:
             raise NotImplementedError(f"Dataset {self.name} does not have a setup method!")
         
         self._build_region_tree()
@@ -86,7 +90,7 @@ class Dataset:
         overlaps = [self._regions[self._geo_idx[i]] for i in idxs]
         overlaps = [o for o in overlaps if o.intersects(other)]
         return overlaps
-    
+     
     def get_data_from_named_region(self, name: str, dtypes: Union[str, list] = "catalog"):
         if name not in self._region_names:
             print(f"Unable to find region named {name} in dataset {self.name}")
@@ -94,7 +98,7 @@ class Dataset:
 
         regs_ = self._regions[self._region_names == name]
         return self.manager.get_from(dtypes, regs_)
-    
+
     def get_data_from_region(self, query_region: BaseRegion, dtypes: Union[str, list] = "catalog", *args, **kwargs) -> dict:
         """
         Get data of type dtypes from a particular region
@@ -202,3 +206,4 @@ def load_dataset(name: str) -> Dataset:
 def load_current_config(name: str):
     manager = get_manager(name)
     return manager.config
+

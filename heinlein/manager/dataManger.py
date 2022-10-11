@@ -14,6 +14,7 @@ import pathlib
 import shutil
 import atexit
 from cacheout import LRUCache
+from inspect import getmembers, isclass, isfunction
 
 logger = logging.getLogger("manager")
 
@@ -22,6 +23,17 @@ def write_config_atexit(config, path):
     with open(path, 'w') as f:
         json.dump(config, f, indent=4)
 
+def check_overload(f):
+    def wrapper(self, *args, **kwargs):
+        if self.external is None:
+            return f(self, *args, **kwargs)
+        else:
+            try:
+                ext_fn = self._external_functions[f.__name__]
+                return ext_fn(self, *args, **kwargs)
+            except KeyError:
+                return f(self, *args, **kwargs)
+    return wrapper
 
 class DataManager(ABC):
 
@@ -77,10 +89,38 @@ class DataManager(ABC):
         try:
             #Find the external implementation for this dataset, if it exists.
             self.external = import_module(f".{self.config['slug']}", "heinlein.dataset")
+            self._initialize_external_implementation()
         except KeyError:
             self.external = None
+            self._external_definitions = None
+
         self.validate_data()
     
+    def _initialize_external_implementation(self):
+
+        fns = [f for f in getmembers(self.external, isfunction)]
+        fns = list(filter(lambda f, m = self.external: f[1].__module__ == m.__name__, fns))
+        external_functions = {fn[0]: fn[1] for fn in fns}
+
+        classes = [f for f in getmembers(self.external, isclass)]
+        classes = list(filter(lambda f, m = self.external: f[1].__module__ == m.__name__, classes))
+        external_classes = {cl[0]: cl[1] for cl in classes}
+
+        fn_keys = set(external_functions.keys())
+        cls_keys = set(external_classes.keys())
+        if len((keys_ := fn_keys.intersection(cls_keys))) != 0:
+            print(f"Error: Overloaded functions and classes in dataset implementations" \
+                "Should all have unique names, but found duplicates for {keys_}")
+            exit()
+        self._external_definitions = {**external_classes, **external_functions}
+
+    @property
+    def has_external(self):
+        return self.external is not None
+    
+    def get_external(self, key, *args, **kwargs):
+        return self._external_definitions.get(key, None)
+
     def get_config_paths(self):
         base_config_location = BASE_DATASET_CONFIG_DIR / "surveys.json"
         stored_config_location = MAIN_DATASET_CONFIG
@@ -207,7 +247,7 @@ class DataManager(ABC):
     def load_handlers(self, *args, **kwargs):
         from heinlein.dtypes import handlers
         if not hasattr(self, "_handlers"):
-            self._handlers =  handlers.get_file_handlers(self.data, self.external)
+            self._handlers =  handlers.get_file_handlers(self.data, self._external_definitions)
 
     @property
     def data(self):

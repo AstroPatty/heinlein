@@ -3,7 +3,7 @@ from . import catalog
 from . import mask
 from .handler import Handler
 
-def get_file_handlers(data: dict, external, *args, **kwargs):
+def get_file_handlers(data: dict, external: dict, *args, **kwargs):
     if external is not None:
         external_handlers = get_external_handlers(data, external)
     else:
@@ -27,11 +27,5 @@ def get_external_handlers(data, external):
     output = {}
     for dtype in data.keys():
         function_key = f"{dtype.capitalize()}Handler"
-        try:
-            cl = getattr(external, function_key)
-            if not issubclass(cl, Handler):
-                raise NotImplementedError
-            output.update({dtype: cl})
-        except (AttributeError, NotImplementedError):
-            output.update({dtype: None})
+        output.update({dtype: external.get(function_key, None)})
     return output

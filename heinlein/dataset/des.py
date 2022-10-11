@@ -26,7 +26,6 @@ def load_regions():
         regions = load_regions_from_pandas(support_location)
     return regions
     
-
 def load_regions_from_pandas(support_location):
     tile_file = support_location / "des_tiles.csv"
     tile_data = pd.read_csv(tile_file)
