@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from importlib import import_module
 import json
+from tabnanny import check
 
 import portalocker
 from heinlein.locations import BASE_DATASET_CONFIG_DIR, DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, BUILTIN_DTYPES
@@ -25,11 +26,12 @@ def write_config_atexit(config, path):
 
 def check_overload(f):
     def wrapper(self, *args, **kwargs):
-        if self.external is None:
+        bypass = kwargs.get("bypass", False)
+        if self.external is None or bypass:
             return f(self, *args, **kwargs)
         else:
             try:
-                ext_fn = self._external_functions[f.__name__]
+                ext_fn = self._external_definitions[f.__name__]
                 return ext_fn(self, *args, **kwargs)
             except KeyError:
                 return f(self, *args, **kwargs)
@@ -313,6 +315,7 @@ class DataManager(ABC):
     def remove_data(self, *args, **kwargs):
         pass
     
+    @check_overload
     def get_from(self, dtypes: list, region_overlaps: list, *args, **kwargs):
         return_types = []
         new_data = {}
@@ -356,6 +359,7 @@ class DataManager(ABC):
                 storage.update({k: data})
         return storage
 
+    @check_overload
     def get_data(self, dtypes: list, query_region: BaseRegion, region_overlaps: list, *args, **kwargs) -> dict:
         """
         Get data of a specificed type
