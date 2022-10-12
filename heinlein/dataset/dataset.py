@@ -90,7 +90,7 @@ class Dataset:
             self._aliases = {dtype: aliases}
 
     @check_overload
-    def _get_region_overlaps(self, other: BaseRegion, *args, **kwargs) -> list:
+    def get_region_overlaps(self, other: BaseRegion, *args, **kwargs) -> list:
         """
         Find the subregions inside a dataset that overlap with a given region
         Uses the shapely STRTree for speed.
@@ -119,7 +119,7 @@ class Dataset:
         dtypes <str> or <list>: list of data types to return
         
         """
-        overlaps = self._get_region_overlaps(query_region, *args, **kwargs)
+        overlaps = self.get_region_overlaps(query_region, *args, **kwargs)
         overlaps = [o for o in overlaps if o.intersects(query_region)]
         if len(overlaps) == 0:
             print("Error: No objects found in this region!")
@@ -158,7 +158,7 @@ class Dataset:
         return self.get_data_from_region(reg, *args, **kwargs)
 
     def get_overlapping_region_names(self, query_region: BaseRegion):
-        return [r.name for r in self._get_region_overlaps(query_region)]
+        return [r.name for r in self.get_region_overlaps(query_region)]
 
     def get_region_by_name(self, name: str, override = False):
         matches = self._regions[self._region_names == name]

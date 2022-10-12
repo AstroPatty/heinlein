@@ -31,10 +31,10 @@ def setup(dataset, *args, **kwargs):
                         regions.append(reg)
         dataset._regions = regions
 
-def _get_region_overlaps(self, query_region, *args, **kwargs):
+def get_region_overlaps(dataset, query_region, *args, **kwargs):
     field = kwargs["field"]
     field_key = f"{field[0]}_{field[1]}"
-    overlaps = self._get_region_overlaps(query_region, bypass=True)
+    overlaps = dataset.get_region_overlaps(query_region, bypass=True)
     overlaps = list(filter(lambda x: x.name.startswith(field_key), overlaps))
     return overlaps
 
