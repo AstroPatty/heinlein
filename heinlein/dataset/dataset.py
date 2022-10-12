@@ -121,7 +121,6 @@ class Dataset:
         """
         overlaps = self._get_region_overlaps(query_region, *args, **kwargs)
         overlaps = [o for o in overlaps if o.intersects(query_region)]
-
         if len(overlaps) == 0:
             print("Error: No objects found in this region!")
             return
@@ -130,7 +129,7 @@ class Dataset:
             dtypes = [dtypes]
         
 
-        data = self.manager.get_data(dtypes, query_region, overlaps)
+        data = self.manager.get_data(dtypes, query_region, overlaps, *args, **kwargs)
         return_data = {}
         for dtype, obj_ in data.items():
             try:

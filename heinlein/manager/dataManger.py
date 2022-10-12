@@ -177,8 +177,7 @@ class DataManager(ABC):
         
         with open(config_path, "r") as f:
             stored_config_data = json.load(f)
-        update = {k: v for k, v in base_config_data.items() if k not in ["data", "dconfig"]}
-        stored_config_data.update(update)
+        update = {k: v for k, v in base_config_data.items() if k not in ["data"]}
         if 'data' in stored_config_data.keys():
             data_config = self.reconcile_dconfig(stored_config_data, base_config_data)
             stored_config_data.update({'data': data_config})
@@ -341,7 +340,6 @@ class DataManager(ABC):
 
         if len(new_data) != 0:
             self.cache(new_data)
-
 
         storage = {}
         keys = set(new_data.keys()).union(set(cached.keys()))

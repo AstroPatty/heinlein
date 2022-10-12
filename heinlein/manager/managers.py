@@ -34,6 +34,7 @@ class FileManager(DataManager):
         """
         super().__init__(name, *args, **kwargs)
         self.setup()
+        
     def setup(self, *args, **kwargs):
         self.ready = True
 
