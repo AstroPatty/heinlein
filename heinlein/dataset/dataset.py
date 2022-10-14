@@ -100,7 +100,8 @@ class Dataset:
         overlaps = [self._regions[self._geo_idx[i]] for i in idxs]
         overlaps = [o for o in overlaps if o.intersects(other)]
         return overlaps
-     
+    
+    @check_overload
     def get_data_from_named_region(self, name: str, dtypes: Union[str, list] = "catalog"):
         if name not in self._region_names:
             print(f"Unable to find region named {name} in dataset {self.name}")
@@ -109,6 +110,7 @@ class Dataset:
         regs_ = self._regions[self._region_names == name]
         return self.manager.get_from(dtypes, regs_)
 
+    @check_overload
     def get_data_from_region(self, query_region: BaseRegion, dtypes: Union[str, list] = "catalog", *args, **kwargs) -> dict:
         """
         Get data of type dtypes from a particular region
@@ -157,9 +159,11 @@ class Dataset:
         reg = Region.circle(center=center, radius=radius)
         return self.get_data_from_region(reg, *args, **kwargs)
 
+    @check_overload
     def get_overlapping_region_names(self, query_region: BaseRegion):
         return [r.name for r in self.get_region_overlaps(query_region)]
 
+    @check_overload
     def get_region_by_name(self, name: str, override = False):
         matches = self._regions[self._region_names == name]
         if len(matches) == 0:
@@ -171,7 +175,8 @@ class Dataset:
             return matches
         else:
             return matches[0]
-    
+            
+    @check_overload
     def get_regions_by_name(self, names: List[str]):
         matches = self._regions[np.in1d(self._region_names, names)]
         if len(matches) == 0:

@@ -87,7 +87,7 @@ class Catalog(Table):
         Ensures extra objects are passed to a new table.
         """
         cp = super().__copy__()
-        cp.setup(maskable_object = self._maskable_objects, parmap = self._parmap)
+        cp.post_setup(maskable_objects = self._maskable_objects, parmap = self._parmap)
         return cp
 
     def __getitem__(self, key):
@@ -241,6 +241,7 @@ class Catalog(Table):
         """
         pars = [CatalogParam(k, v) for k, v in aliases.items()]
         self._parmap.update(pars)
+        
 
     def _init_points(self, *args, **kwargs):
         """
@@ -421,7 +422,6 @@ class ParameterMap:
             if p.col in self._colmap.keys():
                 self.logger.info(f"Updating column reference for {p.col}")
             
-            
+
             self._params.update({p.standard: p})
             self._colmap.update({p.col: p.standard})
-
