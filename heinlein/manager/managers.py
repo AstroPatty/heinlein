@@ -34,6 +34,7 @@ class FileManager(DataManager):
         """
         super().__init__(name, *args, **kwargs)
         self.setup()
+
     def setup(self, *args, **kwargs):
         self.ready = True
 
@@ -127,15 +128,7 @@ class FileManager(DataManager):
             raise FileNotFoundError(f"Path {str(path)} was not initialized properly!")
         else:
             manifest.unlink()
-    @property
-    def config(self):
-        return self.config_data
 
-    def write_config(self):
-        output = copy(self.config_data)
-        output.update({'data': self._data})
-        with open(self.config_location, 'w') as f:
-            json.dump(output, f, indent=4)
 
 
     def add_data(self, dtype: str, path: pathlib.Path, overwrite=False) -> bool:

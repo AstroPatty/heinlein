@@ -11,7 +11,7 @@ def get_file_handlers(data: dict, external, *args, **kwargs):
     handlers_ = {}
     for dtype, dconfig in data.items():
         path = dconfig['path']
-        dc_ = {k: v for k,v in dconfig.items() if k != "path"}
+        dc_ = dconfig['config']
         if external_handlers[dtype] is not None:
             cl = external_handlers[dtype](Path(path), dc_)
             handlers_.update({dtype: cl})

@@ -1,24 +1,14 @@
 import json
 
-from numpy import single
-from heinlein.locations import BASE_DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, DATASET_CONFIG_DIR
+from heinlein.locations import BASE_DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, DATASET_CONFIG_DIR, BUILTIN_DTYPES
 import portalocker
 from importlib import import_module
 import atexit
 from functools import singledispatchmethod
 from typing import Union, List
+import shutil
+from copy import copy
 
-def load_datset_config(name):
-    if name not in DatasetConfig.surveys.keys():
-        print(f"Error: dataset {name} not found")
-        return
-    return DatasetConfig(name)
-
-def initialize_dataset_config(name):
-    if name in DatasetConfig.surveys.keys():
-        print(f"Error: dataset {name} already exists!")
-        return
-    return DatasetConfig.create(name)
 
 def get_config_paths():
     base_config_location = BASE_DATASET_CONFIG_DIR / "surveys.json"
@@ -53,8 +43,70 @@ class DatasetConfig:
         write_atexit = lambda x=self.config, y = self.config_path: write_config(x, y)
         atexit.register(write_atexit)
 
+    @classmethod
+    def reload_datasets(cls, *args, **kwargs):
+        cls.surveys = get_config_paths()
+
+    @classmethod
+    def load(cls, name, *args, **kwargs):
+        if name not in DatasetConfig.surveys.keys():
+            print(f"Error: dataset {name} not found")
+            return
+        return cls(name)
+    
+    @classmethod
+    def create(cls, name):
+        if name in DatasetConfig.surveys.keys():
+            print(f"Error: dataset {name} already exists!")
+            return
+
+        default_survey_config_location = DATASET_CONFIG_DIR / "default.json"
+        if not default_survey_config_location.exists():
+            shutil.copy(BASE_DATASET_CONFIG_DIR / "default.json", default_survey_config_location)
+        with open(default_survey_config_location, "r") as f:
+            default_survey_config = json.load(f)
+        
+        default_survey_config.update({'name': name, "survey_region": "None", "implementation": False})
+        output_location = DATASET_CONFIG_DIR / f"{name}.json"
+        with open(output_location, "w") as f:
+            json.dump(default_survey_config, f, indent=4)
+
+        all_survey_config_location = DATASET_CONFIG_DIR / "surveys.json"
+        with open(all_survey_config_location, "r+") as f:
+            data = json.load(f)
+            f.seek(0)
+            f.truncate(0)
+            data.update({name: {'config_path': f"{name}.json"}})
+            json.dump(data, f, indent=4)
+
+        cls.reload_datasets()
+        return cls.load(name)
+
+    @property
+    def data(self):
+        d = copy(self._data)
+        for k in self._data.keys():
+            df = self['dconfig'][k]
+            d[k].update({"config": df})
+        return d
+
+
+    def validate_data(self, * gargs, **kwargs):
+        with open(BUILTIN_DTYPES, "r") as f:
+            self._dtype_config = json.load(f)
+        
+        for dtype, dconfig in self._data.items():
+            if dtype not in self._dtype_config.keys():
+                continue
+            if type(dconfig) != dict:
+                self._update_dconfig(dtype)
+            else:
+                required_values = set(self._dtype_config[dtype]['required_attributes'].keys())
+                found_values = set(dconfig.keys())
+                if not required_values.issubset(found_values):
+                    self._update_dconfig(dtype)
+        
     def setup(self, *args, **kwargs):
-        cp = self.surveys[self.name]['config_path']
         self.reconcile_configs()
         try:
             self._data = self.config_data['data']
@@ -63,7 +115,7 @@ class DatasetConfig:
             self.config_data['data'] = self._data
         try:
             #Find the external implementation for this dataset, if it exists.
-            self.external = import_module(f".{self.config['slug']}", "heinlein.dataset")
+            self.external = import_module(f".{self['slug']}", "heinlein.dataset")
         except KeyError:
             self.external = None
     
@@ -72,13 +124,16 @@ class DatasetConfig:
         base_config_path = BASE_DATASET_CONFIG_DIR / cp
         stored_config_path = DATASET_CONFIG_DIR / cp
         
-        with open(base_config_path, "r") as f:
-            base_config = json.load(f)
+        try:
+            with open(base_config_path, "r") as f:
+                base_config = json.load(f)
+        except FileNotFoundError:
+            base_config = {}
+
         with open(stored_config_path, "r") as f:
             stored_config = json.load(f)
-        
-        for key, base_values in base_config.items():
-            if key == "overwrite":
+        for key in base_config.keys():
+            if key in ["overwrite", "data"]:
                 continue
             else:
                 stored_config.pop(key, False)
@@ -87,6 +142,7 @@ class DatasetConfig:
         except KeyError:
             self.overwritten_items = {}
             stored_config["overwrite"] = self.overwritten_items
+
         self.config_data = stored_config
         self.config_path = stored_config_path
         self._base_config = base_config
@@ -94,10 +150,6 @@ class DatasetConfig:
     @staticmethod
     def exists(name):
         return name in DatasetConfig.surveys.keys()
-
-    @classmethod
-    def create(cls, name, *args, **kwargs):
-        pass
 
     @property
     def config(self, *args, **kwargs):
@@ -142,6 +194,45 @@ class DatasetConfig:
         new_key = ["dconfig", *key]
         self._set_overwrite(new_key, value)
     
+    @singledispatchmethod
+    def check_overwrite(self, key: str):
+        new_key = ["dconfig", key]
+        return self._check_overwrite(new_key)
+
+    @check_overwrite.register
+    def _(self, key: list):
+        new_key = ["dconfig", *key]
+        return self._check_overwrite(new_key)
+ 
+    def _check_overwrite(self, key: List[str]):
+        item = self['overwrite']
+        try:
+            for key_ in key[:-1]:
+                item = item[key_]
+            return item.get(key[-1], None)
+        except KeyError as e:
+            return None        
+
+    @singledispatchmethod
+    def remove_overwrite(self, key: str):
+        new_key = ["dconfig", key]
+        self._remove_overwrite(new_key)
+
+    @remove_overwrite.register
+    def _(self, key: list):
+        new_key = ["dconfig", *key]
+        self._remove_overwrite(new_key)
+    
+    def _remove_overwrite(self, key: str):
+        if self._check_overwrite(key) is None:
+            print(f"Error: key {key} is not overwritten!")
+            return
+        item = self['overwrite']
+        for key_ in key[:-1]:
+            item = item[key_]
+        item.pop(key[-1], None)
+        
+
     def _set_overwrite(self, key, value):
         try:
             current_value = self[key]
@@ -162,4 +253,4 @@ class DatasetConfig:
                 overwrite_dconfig = overwrite_dconfig[key_]
         
         overwrite_dconfig.update({key[-1]: value})
-    
+                  
