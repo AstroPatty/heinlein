@@ -189,7 +189,6 @@ class Dataset:
     
     @staticmethod
     def _mask_fraction(mask, grid):
-        import matplotlib.pyplot as plt
         masked_grid = mask.mask(grid)
         return round(1 - len(masked_grid) / len(grid), 3)
 

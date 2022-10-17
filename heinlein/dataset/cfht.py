@@ -23,7 +23,6 @@ class MaskHandler(Handler):
     def __init__(self, path: Path, config: dict, *args ,**kwargs):
         super().__init__(path, config, "mask")
 
-
     def get_data(self, regions, *args, **kwargs):
         files = [f for f in self._path.glob("*.fits") if not f.name.startswith(".")]
         names = [r.name for r in regions]
@@ -42,7 +41,7 @@ class MaskHandler(Handler):
             data = fits.open(matches[0])
             out = np.empty(1, dtype="object")
             out[0] = data
-            mask_obj = mask.Mask(out, **self._config)
+            mask_obj = mask.Mask(out, pixarray=True, **self._config)
             output.update({n.name: mask_obj for n in regions_[name]})
         
         return output
