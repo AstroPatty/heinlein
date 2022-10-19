@@ -84,13 +84,18 @@ class DatasetConfig:
 
     @property
     def data(self):
+        """
+        Warning, returns a copy
+        """
         d = copy(self._data)
         for k in self._data.keys():
-            df = self['dconfig'][k]
-            d[k].update({"config": df})
+            try:
+                df = self['dconfig'][k]
+                d[k].update({"config": df})
+            except KeyError:
+                continue
         return d
-
-
+    
     def validate_data(self, * gargs, **kwargs):
         with open(BUILTIN_DTYPES, "r") as f:
             self._dtype_config = json.load(f)
@@ -142,6 +147,10 @@ class DatasetConfig:
         except KeyError:
             self.overwritten_items = {}
             stored_config["overwrite"] = self.overwritten_items
+        try:
+            dconfig = stored_config["dconfig"]
+        except KeyError:
+            stored_config["dconfig"] = {}
 
         self.config_data = stored_config
         self.config_path = stored_config_path
@@ -210,7 +219,7 @@ class DatasetConfig:
             for key_ in key[:-1]:
                 item = item[key_]
             return item.get(key[-1], None)
-        except KeyError as e:
+        except KeyError:
             return None        
 
     @singledispatchmethod

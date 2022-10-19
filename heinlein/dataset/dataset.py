@@ -71,10 +71,14 @@ class Dataset:
         return self.manager.get_path(dtype)
 
     def add_aliases(self, dtype: str, aliases, *args, **kwargs):
+        """
+        Adds an alias for the current interpreter
+        """
         try:
             self._aliases.update({dtype: aliases})
         except AttributeError:
             self._aliases = {dtype: aliases}
+
 
     def _get_region_overlaps(self, other: BaseRegion, *args, **kwargs) -> list:
         """

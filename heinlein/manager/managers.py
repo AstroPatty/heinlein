@@ -165,7 +165,6 @@ class FileManager(DataManager):
         
         self.update_manifest(path)
         self._data.update({dtype: {"path": str(path)}})
-        self.write_config()
         return True
 
     def remove_data(self, dtype: str) -> bool:
@@ -191,7 +190,6 @@ class FileManager(DataManager):
         if not path.is_file():
             self.delete_manifest(path)
         self._data.pop(dtype)
-        self.write_config()
             
     def get_handler(self, dtype: str, *args, **kwargs):
         pass
@@ -200,4 +198,3 @@ class FileManager(DataManager):
         for dtype, path in self._data.items():
             self.delete_manifest(pathlib.Path(path)) 
         self._data = {}
-        self.write_config()
