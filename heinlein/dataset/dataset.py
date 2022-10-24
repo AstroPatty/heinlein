@@ -86,6 +86,13 @@ class Dataset:
         overlaps = [self._regions[self._geo_idx[i]] for i in idxs]
         overlaps = [o for o in overlaps if o.intersects(other)]
         return overlaps
+
+    def _get_many_region_overlaps(self, others: list, *args, **kwargs):
+        region_overlaps = [self._geo_tree.query(other.geometry) for other in others]
+        idxs = [[id(r) for r in overlaps] for overlaps in region_overlaps]
+        overlaps = [[self._regions[self._geo_idx[i]] for i in idx] for idx in idxs]
+        overlaps = [[o for o in overlap if o.intersects(others[i])] for i, overlap in enumerate(overlaps)]
+        return overlaps
     
     def get_data_from_named_region(self, name: str, dtypes: Union[str, list] = "catalog"):
         if name not in self._region_names:
@@ -94,7 +101,28 @@ class Dataset:
 
         regs_ = self._regions[self._region_names == name]
         return self.manager.get_from(dtypes, regs_)
-    
+    def load(self, regions, dtypes, *args, **kwargs):
+        """
+        Pre-loads some regions into the cache.
+        """
+        if type(regions) == str:
+            regions = [regions]
+        if not all([r in self._region_names for r in regions]):
+            logging.error("Regions not found!")
+            return
+        self.manager.load(regions, dtypes)
+
+    def dump(self, regions, *args, **kwargs):
+        """
+        Dumps some regions from the cache.
+        """
+        if type(regions) == str:
+            regions = [regions]
+        self.manager.dump(regions)
+        
+    def dump_all(self):
+        self.manager.dump_all()
+
     def get_data_from_region(self, query_region: BaseRegion, dtypes: Union[str, list] = "catalog", *args, **kwargs) -> dict:
         """
         Get data of type dtypes from a particular region
@@ -145,7 +173,14 @@ class Dataset:
         return self.get_data_from_region(reg, *args, **kwargs)
 
     def get_overlapping_region_names(self, query_region: BaseRegion):
-        return [r.name for r in self._get_region_overlaps(query_region)]
+        if isinstance(query_region, BaseRegion):
+            return [r.name for r in self._get_region_overlaps(query_region)]
+        elif type(query_region) == list:
+            overlaps = self._get_many_region_overlaps(query_region)
+            return [[r.name for r in o] for o in overlaps]
+
+    def get_many_overlapping_region_names(self, query_regions: list):
+        pass
 
     def get_region_by_name(self, name: str, override = False):
         matches = self._regions[self._region_names == name]

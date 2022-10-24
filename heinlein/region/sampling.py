@@ -74,3 +74,24 @@ class PolygonSampler(BaseSampler):
         if not self._region.contains(new_region):
             return self.get_circular_sample(radius)
         return new_region
+    
+    def get_circular_samples(self, radius, n, *args, **kwargs):
+        """
+        The sampler samples over the bounding box that contains the region.
+        This means it certain cases it may return a region that is outside the
+        actual requested region. It is up to the caller to perform validation.
+
+        parameters:
+
+        radius <astropy.units.quantity>: The size of the region
+        """
+        vals = self._sampler.uniform(self._low_sampler_range, self._high_sampler_range, (n, 2))
+        ra = np.degrees(vals[:,0])
+        theta = np.degrees(np.arccos(vals[:,1]))
+        dec = 90 - theta
+        new_regions = [reg.Region.circle(p, radius) for p in list(zip(ra, dec))]
+        for i in range(len(new_regions)):
+            if not self._region.contains(new_regions[i]):
+                new_regions[i] = self.get_circular_sample(radius)
+        return new_regions
+

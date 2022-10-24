@@ -14,9 +14,9 @@ import pathlib
 import shutil
 import atexit
 from cacheout import LRUCache
+import typing
 
 logger = logging.getLogger("manager")
-
 
 def write_config_atexit(config, path):
     with open(path, 'w') as f:
@@ -276,22 +276,27 @@ class DataManager(ABC):
     def get_from(self, dtypes: list, region_overlaps: list, *args, **kwargs):
         return_types = []
         new_data = {}
-        self.load_handlers()
+        if type(region_overlaps[0]) != str:
+            regnames = [r.name for r in region_overlaps]
+        else:
+            regnames = region_overlaps
 
+        self.load_handlers()
+        
         for dtype in dtypes:
             try:
                 path = self._data[dtype]
                 return_types.append(dtype)
             except KeyError:
                 print(f"No data of type {dtype} found for dataset {self.name}!")
-        cached = self.get_cached_values(dtypes, region_overlaps)
+        cached = self.get_cached_values(dtypes, regnames)
         for dtype in return_types:
 
             if dtype in cached.keys():
                 dtype_cache = cached[dtype]
-                regions_to_get = [r for r in region_overlaps if r.name not in dtype_cache.keys()]
+                regions_to_get = [r for r in regnames if r not in dtype_cache.keys()]
             else:
-                regions_to_get = region_overlaps
+                regions_to_get = regnames
             if len(regions_to_get) != 0:
                 data_ = self._handlers[dtype].get_data(regions_to_get, *args, **kwargs)
                 new_data.update({dtype: data_})
@@ -326,6 +331,26 @@ class DataManager(ABC):
         storage = self.parse_data(storage, *args, **kwargs)
         return storage
 
+    def load(self, regions: list, dtypes: list, *args, **kwargs):
+        """
+        Loads data for particular named regions into the cache
+        """
+        self.get_from(dtypes, regions)
+
+    def dump(self, regions: list, *args, **kwargs):
+        """
+        Dumps data for some particular named regions from the cache 
+        """
+        for dtype, data in self._cache.items():
+            nd = data.delete_many(regions)
+            logging.info(f"Delete {nd} items from the {dtype} cache")
+
+    def dump_all(self):
+        for dtype, data in self._cache.items():
+            nd = data.clear()
+            logging.info(f"Delete {nd} items from the {dtype} cache")
+
+
     def parse_data(self, data, *args, **kwargs):
         return_data = {}
         for dtype, values in data.items():
@@ -350,7 +375,7 @@ class DataManager(ABC):
                     #No cache for this datatype, continue
                     continue
                 storage = {}
-                cached = dtype_cache.get_many([reg.name for reg in region_overlaps])
+                cached = dtype_cache.get_many(region_overlaps)
                 cached_values.update({dtype: cached})
         return cached_values
 

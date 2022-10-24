@@ -146,10 +146,9 @@ class MaskHandler(Handler):
         super().__init__(*args, **kwargs)
 
     def get_data(self, regions, *args, **kwargs):
-        names = [r.name for r in regions]
         vals = {}
 
-        for index, name in enumerate(names):
+        for index, name in enumerate(regions):
             split = name.split(".")
             basename = "BrightStarMask-{}-{},{}-HSC-I.reg"
             patch_tuple = _patch_int_to_tuple(int(split[1]))
