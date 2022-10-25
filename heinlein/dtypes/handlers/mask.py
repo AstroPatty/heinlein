@@ -22,9 +22,8 @@ class FitsMaskHandler(Handler):
 
     def get_data(self, regions, *args, **kwargs):
         files = [f for f in self._path.glob("*.fits") if not f.name.startswith(".")]
-        names = [r.name for r in regions]
         output = {}
-        for name in names:
+        for name in regions:
             matches = list(filter(lambda x: name in x.name, files))
             if len(matches) > 1:
                 logging.error(f"Error: Found more than one mask for region {name}")

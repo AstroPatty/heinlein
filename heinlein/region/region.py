@@ -97,6 +97,12 @@ class PolygonRegion(BaseRegion):
             self._get_sampler()
         return self._sampler.get_circular_sample(radius)
     
+    def generate_circular_tiles(self, radius, n, *args, **kwargs):
+        if self._sampler is None:
+            self._get_sampler()
+        return self._sampler.get_circular_samples(radius, n)
+
+
     def _get_sampler(self, *args, **kwargs):
         self._sampler = sampling.Sampler(self)
 

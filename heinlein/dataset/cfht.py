@@ -23,13 +23,11 @@ class MaskHandler(Handler):
     def __init__(self, path: Path, config: dict, *args ,**kwargs):
         super().__init__(path, config, "mask")
 
-
     def get_data(self, regions, *args, **kwargs):
         files = [f for f in self._path.glob("*.fits") if not f.name.startswith(".")]
-        names = [r.name for r in regions]
         output = {}
-        super_region_names = list(set([n.split("_")[0] for n in names]))
-        regions_ = {n: list(filter(lambda x: x.name.startswith(n), regions)) for n in super_region_names}
+        super_region_names = list(set([n.split("_")[0] for n in regions]))
+        regions_ = {n: list(filter(lambda x: x.startswith(n), regions)) for n in super_region_names}
         for name in super_region_names:
             matches = list(filter(lambda x: name in x.name, files))
             if len(matches) > 1:
@@ -42,8 +40,8 @@ class MaskHandler(Handler):
             data = fits.open(matches[0])
             out = np.empty(1, dtype="object")
             out[0] = data
-            mask_obj = mask.Mask(out, **self._config)
-            output.update({n.name: mask_obj for n in regions_[name]})
+            mask_obj = mask.Mask(out, pixarray=True, **self._config)
+            output.update({n: mask_obj for n in regions_[name]})
         
         return output
 

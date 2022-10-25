@@ -100,6 +100,13 @@ class Dataset:
         overlaps = [self._regions[self._geo_idx[i]] for i in idxs]
         overlaps = [o for o in overlaps if o.intersects(other)]
         return overlaps
+
+    def _get_many_region_overlaps(self, others: list, *args, **kwargs):
+        region_overlaps = [self._geo_tree.query(other.geometry) for other in others]
+        idxs = [[id(r) for r in overlaps] for overlaps in region_overlaps]
+        overlaps = [[self._regions[self._geo_idx[i]] for i in idx] for idx in idxs]
+        overlaps = [[o for o in overlap if o.intersects(others[i])] for i, overlap in enumerate(overlaps)]
+        return overlaps
     
     @check_overload
     def get_data_from_named_region(self, name: str, dtypes: Union[str, list] = "catalog"):
@@ -110,7 +117,28 @@ class Dataset:
         regs_ = self._regions[self._region_names == name]
         return self.manager.get_from(dtypes, regs_)
 
-    @check_overload
+    def load(self, regions, dtypes, *args, **kwargs):
+        """
+        Pre-loads some regions into the cache.
+        """
+        if type(regions) == str:
+            regions = [regions]
+        if not all([r in self._region_names for r in regions]):
+            logging.error("Regions not found!")
+            return
+        self.manager.load(regions, dtypes)
+
+    def dump(self, regions, *args, **kwargs):
+        """
+        Dumps some regions from the cache.
+        """
+        if type(regions) == str:
+            regions = [regions]
+        self.manager.dump(regions)
+        
+    def dump_all(self):
+        self.manager.dump_all()
+
     def get_data_from_region(self, query_region: BaseRegion, dtypes: Union[str, list] = "catalog", *args, **kwargs) -> dict:
         """
         Get data of type dtypes from a particular region
@@ -159,9 +187,13 @@ class Dataset:
         reg = Region.circle(center=center, radius=radius)
         return self.get_data_from_region(reg, *args, **kwargs)
 
+    
     @check_overload
     def get_overlapping_region_names(self, query_region: BaseRegion):
         return [r.name for r in self.get_region_overlaps(query_region)]
+
+    def get_many_overlapping_region_names(self, query_regions: list):
+        pass
 
     @check_overload
     def get_region_by_name(self, name: str, override = False):
@@ -207,7 +239,6 @@ class Dataset:
     
     @staticmethod
     def _mask_fraction(mask, grid):
-        import matplotlib.pyplot as plt
         masked_grid = mask.mask(grid)
         return round(1 - len(masked_grid) / len(grid), 3)
 

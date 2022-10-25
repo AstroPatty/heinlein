@@ -71,7 +71,7 @@ class SQLiteCatalogHandler(handler.Handler):
     def get_data(self, regions: list, *args, **kwargs):
         subregion_key = self._config.get("subregion", False)
         if subregion_key:
-            splits = [str(reg.name).split(".") for reg in regions]
+            splits = [rname.split(".") for rname in regions]
             regions_to_get = {}
             for split in splits:
                 if len(split) == 2:
@@ -83,7 +83,7 @@ class SQLiteCatalogHandler(handler.Handler):
                         regions_to_get.update({split[0]: []})
             return self.get_with_subregions(regions_to_get)
         else:
-            regions_to_get = [str(r.name) for r in regions]
+            regions_to_get = [rname for rname in regions]
             return self._get(regions_to_get)
 
     def get_with_subregions(self, regions: dict):
