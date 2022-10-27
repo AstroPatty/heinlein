@@ -22,7 +22,7 @@ class CsvCatalogHandler(handler.Handler):
     def __init__(self, path: Path, config: dict, *args, **kwargs):
         super().__init__(path, config, "catalog")
     
-    def get_data(self, regions: list, *args, **kwargs):
+    def get_data(self, region_names: list, *args, **kwargs):
         """
         Default handler for a catalog.
         Loads a single catalog, assuming the region name can be found in the file name.
@@ -32,9 +32,8 @@ class CsvCatalogHandler(handler.Handler):
         if not self._path.exists():
             print(f"Path {self._path} does not exist! Perhaps it is in an external storage device that isn't attached.")
             return None
-        names = [r.name for r in regions]
         if not self._path.is_file():
-            for name in names:
+            for name in region_names:
                 files = [f for f in self._path.glob(f"*{name}*") if not f.name.startswith('.')]
                 if len(files) > 1:
                     raise NotImplementedError
@@ -51,7 +50,7 @@ class CsvCatalogHandler(handler.Handler):
             file_path = self._path
             if file_path.suffix == ".csv":
                 data = ascii.read(file_path)
-                for name in names:
+                for name in region_names:
                     mask = data[self._config['region']] == name
                     storage.update({name: Catalog(data[mask])})
         return storage

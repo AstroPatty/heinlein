@@ -1,7 +1,9 @@
 from abc import abstractmethod
+from distutils import extension
 from importlib import import_module
 import json
 from tabnanny import check
+from xml.dom.minidom import Attr
 
 import portalocker
 from heinlein.locations import BASE_DATASET_CONFIG_DIR, DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, BUILTIN_DTYPES
@@ -14,6 +16,7 @@ import logging
 import pathlib
 import shutil
 import atexit
+from copy import copy
 from cacheout import LRUCache
 from inspect import getmembers, isclass, isfunction
 
@@ -103,15 +106,17 @@ class DataManager(ABC):
         fns = list(filter(lambda f, m = self.external: f[1].__module__ == m.__name__, fns))
         external_functions = {fn[0]: fn[1] for fn in fns}
 
+
+        
         classes = [f for f in getmembers(self.external, isclass)]
         classes = list(filter(lambda f, m = self.external: f[1].__module__ == m.__name__, classes))
-        external_classes = {cl[0]: cl[1] for cl in classes}
-
-        fn_keys = set(external_functions.keys())
+        external_classes = {cl[0]: cl[1] for cl in classes if cl[0] != "dataset_extension"}
+        fn_keys = set(k for k in external_functions.keys())
         cls_keys = set(external_classes.keys())
         if len((keys_ := fn_keys.intersection(cls_keys))) != 0:
             print(f"Error: Overloaded functions and classes in dataset implementations" \
-                "Should all have unique names, but found duplicates for {keys_}")
+                " should all have unique names, but found duplicates for {keys_}")
+            print(f"Extensions to dataset objects should be decorated with @dataset_extension")
             exit()
         self._external_definitions = {**external_classes, **external_functions}
 
@@ -119,6 +124,11 @@ class DataManager(ABC):
     def has_external(self):
         return self.external is not None
     
+    @property
+    def extensions(self):
+        return self._extensions
+
+
     def get_external(self, key, *args, **kwargs):
         return self._external_definitions.get(key, None)
 
@@ -462,4 +472,5 @@ def get_all():
             missing.append(name)
         storage.update({name: survey_data})
     return storage  
+
 

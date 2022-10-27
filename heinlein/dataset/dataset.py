@@ -8,6 +8,7 @@ from heinlein.manager.dataManger import DataManager
 from inspect import getmembers, isclass, isfunction
 from heinlein.region import BaseRegion, Region
 from heinlein.manager import get_manager
+from functools import partial
 
 from shapely.strtree import STRtree
 from typing import List
@@ -24,12 +25,30 @@ def check_overload(f):
             return overload(self, *args, **kwargs)
     return wrapper
 
+class dataset_extension:
+    def __init__(self, function):
+        self.function = function
+        self.extension = True
+        self.name = function.__name__
+
+    def __call__(self, *args, **kwargs):
+        return self.function(*args, **kwargs)
+
 class Dataset:
 
     def __init__(self, manager: DataManager, *args, **kwargs):
         self.manager = manager
         self.config = manager.config
+        self._extensions = {}
+        self._parameters = {}
         self._setup()
+
+    def __getattr__(self, key__):
+        try:
+            f = self._extensions[key__]
+            return partial(f, self)
+        except KeyError:
+            raise AttributeError(f"{type(self).__name__} object has no attribute '{key__}'")
 
     @property
     def name(self):
@@ -55,7 +74,14 @@ class Dataset:
         except KeyError:
             raise NotImplementedError(f"Dataset {self.name} does not have a setup method!")
         
+        self._load_extensions()
         self._build_region_tree()
+
+    def set_parameter(self, name, value):
+        self._parameters.update({name: value})
+
+    def get_parameter(self, name):
+        return self._parameters.get(name, None)
 
     def _validate_setup(self, *args, **kwargs) -> None:
         try:
@@ -65,6 +91,13 @@ class Dataset:
         except AttributeError:
             logging.error(f"No region found for survey {self.name}")
     
+    def _load_extensions(self, *args, **kwargs):
+        """
+        Loads extensions for the particular dataset. These are defined externally
+        """
+        ext_objs = list(filter(lambda f: type(f[1]) == dataset_extension, getmembers(self.manager.external)))
+        self._extensions.update({f[0]: f[1] for f in ext_objs})
+
     def _build_region_tree(self, *args, **kwargs) -> None:
         """
         For larger surveys, we subidivide into smaller regions for easier
@@ -251,4 +284,3 @@ def load_dataset(name: str) -> Dataset:
 def load_current_config(name: str):
     manager = get_manager(name)
     return manager.config
-
