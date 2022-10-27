@@ -1,7 +1,7 @@
 from genericpath import isfile
 import pathlib
 from heinlein import manager
-from heinlein.manager.dataManger import get_all
+from heinlein.manager.dconfig import get_config_paths
 import numpy as np
 from pathlib import Path
 
@@ -56,7 +56,7 @@ def list_all():
     """
     List all available data
     """
-    surveys = get_all()
+    surveys = get_config_paths()
     data = {name: d.get("data", []) for name, d in surveys.items()}
     return data
 
