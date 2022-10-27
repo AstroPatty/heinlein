@@ -8,6 +8,7 @@ from heinlein.dtypes.catalog import Catalog, ParameterMap
 from heinlein.dataset.dataset import Dataset, dataset_extension
 from shapely import geometry
 import numpy as np
+import logging
 def setup(dataset, *args, **kwargs):
         width = (4.0*u.degree).to(u.radian).value
         region = geometry.box(0, 0, width, width) #in degrees
@@ -37,7 +38,7 @@ def get_region_overlaps(dataset: Dataset, query_region, *args, **kwargs):
     field = dataset.get_parameter("ms_field")
     if not field:
         print("Critical Error: Getting data with the millennium simulation requires a field to be set")
-        print("Call ms.get_field(field) to set")
+        print("Call ms.set_field(field) to set")
         return []
     field_key = f"{field[0]}_{field[1]}"
     overlaps = dataset.get_region_overlaps(query_region, bypass=True)

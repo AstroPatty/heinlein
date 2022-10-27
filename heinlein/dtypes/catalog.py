@@ -114,6 +114,8 @@ class Catalog(Table):
         """
         try:
             column = self._parmap.get(item)
+            if column is None:
+                raise KeyError
             return super().__setitem__(column, value)
         except (KeyError, AttributeError):
             return super().__setitem__(item, value)

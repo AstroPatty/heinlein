@@ -103,7 +103,6 @@ class Dataset:
         """
         geo_list = np.array([reg.geometry for reg in self._regions])
         indices = {id(geo): i for i, geo in enumerate(geo_list)}
-        
         self._geo_idx = indices
         self._geo_tree = STRtree(geo_list)
 
