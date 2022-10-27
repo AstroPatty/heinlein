@@ -90,7 +90,7 @@ class DatasetConfig:
         d = copy(self._data)
         for k in self._data.keys():
             try:
-                df = self['dconfig'][k]
+                df = self._base_config['dconfig'][k]
                 d[k].update({"config": df})
             except KeyError:
                 continue
@@ -137,6 +137,7 @@ class DatasetConfig:
 
         with open(stored_config_path, "r") as f:
             stored_config = json.load(f)
+
         for key in base_config.keys():
             if key in ["overwrite", "data"]:
                 continue

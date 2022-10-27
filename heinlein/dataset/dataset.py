@@ -59,12 +59,9 @@ class Dataset:
         Searches for an external implementation of the datset
         This is used for datasets with specific needs (i.e. specific surveys)
         """
-        external = self.config['implementation']
-        if not external:
-            self.external = None
-            return
-        
-        elif not self.manager.has_external:
+        external = self.config['implementation']        
+
+        if external and self.manager.external is None:
             raise NotImplementedError(f"No implementation code found for datset {self.name}")
 
         try:

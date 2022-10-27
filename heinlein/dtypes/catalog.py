@@ -41,6 +41,7 @@ class Catalog(Table):
         #If so, we have to be careful about how we perform setup.
         if not any(derivative):
             self.setup(*args, **kwargs)
+            
     def pre_setup(self, *args, **kwargs):
         """
         Checks for any inputs that might be incompatibile
@@ -49,12 +50,14 @@ class Catalog(Table):
         self._parmap = kwargs.pop("parmap", None)
         self._maskable_objects = kwargs.pop("maskable_objects", None)
         return kwargs
+
     def setup(self, *args, **kwargs):
         """
         Performs setup.
         """
-        if self._parmap is None:
+        if self._parmap is None or self._parmap.get("ra") is None:
             self._find_coords()
+        
         else:
             for param in self._parmap:
                 col = param.get_values(self)
@@ -117,9 +120,9 @@ class Catalog(Table):
     
 
     @classmethod
-    def from_rows(cls, rows, columns):
+    def from_rows(cls, rows, columns, *args, **kwargs):
         t = Table(rows=rows, names=columns)
-        c = cls(t)
+        c = cls(t, *args, **kwargs)
         return c
     
     @classmethod
@@ -199,8 +202,8 @@ class Catalog(Table):
         dec_col = columns.intersection(dec)
 
         if len(ra_col) == 1 and len(dec_col) == 1:
-            ra_par = CatalogParam(list(ra_col)[0], "ra")
-            dec_par = CatalogParam(list(dec_col)[0], "dec")
+            ra_par = CatalogParam(list(ra_col)[0], "ra", unit="deg")
+            dec_par = CatalogParam(list(dec_col)[0], "dec", unit="deg")
             self._has_radec = True
         else:
             logging.warning("Unable to find a unique RA and DEC column")
@@ -347,6 +350,8 @@ class ParameterMap:
     
     @classmethod
     def get_map(cls, map: dict):
+        if not map:
+            return None
         params = []
         for key, val in map.items():
             if type(val) == str:
@@ -384,7 +389,11 @@ class ParameterMap:
         if key in self._colmap.keys():
             return key
         else:
-            return self._params[key].col
+            try:
+                col = self._params[key].col
+                return col
+            except KeyError:
+                return None
 
     def _setup_params(self, params, *args, **kwargs):
         if not params:

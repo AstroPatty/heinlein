@@ -12,6 +12,7 @@ import pathlib
 from cacheout import LRUCache
 from cacheout import LRUCache
 import multiprocessing as mp
+from inspect import getmembers, isfunction, isclass
 
 logger = logging.getLogger("manager")
 
@@ -74,15 +75,40 @@ class DataManager(ABC):
         else: #If it DOES exist, get the config data
             self.config = DatasetConfig.load(self.name)
             self.external = self.config.external
+            self._initialize_external_implementation()
             self._data = self.config.data
-            
+    
+    def _initialize_external_implementation(self):
+
+        if self.external is None:
+            self._external_definitions = {}
+            return
+        fns = [f for f in getmembers(self.external, isfunction)]
+        fns = list(filter(lambda f, m = self.external: f[1].__module__ == m.__name__, fns))
+        external_functions = {fn[0]: fn[1] for fn in fns}
+
+        classes = [f for f in getmembers(self.external, isclass)]
+        classes = list(filter(lambda f, m = self.external: f[1].__module__ == m.__name__, classes))
+        external_classes = {cl[0]: cl[1] for cl in classes}
+
+        fn_keys = set(external_functions.keys())
+        cls_keys = set(external_classes.keys())
+        if len((keys_ := fn_keys.intersection(cls_keys))) != 0:
+            print(f"Error: Overloaded functions and classes in dataset implementations" \
+                "Should all have unique names, but found duplicates for {keys_}")
+            exit()
+        self._external_definitions = {**external_classes, **external_functions}
+    
+    def get_external(self, key, *args, **kwargs):
+        return self._external_definitions.get(key, None)
+
     def get_path(self, dtype: str, *args, **kwargs):
         return pathlib.Path(self._data[dtype]['path'])
 
     def load_handlers(self, *args, **kwargs):
         from heinlein.dtypes import handlers
         if not hasattr(self, "_handlers"):
-            self._handlers =  handlers.get_file_handlers(self._data, self.external)
+            self._handlers =  handlers.get_file_handlers(self._data, self._external_definitions)
 
     @staticmethod
     def exists(name: str) -> bool:
