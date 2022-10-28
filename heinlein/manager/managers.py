@@ -159,7 +159,7 @@ class FileManager(DataManager):
                 raise NotImplementedError
         
         self.update_manifest(path)
-        self._data.update({dtype: {"path": str(path)}})
+        self.config.add_data(dtype, str(path))
         return True
 
     def remove_data(self, dtype: str) -> bool:

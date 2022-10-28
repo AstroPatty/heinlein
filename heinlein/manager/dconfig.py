@@ -13,18 +13,8 @@ from copy import copy
 def get_config_paths():
     base_config_location = BASE_DATASET_CONFIG_DIR / "surveys.json"
     stored_config_location = MAIN_DATASET_CONFIG
-    with open(base_config_location, "rb") as f:
-        base_config = json.load(f)
-
     with open(stored_config_location, "r") as f2:
         stored_config = json.load(f2)
-
-    for key, value in base_config.items():
-        if key not in stored_config.keys():
-            stored_config.update({key: value})
-
-    with portalocker.Lock(stored_config_location, "w") as f:
-        json.dump(stored_config, f, indent=4)
 
 
     return stored_config
@@ -95,8 +85,16 @@ class DatasetConfig:
             except KeyError:
                 continue
         return d
-    
-    def validate_data(self, * gargs, **kwargs):
+
+    def add_data(self, dtype, path):
+        data_ = self._data.get(dtype, False)
+        if not data_:
+            self._data.update({dtype: {"path": path}})
+        else:
+            self._data[dtype].update({"path": path})
+        return self.data
+
+    def validate_data(self, *args, **kwargs):
         with open(BUILTIN_DTYPES, "r") as f:
             self._dtype_config = json.load(f)
         
