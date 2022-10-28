@@ -27,8 +27,8 @@ def setup(dataset, *args, **kwargs):
                 y_max = y_center + width/2
                 subregion = geometry.box(x_min, y_min, x_max, y_max)
                 key = "{}_{}".format(str(x_i), str(y_i))
-                for i in range(7):
-                    for j in range(7):
+                for i in range(8):
+                    for j in range(8):
                         key = f"{i}_{j}_{x_i}_{y_i}"
                         reg = Region.polygon(subregion, name=key)
                         regions.append(reg)
