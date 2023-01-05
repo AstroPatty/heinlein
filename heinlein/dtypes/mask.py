@@ -239,7 +239,7 @@ class _regionMask(_mask):
             a = self._geo_tree.query(p)
             for geo in a:
                 if geo.contains(p):
-                    mask[index] = True
+                    mask[index] = False
                     break
         return mask
 
