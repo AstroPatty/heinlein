@@ -52,6 +52,7 @@ def set_plane(dataset: Dataset, plane_number, *args, **kwargs):
 @dataset_extension
 def set_field(dataset: Dataset, field, *args, **kwargs):
     dataset.set_parameter("ms_field", field)
+    dataset.dump_all()
 
 def get_position_from_index(x, y):
     """
