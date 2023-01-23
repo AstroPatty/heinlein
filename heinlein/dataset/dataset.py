@@ -1,48 +1,84 @@
 from functools import singledispatchmethod
 import logging
+from pickle import FROZENSET
 import numpy as np
 from typing import Union
 
 from heinlein.manager.dataManger import DataManager
-
+from inspect import getmembers, isclass, isfunction
 from heinlein.region import BaseRegion, Region
 from heinlein.manager import get_manager
+from functools import partial
 
 from shapely.strtree import STRtree
 from typing import List
 
 logger = logging.getLogger("Dataset")
+
+def check_overload(f):
+    def wrapper(self, *args, **kwargs):
+        overload = self.manager.get_external(f.__name__)
+        bypass = kwargs.get("bypass", False)
+        if bypass or overload is None:
+            return f(self, *args, **kwargs)
+        else:
+            return overload(self, *args, **kwargs)
+    return wrapper
+
+class dataset_extension:
+    def __init__(self, function):
+        self.function = function
+        self.extension = True
+        self.name = function.__name__
+
+    def __call__(self, *args, **kwargs):
+        return self.function(*args, **kwargs)
+
 class Dataset:
 
     def __init__(self, manager: DataManager, *args, **kwargs):
         self.manager = manager
         self.config = manager.config
-        self.setup()
+        self._extensions = {}
+        self._parameters = {}
+        self._setup()
+
+    def __getattr__(self, key__):
+        try:
+            f = self._extensions[key__]
+            return partial(f, self)
+        except KeyError:
+            raise AttributeError(f"{type(self).__name__} object has no attribute '{key__}'")
 
     @property
     def name(self):
         return self.manager.name
 
-    def setup(self, *args, **kwargs) -> None:
+    def _setup(self, *args, **kwargs) -> None:
         """
         Searches for an external implementation of the datset
         This is used for datasets with specific needs (i.e. specific surveys)
         """
-        external = self.config['implementation']
-        if not external:
-            return
-        
-        self.external = self.manager.external
-        if external is None:
+        external = self.config['implementation']        
+
+        if external and self.manager.external is None:
             raise NotImplementedError(f"No implementation code found for datset {self.name}")
+
         try:
-            setup_f = getattr(self.external, "setup")
+            setup_f = self.manager.get_external("setup")
             setup_f(self)
             self._validate_setup()
-        except AttributeError:
+        except KeyError:
             raise NotImplementedError(f"Dataset {self.name} does not have a setup method!")
         
+        self._load_extensions()
         self._build_region_tree()
+
+    def set_parameter(self, name, value):
+        self._parameters.update({name: value})
+
+    def get_parameter(self, name):
+        return self._parameters.get(name, None)
 
     def _validate_setup(self, *args, **kwargs) -> None:
         try:
@@ -52,6 +88,13 @@ class Dataset:
         except AttributeError:
             logging.error(f"No region found for survey {self.name}")
     
+    def _load_extensions(self, *args, **kwargs):
+        """
+        Loads extensions for the particular dataset. These are defined externally
+        """
+        ext_objs = list(filter(lambda f: type(f[1]) == dataset_extension, getmembers(self.manager.external)))
+        self._extensions.update({f[0]: f[1] for f in ext_objs})
+
     def _build_region_tree(self, *args, **kwargs) -> None:
         """
         For larger surveys, we subidivide into smaller regions for easier
@@ -60,7 +103,6 @@ class Dataset:
         """
         geo_list = np.array([reg.geometry for reg in self._regions])
         indices = {id(geo): i for i, geo in enumerate(geo_list)}
-        
         self._geo_idx = indices
         self._geo_tree = STRtree(geo_list)
 
@@ -71,12 +113,16 @@ class Dataset:
         return self.manager.get_path(dtype)
 
     def add_aliases(self, dtype: str, aliases, *args, **kwargs):
+        """
+        Adds an alias for the current interpreter
+        """
         try:
             self._aliases.update({dtype: aliases})
         except AttributeError:
             self._aliases = {dtype: aliases}
 
-    def _get_region_overlaps(self, other: BaseRegion, *args, **kwargs) -> list:
+    @check_overload
+    def get_region_overlaps(self, other: BaseRegion, *args, **kwargs) -> list:
         """
         Find the subregions inside a dataset that overlap with a given region
         Uses the shapely STRTree for speed.
@@ -94,6 +140,7 @@ class Dataset:
         overlaps = [[o for o in overlap if o.intersects(others[i])] for i, overlap in enumerate(overlaps)]
         return overlaps
     
+    @check_overload
     def get_data_from_named_region(self, name: str, dtypes: Union[str, list] = "catalog"):
         if name not in self._region_names:
             print(f"Unable to find region named {name} in dataset {self.name}")
@@ -101,6 +148,7 @@ class Dataset:
 
         regs_ = self._regions[self._region_names == name]
         return self.manager.get_from(dtypes, regs_)
+
     def load(self, regions, dtypes, *args, **kwargs):
         """
         Pre-loads some regions into the cache.
@@ -133,9 +181,8 @@ class Dataset:
         dtypes <str> or <list>: list of data types to return
         
         """
-        overlaps = self._get_region_overlaps(query_region, *args, **kwargs)
+        overlaps = self.get_region_overlaps(query_region, *args, **kwargs)
         overlaps = [o for o in overlaps if o.intersects(query_region)]
-
         if len(overlaps) == 0:
             print("Error: No objects found in this region!")
             return
@@ -144,7 +191,7 @@ class Dataset:
             dtypes = [dtypes]
         
 
-        data = self.manager.get_data(dtypes, query_region, overlaps)
+        data = self.manager.get_data(dtypes, query_region, overlaps, *args, **kwargs)
         return_data = {}
         for dtype, obj_ in data.items():
             try:
@@ -172,16 +219,15 @@ class Dataset:
         reg = Region.circle(center=center, radius=radius)
         return self.get_data_from_region(reg, *args, **kwargs)
 
+    
+    @check_overload
     def get_overlapping_region_names(self, query_region: BaseRegion):
-        if isinstance(query_region, BaseRegion):
-            return [r.name for r in self._get_region_overlaps(query_region)]
-        elif type(query_region) == list:
-            overlaps = self._get_many_region_overlaps(query_region)
-            return [[r.name for r in o] for o in overlaps]
+        return [r.name for r in self.get_region_overlaps(query_region)]
 
     def get_many_overlapping_region_names(self, query_regions: list):
         pass
 
+    @check_overload
     def get_region_by_name(self, name: str, override = False):
         matches = self._regions[self._region_names == name]
         if len(matches) == 0:
@@ -193,7 +239,8 @@ class Dataset:
             return matches
         else:
             return matches[0]
-    
+            
+    @check_overload
     def get_regions_by_name(self, names: List[str]):
         matches = self._regions[np.in1d(self._region_names, names)]
         if len(matches) == 0:

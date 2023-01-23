@@ -25,7 +25,6 @@ def load_regions():
     else:
         regions = load_regions_from_pandas(support_location)
     return regions
-    
 
 def load_regions_from_pandas(support_location):
     tile_file = support_location / "des_tiles.csv"
@@ -57,13 +56,12 @@ class MaskHandler(Handler):
         self.mangle_files = [f for f in (self._path / "mangle").glob("*.pol") if not f.name.startswith(".")]
         self.plane_files = [f for f in (self._path / "plane").glob("*.fits") if not f.name.startswith(".")]
     
-    def get_data(self, regions, *args, **kwargs):
-        names = [r.name for r in regions]
-        nreg = len(names)
-        regex = re.compile("|".join(names))
+    def get_data(self, region_names, *args, **kwargs):
+        nreg = len(region_names)
+        regex = re.compile("|".join(region_names))
         mangle_matches = list(filter(lambda x, y=regex: regex.match(x.name), self.mangle_files))
         plane_matches = list(filter(lambda x, y=regex: regex.match(x.name), self.plane_files))
-        return self._get(names, mangle_matches, plane_matches, *args, **kwargs)
+        return self._get(region_names, mangle_matches, plane_matches, *args, **kwargs)
 
     def _get(self, regions, mangle_files, plane_files, *args, **kwargs):
         output = {}

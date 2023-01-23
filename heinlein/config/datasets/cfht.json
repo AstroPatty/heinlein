@@ -5,9 +5,7 @@
     "slug": "cfht",
     "dconfig": {
         "catalog": {
-            "region": "field",
-            "ra": "ALPHA_J2000",
-            "dec": "DELTA_J2000"
+            "region": "field"
         },
         "mask": {
             "mask_key": 1,

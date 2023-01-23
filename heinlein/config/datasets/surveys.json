@@ -7,5 +7,8 @@
     },
     "cfht": {
         "config_path": "cfht.json"
+    },
+    "ms": {
+        "config_path": "ms.json"
     }
 }

@@ -114,7 +114,7 @@ class PolygonRegion(BaseRegion):
         area = self.sky_geometry.area
         coords = initialize_grid(bounds, area, density)
         return coords
-
+    generate_grid = initialize_grid
 class CircularRegion(BaseRegion):
 
     def __init__(self, center: SkyCoord, radius: u.Quantity, name = None, *args, **kwargs) -> None:

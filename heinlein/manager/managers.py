@@ -1,12 +1,7 @@
-import atexit
 import pathlib
 import json
-from heinlein.locations import BASE_DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG, DATASET_CONFIG_DIR, MAIN_DATASET_CONFIG
-from heinlein.utilities import warning_prompt, warning_prompt_tf
-from typing import Any
-import shutil
+from heinlein.utilities import warning_prompt
 import logging
-from copy import copy
 from heinlein.manager.dataManger import DataManager
 
 logger = logging.getLogger("manager")
@@ -34,6 +29,7 @@ class FileManager(DataManager):
         """
         super().__init__(name, *args, **kwargs)
         self.setup()
+
     def setup(self, *args, **kwargs):
         self.ready = True
 
@@ -127,15 +123,7 @@ class FileManager(DataManager):
             raise FileNotFoundError(f"Path {str(path)} was not initialized properly!")
         else:
             manifest.unlink()
-    @property
-    def config(self):
-        return self.config_data
 
-    def write_config(self):
-        output = copy(self.config_data)
-        output.update({'data': self._data})
-        with open(self.config_location, 'w') as f:
-            json.dump(output, f, indent=4)
 
 
     def add_data(self, dtype: str, path: pathlib.Path, overwrite=False) -> bool:
@@ -171,8 +159,7 @@ class FileManager(DataManager):
                 raise NotImplementedError
         
         self.update_manifest(path)
-        self._data.update({dtype: {"path": str(path)}})
-        self.write_config()
+        self.config.add_data(dtype, str(path))
         return True
 
     def remove_data(self, dtype: str) -> bool:
@@ -198,7 +185,6 @@ class FileManager(DataManager):
         if not path.is_file():
             self.delete_manifest(path)
         self._data.pop(dtype)
-        self.write_config()
             
     def get_handler(self, dtype: str, *args, **kwargs):
         pass
@@ -207,4 +193,3 @@ class FileManager(DataManager):
         for dtype, path in self._data.items():
             self.delete_manifest(pathlib.Path(path)) 
         self._data = {}
-        self.write_config()

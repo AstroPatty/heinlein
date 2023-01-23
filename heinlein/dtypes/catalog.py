@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ast import Param
 from astropy.table import Table
 import logging
 import numpy as np
@@ -31,35 +32,65 @@ class Catalog(Table):
         Stores catalog data. Can be used like an astropy table, but includes
         some additional functionality.
         """
-        super().__init__(*args, **kwargs)
+        cleaned_kwargs = self.pre_setup(*args, **kwargs)
+        super().__init__(*args, **cleaned_kwargs)
         self._maskable_objects = {}
+        self._has_radec = False
         derivative = [m in kwargs.keys() for m in ["masked", "copy"]]
-        #Checks if this has been derived from another catalog (either by masking or copying)
+         #Checks if this has been derived from another catalog (either by masking or copying)
         #If so, we have to be careful about how we perform setup.
-        if not any(derivative) and len(self) != 0:
+        if not any(derivative):
             self.setup(*args, **kwargs)
-        
+            
+    def pre_setup(self, *args, **kwargs):
+        """
+        Checks for any inputs that might be incompatibile
+        with the astropy Table and stores them for later use
+        """
+        self._parmap = kwargs.pop("parmap", None)
+        self._maskable_objects = kwargs.pop("maskable_objects", None)
+        return kwargs
+
     def setup(self, *args, **kwargs):
         """
         Performs setup.
         """
-        try:
-            self._parmap = kwargs['parmap']
-        except KeyError:
+        if self._parmap is None or self._parmap.get("ra") is None:
             self._find_coords()
+        
+        else:
+            for param in self._parmap:
+                col = param.get_values(self)
 
-        try:
-            self._maskable_objects = kwargs['maskable_objects']
+                if param.unit is not None and col.unit is None:
+                    unit = getattr(u, param.unit) 
+                    col *= unit
+                    self[param.col] = col
+            try:
+                ra = self['ra']
+                dec = self['dec']
+                self._has_radec = True
+            except KeyError:
+                logging.warning("Unable to find RA and DEC colunns, you may need to alias them")
+
+
+        if self._maskable_objects:
             self.__dict__.update(self._maskable_objects)
-        except KeyError:
+        else:
             self._init_points()
+            
+    def post_setup(self, parmap, maskable_objects):
+        self._parmap = parmap
+        self._maskable_objects = maskable_objects
+        self.setup()
+
 
     def __copy__(self, *args, **kwargs):
         """
         Ensures extra objects are passed to a new table.
         """
         cp = super().__copy__()
-        cp.setup(maskable_object = self._maskable_objects, parmap = self._parmap)
+        cp.post_setup(maskable_objects = self._maskable_objects, parmap = self._parmap)
         return cp
 
     def __getitem__(self, key):
@@ -83,15 +114,25 @@ class Catalog(Table):
         """
         try:
             column = self._parmap.get(item)
+            if column is None:
+                raise KeyError
             return super().__setitem__(column, value)
         except (KeyError, AttributeError):
             return super().__setitem__(item, value)
     
+
     @classmethod
-    def from_rows(cls, rows, columns):
+    def from_rows(cls, rows, columns, *args, **kwargs):
         t = Table(rows=rows, names=columns)
-        c = cls(t)
+        c = cls(t, *args, **kwargs)
         return c
+    
+    @classmethod
+    def read(cls, *args, **kwargs):
+        parameter_map = kwargs.pop("parmap", None)
+        data = Table.read(*args, **kwargs)
+        output =  cls(data,parmap=parameter_map)
+        return output
 
     def concatenate(self, others: list = [], *args, **kwargs):
         """
@@ -131,9 +172,7 @@ class Catalog(Table):
             cats.append(o)
 
         new_cat = vstack(cats)
-
-        new_cat.setup(**data)
-
+        new_cat.post_setup(**data)
         return new_cat
     
     def update_coords(self, coords: SkyCoord, *args, **kwargs):
@@ -165,26 +204,26 @@ class Catalog(Table):
         dec_col = columns.intersection(dec)
 
         if len(ra_col) == 1 and len(dec_col) == 1:
-            ra_par = CatalogParam(list(ra_col)[0], "ra")
-            dec_par = CatalogParam(list(dec_col)[0], "dec")
+            ra_par = CatalogParam(list(ra_col)[0], "ra", unit="deg")
+            dec_par = CatalogParam(list(dec_col)[0], "dec", unit="deg")
+            self._has_radec = True
         else:
-            print(self)
-            print(len(self))
-            raise KeyError("Unable to find a unique RA and DEC column")
+            logging.warning("Unable to find a unique RA and DEC column")
+            self._has_radec = False
 
-        try:
-            self._parmap.update([ra_par, dec_par])
-        except AttributeError:
-            self._parmap = ParameterMap([ra_par, dec_par])
-
-        try:
-            self['ra'].to(u.deg)
-        except u.UnitConversionError:
-            self['ra'] = self['ra']*u.deg
-        try:
-            self['dec'].to(u.deg)
-        except u.UnitConversionError:
-            self['dec'] = self['dec']*u.deg
+        if self._has_radec:
+            try:
+                self._parmap.update([ra_par, dec_par])
+            except AttributeError:
+                self._parmap = ParameterMap([ra_par, dec_par])
+            try:
+                self['ra'].to(u.deg)
+            except u.UnitConversionError:
+                self['ra'] = self['ra']*u.deg
+            try:
+                self['dec'].to(u.deg)
+            except u.UnitConversionError:
+                self['dec'] = self['dec']*u.deg
 
     def add_alias(self, column_name, alias_name, *args, **kwargs):
         """
@@ -207,6 +246,7 @@ class Catalog(Table):
         """
         pars = [CatalogParam(k, v) for k, v in aliases.items()]
         self._parmap.update(pars)
+        
 
     def _init_points(self, *args, **kwargs):
         """
@@ -214,6 +254,8 @@ class Catalog(Table):
         objects in the catalog. These are used to extract
         objects from particular regions.
         """
+        if not self._has_radec:
+            return 
         self._skycoords = SkyCoord(self['ra'], self['dec'])
         lon = self._skycoords.ra.to_value("deg")
         lat = self._skycoords.dec.to_value("deg")
@@ -245,7 +287,7 @@ class Catalog(Table):
         maskables = {name: value[slice_] for name, value in self._maskable_objects.items()}
         items = {"parmap": self._parmap, 'maskable_objects': maskables}
         new = super()._new_from_slice(slice_, *args, **kwargs)
-        new.setup(**items)
+        new.post_setup(**items)
         return new
 
     def get_data_from_region(self, region: BaseRegion):
@@ -270,7 +312,7 @@ class Catalog(Table):
 
 class CatalogParam:
 
-    def __init__(self, col_name: str, std_name: str,  *args, **kwargs):
+    def __init__(self, col_name: str, std_name: str, unit: u.Quantity = None,  *args, **kwargs):
         """
         A class for handling catalog aliases. Note, this particular class DOES NOT
         check that the data frame actually contains the column until the values are requested.
@@ -280,10 +322,10 @@ class CatalogParam:
         std_name <str>: Standard name of the column
 
         """
-        super().__init__(*args, **kwargs)
         self._col_name = col_name
         self._std_name = std_name
-    
+        self.unit = unit
+
     def get_values(self, cat, *args, **kwargs):
         try:
             return cat[self._col_name]
@@ -307,6 +349,27 @@ class ParameterMap:
         Holds all the aliases for a catalog.
         """
         self._setup_params(params)
+    
+    @classmethod
+    def get_map(cls, map: dict):
+        if not map:
+            return None
+        params = []
+        for key, val in map.items():
+            if type(val) == str:
+                p = CatalogParam(val, key)
+            elif type(val) == dict:
+                catalog_key = val['key']
+                unit = val.get("unit", None)
+                p = CatalogParam(catalog_key, key, unit)
+            params.append(p)
+        return cls(params)
+                
+    def __iter__(self):
+        return self._params.__iter__()
+
+    def __next__(self):
+        return self._params.__next__()
 
     @property
     def names(self):
@@ -328,7 +391,11 @@ class ParameterMap:
         if key in self._colmap.keys():
             return key
         else:
-            return self._params[key].col
+            try:
+                col = self._params[key].col
+                return col
+            except KeyError:
+                return None
 
     def _setup_params(self, params, *args, **kwargs):
         if not params:
@@ -366,7 +433,6 @@ class ParameterMap:
             if p.col in self._colmap.keys():
                 self.logger.info(f"Updating column reference for {p.col}")
             
-            
+
             self._params.update({p.standard: p})
             self._colmap.update({p.col: p.standard})
-
