@@ -50,7 +50,10 @@ def set_plane(dataset: Dataset, plane_number, *args, **kwargs):
     dataset.set_parameter("ms_plane", plane_number)
 
 @dataset_extension
-def set_field(dataset: Dataset, field, *args, **kwargs):
+def set_field(dataset: Dataset, field: tuple, *args, **kwargs):
+    if type(field) != tuple or len(field) != 2 or not all([type(a) == int for a in field]):
+        print("Error: Millennium simulation fields must be a tuple with two ints")
+        return
     dataset.set_parameter("ms_field", field)
     dataset.dump_all()
 

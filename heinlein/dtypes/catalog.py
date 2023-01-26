@@ -55,6 +55,8 @@ class Catalog(Table):
         """
         Performs setup.
         """
+        if len(self) == 0:
+            return
         if self._parmap is None or self._parmap.get("ra") is None:
             self._find_coords()
         
