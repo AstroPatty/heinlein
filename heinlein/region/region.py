@@ -93,7 +93,7 @@ class PolygonRegion(BaseRegion):
         """
         Return a circular tile, drawn randomly from the region.
         """
-        if self._sampler is None:
+        if getattr(self, "_sampler", None) is None:
             self._get_sampler()
         return self._sampler.get_circular_sample(radius)
     
