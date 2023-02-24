@@ -23,10 +23,10 @@ def get_mask_objects(input_list, *args, **kwargs):
     output_data = np.empty(len(input_list), dtype="object")
     for index, obj in enumerate(input_list):
         if type(obj) == HDUList:
-            if kwargs.get("pixarray", False):
-                output_data[index] = _pixelArrayMask(obj, *args, **kwargs)
-            else:
-                output_data[index] = _fitsMask(obj, *args, **kwargs)
+            #if kwargs.get("pixarray", False):
+            #    output_data[index] = _pixelArrayMask(obj, *args, **kwargs)
+            #else:
+            output_data[index] = _fitsMask(obj, *args, **kwargs)
         elif type(obj) == pymangle.Mangle:
             output_data[index] = _mangleMask(obj)
         elif type(obj) == np.ndarray:
@@ -135,6 +135,7 @@ class _pixelArrayMask(_mask):
 
     def _check(self, coords, *args, **kwargs):
         pix_coords = self._wcs.world_to_pixel(coords)
+        import matplotlib.pyplot as plt
         shape = self._mask.shape
         x = np.round(pix_coords[0], 0).astype(int)
         y = np.round(pix_coords[1], 0).astype(int)
@@ -142,8 +143,13 @@ class _pixelArrayMask(_mask):
         y_lims = (y < 0) | (y >= shape[1])
         m_ = x_lims | y_lims #These objects are outside this particular mask
 
-        unmasked_objects = np.ones(len(coords), dtype=bool )
+        plt.imshow(self._mask.astype(int), origin="lower")
+        #plt.scatter(coords.ra, coords.dec, transform=ax.get_transform('world'))
+
+        unmasked_objects = np.zeros(len(coords), dtype=bool )
         unmasked_objects[~m_] = self._mask[x[~m_], y[~m_]]
+
+
         return unmasked_objects
 
     @singledispatchmethod
@@ -172,7 +178,10 @@ class _fitsMask(_mask):
         self._mask_plane = self._mask[self._mask_key].data
 
     def _check(self, coords):
-        x, y = utils.skycoord_to_pixel(coords, self._wcs)
+        y,x = utils.skycoord_to_pixel(coords, self._wcs)
+        #The order of numpy axes is the opposite of the order
+        #in fits images. All the data is being stored in
+        #arrays, so we have to flip things here. 
         x = np.round(x,0).astype(int)
         y = np.round(y,0).astype(int)
         masked = np.ones(len(x), dtype=bool)
