@@ -223,7 +223,7 @@ class Dataset:
     @check_overload
     def get_overlapping_region_names(self, query_region: BaseRegion):
         if isinstance(query_region, BaseRegion):
-            return [r.name for r in self._get_region_overlaps(query_region)]
+            return [r.name for r in self.get_region_overlaps(query_region)]
         elif type(query_region) == list:
             overlaps = self._get_many_region_overlaps(query_region)
             return [[r.name for r in o] for o in overlaps]
