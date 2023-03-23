@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "heinlein"
-version = "0.4.6"
+version = "0.4.7"
 description = "Library for interacting with large astronomical survey datasets"
 authors = ["Patrick Wells <pwells@ucdavis.edu>"]
 exclude = ["heinlein/config/support/hsc_regions.csv", "heinlein/config/support/**/*.txt"]
@@ -17,7 +17,7 @@ portalocker = "^2.5.1"
 spherical-geometry = "^1.2.22"
 dynaconf = "^3.1.9"
 cacheout = "^0.14.1"
-regions = "^0.6"
+regions = "0.7"
 pymangle = "^0.9"
 
 [tool.poetry.dev-dependencies]
