@@ -12,7 +12,7 @@ from functools import partial
 
 from shapely.strtree import STRtree
 from typing import List
-
+import astropy.units as u
 logger = logging.getLogger("Dataset")
 
 def check_overload(f):
@@ -120,6 +120,73 @@ class Dataset:
             self._aliases.update({dtype: aliases})
         except AttributeError:
             self._aliases = {dtype: aliases}
+    
+    def sample_generator(self, samples, sample_type = "cone", sample_dimensions = 45*u.arcsec, dtypes = ["catalog"], *args, **kwargs):
+        """
+        Often, we want to get many many samples in a row. The problem here
+        is that the cache will very quickly blow up if the samples cover may
+        of the survey's subregions. This methord returns a generator that
+        yields samples from the survey. It orders them such that it can 
+        only load a few subregions at a time, then dumps them from the cache when
+        they are done.
+        """
+        if sample_type != "cone":
+            raise NotImplementedError("Only cone sampling is currently supported")
+        
+        samples = [Region.circle(center=s, radius=sample_dimensions) for s in samples]
+
+        overlaps = self.get_overlapping_region_names(samples)
+        partitions = {}
+
+
+        for i, sample in enumerate(samples):
+            overlap = overlaps[i]
+            if len(overlap) == 1:
+                okey = overlap[0]
+            else:
+                overlap.sort()
+                okey = "/".join(overlap)
+
+
+            if okey in partitions.keys():
+                partitions[okey].append(sample)
+            else:
+                partitions[okey] = [sample]
+        
+        samples = partitions
+        counts = [p.count("/") + 1 for p in samples.keys()]
+        singles = []
+
+        for i, (regs, s) in enumerate(samples.items()):
+            if counts[i] == 1:
+                continue
+            regs_to_get = regs.split("/")
+            for s_ in s:
+                yield self.get_data_from_region(s_, dtypes)
+            for reg_ in regs_to_get:
+                #Now, get the samples that fall into a single one of the regions
+                if reg_ in singles:
+                    continue
+                try:
+                    samples_in_reg = samples[reg_]
+                except KeyError:
+                    continue
+                singles.append(reg_)
+                for s_ in samples_in_reg:
+                    yield self.get_data_from_region(s_, dtypes)
+            #Now, we dump the data from those regions
+            self.dump_all()
+        #Now we go through all the samples that fall in a single survey region 
+        #that were NOT covered before
+        for i, (reg, s) in enumerate(samples.items()):
+            if counts[i] != 1 or reg in singles:
+                continue
+            else:
+                for s_ in s:
+                    yield self.get_data_from_region(s_, dtypes)
+                self.dump_all()
+
+
 
     @check_overload
     def get_region_overlaps(self, other: BaseRegion, *args, **kwargs) -> list:
@@ -128,15 +195,13 @@ class Dataset:
         Uses the shapely STRTree for speed.
         """
         region_overlaps = self._geo_tree.query(other.geometry)
-        idxs = [id(r) for r in region_overlaps]
-        overlaps = [self._regions[self._geo_idx[i]] for i in idxs]
+        overlaps = [self._regions[i] for i in region_overlaps]
         overlaps = [o for o in overlaps if o.intersects(other)]
         return overlaps
 
     def _get_many_region_overlaps(self, others: list, *args, **kwargs):
         region_overlaps = [self._geo_tree.query(other.geometry) for other in others]
-        idxs = [[id(r) for r in overlaps] for overlaps in region_overlaps]
-        overlaps = [[self._regions[self._geo_idx[i]] for i in idx] for idx in idxs]
+        overlaps = [[self._regions[i] for i in overlaps] for overlaps in region_overlaps]
         overlaps = [[o for o in overlap if o.intersects(others[i])] for i, overlap in enumerate(overlaps)]
         return overlaps
     
