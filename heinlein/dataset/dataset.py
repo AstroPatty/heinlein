@@ -162,7 +162,7 @@ class Dataset:
                 continue
             regs_to_get = regs.split("/")
             for s_ in s:
-                yield self.get_data_from_region(s_, dtypes)
+                yield (s_, self.get_data_from_region(s_, dtypes))
             for reg_ in regs_to_get:
                 #Now, get the samples that fall into a single one of the regions
                 if reg_ in singles:
@@ -173,7 +173,7 @@ class Dataset:
                     continue
                 singles.append(reg_)
                 for s_ in samples_in_reg:
-                    yield self.get_data_from_region(s_, dtypes)
+                    yield (s_, self.get_data_from_region(s_, dtypes))
             #Now, we dump the data from those regions
             self.dump_all()
         #Now we go through all the samples that fall in a single survey region 
@@ -183,7 +183,7 @@ class Dataset:
                 continue
             else:
                 for s_ in s:
-                    yield self.get_data_from_region(s_, dtypes)
+                    yield (s_, self.get_data_from_region(s_, dtypes))
                 self.dump_all()
 
 
