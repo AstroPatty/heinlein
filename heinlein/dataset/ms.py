@@ -45,6 +45,16 @@ def get_region_overlaps(dataset: Dataset, query_region, *args, **kwargs):
     overlaps = list(filter(lambda x: x.name.startswith(field_key), overlaps))
     return overlaps
 
+def _get_many_region_overlaps(dataset: Dataset, others: list, *args, **kwargs):
+    field = dataset.get_parameter("ms_field")
+    field_key = f"{field[0]}_{field[1]}"
+
+    region_overlaps = [dataset._geo_tree.query(other.geometry) for other in others]
+    overlaps = [[dataset._regions[i] for i in overlaps] for overlaps in region_overlaps]
+    overlaps = [[o for o in overlap if o.intersects(others[i])] for i, overlap in enumerate(overlaps)]
+    overlaps = [list(filter(lambda x: x.name.startswith(field_key), o)) for o in overlaps]
+    return overlaps
+
 @dataset_extension
 def set_plane(dataset: Dataset, plane_number, *args, **kwargs):
     dataset.set_parameter("ms_plane", plane_number)
