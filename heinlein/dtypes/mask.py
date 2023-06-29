@@ -10,12 +10,14 @@ import warnings
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry import MultiPoint
 from shapely.strtree import STRtree
-from heinlein.region import BaseRegion
+from heinlein.region import BaseRegion, CircularRegion, PolygonRegion
 from astropy.coordinates import SkyCoord
 from spherical_geometry.vector import lonlat_to_vector, vector_to_lonlat
 from shapely import geometry
 from heinlein.region.region import CircularRegion
-
+from astropy.nddata import Cutout2D
+from astropy.nddata.utils import NoOverlapError
+from memory_profiler import profile
 warnings.simplefilter('ignore', category=AstropyWarning)
 
 
@@ -26,7 +28,7 @@ def get_mask_objects(input_list, *args, **kwargs):
             #if kwargs.get("pixarray", False):
             #    output_data[index] = _pixelArrayMask(obj, *args, **kwargs)
             #else:
-            output_data[index] = _fitsMask(obj, *args, **kwargs)
+            output_data[index] = _fitsMask.from_hdu(obj, *args, **kwargs)
         elif type(obj) == pymangle.Mangle:
             output_data[index] = _mangleMask(obj)
         elif type(obj) == np.ndarray:
@@ -42,10 +44,12 @@ class Mask:
     def __init__(self, masks = [], *args, **kwargs):
         """
         Masks are much less regular than catalogs. There are many different
-        formats, and some surveys mix formats. The "Mask" object is a wraper class
+        formats, and some surveys mix formats. The "Mask" object is a wraper class  
         that handles interfacing with all these different formats.
         """
         self._masks = get_mask_objects(masks, *args, **kwargs)
+        self._check_filter = False
+        self._can_filter = False
 
     def __len__(self):
         return len(self._masks)
@@ -75,8 +79,24 @@ class Mask:
         masks[0] = self._masks
         all_masks = np.hstack(masks)
         return Mask.from_masks(all_masks)
+
+    def get_data_from_region(self, region: BaseRegion):
+        if not self._check_filter:
+            self._can_filter = any([hasattr(mask, "get_data_from_region") for mask in self._masks])
+        if not self._can_filter:
+            raise AttributeError
+
+        return_vals = []
+        for mask in self._masks:
+            try:
+                submask = mask.get_data_from_region(region)
+                if submask is not None:
+                    return_vals.append(submask)
+            except AttributeError as e:
+                return_vals.append(mask)
+        return Mask.from_masks(return_vals)
         
-        
+  
 
 class _mask(ABC):
 
@@ -164,18 +184,31 @@ class _pixelArrayMask(_mask):
         return coords[mask]
 
 class _fitsMask(_mask):
-    def __init__(self, mask, mask_key, pixarray = False, *args, **kwargs):
+
+    def __init__(self, mask, wcs, mask_data):
+        super().__init__(mask)
+        self._wcs = wcs
+        self._mask_plane = mask_data
+
+    @classmethod
+    def from_hdu(cls, mask, mask_key, pixarray = False, *args, **kwargs):
         """
         If the mask is stored in a fits file, we assume we can 
         get the WCS info from the header in HDU 0, but we need to
         know where the actual mask is located, so we pass a key.
         A fits mask assumes masked pixels have a value > 0
         """
-        super().__init__(mask)
 
-        self._wcs = WCS(mask[0].header)
-        self._mask_key = mask_key
-        self._mask_plane = self._mask[self._mask_key].data
+        wcs = WCS(mask[0].header)
+        mask_key = mask_key
+        mask_plane = mask[mask_key].data
+        return cls(mask, wcs, mask_plane)
+
+    @classmethod
+    def from_cutout(cls, cutout):
+        wcs = cutout.wcs
+        data = cutout.data
+        return cls(cutout, wcs, data)
 
     def _check(self, coords):
         y,x = utils.skycoord_to_pixel(coords, self._wcs)
@@ -205,6 +238,20 @@ class _fitsMask(_mask):
         coords = catalog.coords
         mask = self._check(coords)
         return catalog[mask]
+    
+    def get_data_from_region(self, region):
+        if type(region) == CircularRegion:
+            center = region.coordinate
+            size = (region.radius, region.radius)
+        else:
+            return NotImplementedError
+
+        try:
+            cutout = Cutout2D(self._mask_plane, center, size, wcs=self._wcs, copy=True)
+        except NoOverlapError:
+            return None
+
+        return _fitsMask.from_cutout(cutout)
 
     @mask.register
     def _(self, coords: SkyCoord):
