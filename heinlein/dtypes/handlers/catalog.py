@@ -6,11 +6,11 @@ import sqlite3
 import numpy as np
 from yaml import parse
 from heinlein.dtypes.handlers import handler
-from heinlein.dtypes.catalog import Catalog, ParameterMap
+from heinlein.dtypes.catalog import Catalog
 from astropy.table import Table
 from astropy.io import ascii
 
-from heinlein.dtypes import catalog
+from heinlein.dtypes.catalog import Catalog
 
 def get_catalog_handler(path: Path, dconfig: dict):
     if not path.is_file():
@@ -23,7 +23,6 @@ class CsvCatalogHandler(handler.Handler):
 
     def __init__(self, path: Path, config: dict, *args, **kwargs):
         super().__init__(path, config, "catalog")
-        self._map = ParameterMap.get_map(self._config)
     
     def get_data(self, region_names: list, *args, **kwargs):
         """
@@ -46,7 +45,7 @@ class CsvCatalogHandler(handler.Handler):
                 try:
                     file_path = files[0]
                     data = ascii.read(file_path)
-                    storage.update({name: Catalog(data, parmap=self._map)})
+                    storage.update({name: Catalog(data)})
                 except IndexError:
                     logging.error(f"No file found for dtype catalog in region {name}!")
         else:
@@ -55,7 +54,7 @@ class CsvCatalogHandler(handler.Handler):
                 data = ascii.read(file_path)
                 for name in region_names:
                     mask = data[self._config['region']] == name
-                    storage.update({name: Catalog(data[mask], parmap=self._map)})
+                    storage.update({name: Catalog(data[mask])})
         return storage
 
 
@@ -63,7 +62,6 @@ class SQLiteCatalogHandler(handler.Handler):
     def __init__(self, path: Path, config: dict, *args, **kwargs):
         super().__init__(path, config, "catalog")
         self._initialize_connection()
-        self._map = ParameterMap.get_map(self._config)
 
     def _initialize_connection(self, *args, **kwargs):
         self._con = sqlite3.connect(self._path, cached_statements=1)
@@ -72,7 +70,7 @@ class SQLiteCatalogHandler(handler.Handler):
         self._tnames = [t[1] for t in cur.fetchall()]
     
     def get_data(self, region_names: list, *args, **kwargs):
-        subregion_key = self._map.get("subregion")
+        subregion_key = self._config.get('subregion', None)
         if subregion_key is not None:
             splits = [rname.split(".") for rname in region_names]
             regions_to_get = {}
@@ -89,8 +87,8 @@ class SQLiteCatalogHandler(handler.Handler):
             return self._get(region_names)
 
     def get_with_subregions(self, regions: dict):
-        subregion_key = self._map.get('subregion')
-        region_key = self._map.get('region')
+        subregion_key = self._config.get('subregion', None)
+        region_key = self._config.get('region', None)
         storage = {}
         for region, subregions in regions.items():
             region_names = [".".join([region, sr]) for sr in subregions]
@@ -123,7 +121,7 @@ class SQLiteCatalogHandler(handler.Handler):
                 storage.update({region: table})
 
             elif len(self._tnames) == 1:
-                region_key = self._map.get('region')
+                region_key = self._config.get('region', None)
                 table = self.get_where(self._tnames[0], {region_key: region.name})
                 storage.update({region: table})
         return storage
@@ -163,5 +161,5 @@ class SQLiteCatalogHandler(handler.Handler):
         rows[missing_values] = -1
         columns = [d[0] for d in cursor.description]
         data = Table(rows=rows, names=columns)
-        c = Catalog(data, parmap = self._map)
+        c = Catalog(data)
         return c
