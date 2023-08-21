@@ -182,13 +182,13 @@ class Catalog(Table):
         Re-defines coordinates in the catalog using passed skycoords.
         This is primarily for use in lenskappa
         """
-        self._skycoords = coords
+        self['coordinates'] = coords
         self['ra'] = coords.ra
         self['dec'] = coords.dec
         lon = self['ra'].to(u.deg)
         lat = self['dec'].to(u.deg)
         self._cartesian_points = np.dstack(lonlat_to_vector(lon, lat))[0]
-        self._maskable_objects.update({'_skycoords': self._skycoords, '_cartesian_points': self._cartesian_points})
+        self._maskable_objects.update({'_cartesian_points': self._cartesian_points})
 
 
     def _find_coords(self, *args, **kwargs):
@@ -258,16 +258,17 @@ class Catalog(Table):
         """
         if not self._has_radec:
             return 
-        self._skycoords = SkyCoord(self['ra'], self['dec'])
-        lon = self._skycoords.ra.to_value("deg")
-        lat = self._skycoords.dec.to_value("deg")
+        coordinates = SkyCoord(self['ra'], self['dec'])
+        self['coordinates'] = coordinates
+        lon = coordinates.ra.to_value("deg")
+        lat = coordinates.dec.to_value("deg")
         self._cartesian_points = np.dstack(lonlat_to_vector(lon, lat))[0]
-        self._maskable_objects.update({'_skycoords': self._skycoords, '_cartesian_points': self._cartesian_points})
+        self._maskable_objects.update({'_cartesian_points': self._cartesian_points})
 
  
     @property
     def coords(self):
-        return self._skycoords
+        return self['coordinates']
     
     @property
     def points(self):
@@ -306,7 +307,7 @@ class Catalog(Table):
     def _get_items_in_circular_region(self, region: CircularRegion):
         center = region.coordinate
         radius = region.radius
-        mask = center.separation(self._skycoords) <= radius
+        mask = center.separation(self['coordinates']) <= radius
         return self[mask]
 
     def _get_items_in_polygon_region(self, region: PolygonRegion):
