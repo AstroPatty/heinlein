@@ -17,9 +17,8 @@ from heinlein.dtypes import mask
 from heinlein.locations import MAIN_CONFIG_DIR
 
 
-if TYPE_CHECKING:
-    from heinlein.region import BaseRegion
-    from heinlein.region import CircularRegion, PolygonRegion
+from heinlein.region import BaseRegion
+from heinlein.region import CircularRegion, PolygonRegion
 
 
 def load_config():
@@ -42,7 +41,7 @@ def get_cartesian_points(catalog: Table):
     lon = coords.ra.to_value("deg")
     lat = coords.dec.to_value("deg")
     cartesian_points = np.dstack(lonlat_to_vector(lon, lat))[0]
-    return MultiPoint(cartesian_points)
+    return cartesian_points
 
 def label_coordinates(catalog: Table):
     """
@@ -114,7 +113,12 @@ class Catalog:
 
         val =  self._data.__getitem__(key)
         if type(val) == Table:
-            return Catalog(val)
+            try:
+                points = self._cartesian_points[val]
+            except (IndexError, TypeError):
+                points = None
+
+            return Catalog(val, cartesian_points=points)
         return val
     
     @property
@@ -143,9 +147,15 @@ class Catalog:
         #If all the catalogs have the same columns, that implies that either they
         #all have coordinates, or none of them do. So we can just check the first
         #it also implies they should all have the same parameter map
-        all_points = np.concatenate([c._cartesian_points.geoms for c in good_catalogs])
+        all_points = np.concatenate([c._cartesian_points for c in good_catalogs])
         return Catalog(new_data, cartesian_points=MultiPoint(all_points))
 
+    def get_data_from_region(self, region: BaseRegion):
+        if type(region) == CircularRegion:
+            center = region.coordinate
+            radius = region.radius
+            mask = center.separation(self['coordinates']) <= radius
+            return self[mask]
 
 class Catalog_(Table):
     _config = load_config()

@@ -13,7 +13,7 @@ from shapely.strtree import STRtree
 from heinlein.region import BaseRegion, CircularRegion, PolygonRegion
 from astropy.coordinates import SkyCoord
 from spherical_geometry.vector import lonlat_to_vector, vector_to_lonlat
-from shapely import geometry
+from shapely import get_num_geometries
 from heinlein.region.region import CircularRegion
 from astropy.nddata import Cutout2D
 from astropy.nddata.utils import NoOverlapError
@@ -269,19 +269,20 @@ class _regionMask(_mask):
 
     @singledispatchmethod
     def mask(self, catalog: Catalog):
-        mask = self._check(catalog.points)
+        points = MultiPoint(catalog.points)
+        mask = self._check(points)
         return catalog[mask]
 
     @mask.register
     def _(self, coords: SkyCoord):
         ra = coords.ra.to_value("deg")
         dec = coords.dec.to_value("deg")
-        points = np.dstack(lonlat_to_vector(ra, dec))[0]
+        points = MultiPoint(np.dstack(lonlat_to_vector(ra, dec))[0])
         mask = self._check(points)
         return coords[mask]
 
     def _check(self, points):
-        mask = np.ones(len(points.geoms), dtype=bool)
+        mask = np.ones(get_num_geometries(points), dtype=bool)
         for index, p in enumerate(points.geoms):
             a = self._geo_tree.query(p)
             for geo in a:
@@ -307,7 +308,7 @@ class _shapelyMask(_mask):
         points = catalog.points
 
         mask = np.ones(len(catalog), dtype=bool)
-        for index, point in enumerate(points.geoms):
+        for index, point in enumerate(points):
             if mask[index]:
                 for submask in self._mask:
                     if submask.contains(point):
