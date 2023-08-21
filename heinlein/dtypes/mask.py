@@ -121,7 +121,7 @@ class _mangleMask(_mask):
 
     @singledispatchmethod
     def mask(self, catalog: Catalog, *args, **kwargs):
-        coords = catalog.coords
+        coords = catalog['coordinates']
         contains = self._check(coords)
         return catalog[~contains]
 
@@ -172,7 +172,7 @@ class _pixelArrayMask(_mask):
 
     @singledispatchmethod
     def mask(self, catalog: Catalog, *args, **kwargs):
-        coords = catalog.coords
+        coords = catalog['coordinates']
         mask = self._check(coords)
         return catalog[mask]
     
@@ -233,7 +233,7 @@ class _fitsMask(_mask):
 
     @singledispatchmethod
     def mask(self, catalog: Catalog, *args, **kwargs):
-        coords = catalog.coords
+        coords = catalog['coordinates']
         mask = self._check(coords)
         return catalog[mask]
     
@@ -269,8 +269,7 @@ class _regionMask(_mask):
 
     @singledispatchmethod
     def mask(self, catalog: Catalog):
-        mp = {'skycoords': catalog.coords, "points": MultiPoint(catalog.points)}
-        mask = self._check(mp)
+        mask = self._check(catalog.points)
         return catalog[mask]
 
     @mask.register
@@ -278,13 +277,10 @@ class _regionMask(_mask):
         ra = coords.ra.to_value("deg")
         dec = coords.dec.to_value("deg")
         points = np.dstack(lonlat_to_vector(ra, dec))[0]
-        mp = {'skycoords': coords, 'points': MultiPoint(points)}
-        mask = self._check(mp)
+        mask = self._check(points)
         return coords[mask]
 
-    def _check(self, points_dict):
-        points = points_dict['points']
-        skycoords = points_dict['skycoords']
+    def _check(self, points):
         mask = np.ones(len(points.geoms), dtype=bool)
         for index, p in enumerate(points.geoms):
             a = self._geo_tree.query(p)
@@ -306,9 +302,10 @@ class _shapelyMask(_mask):
         self._tree = STRtree(self._mask)
 
     def mask(self, catalog):
-        ras = catalog.coords.ra.to_value("deg")
-        decs = catalog.coords.dec.to_value("deg")
-        points = geometry.MultiPoint(list(zip(ras, decs)))
+        ras = catalog['coordinates'].ra.to_value("deg")
+        decs = catalog['coordinates'].dec.to_value("deg")
+        points = catalog.points
+
         mask = np.ones(len(catalog), dtype=bool)
         for index, point in enumerate(points.geoms):
             if mask[index]:

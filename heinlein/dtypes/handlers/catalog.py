@@ -6,8 +6,8 @@ import sqlite3
 import numpy as np
 from yaml import parse
 from heinlein.dtypes.handlers import handler
-from heinlein.dtypes.catalog import Catalog, ParameterMap, attach_coordinates
-
+from heinlein.dtypes.catalog import Catalog, ParameterMap
+from astropy.table import Table
 from astropy.io import ascii
 
 from heinlein.dtypes import catalog
@@ -46,7 +46,7 @@ class CsvCatalogHandler(handler.Handler):
                 try:
                     file_path = files[0]
                     data = ascii.read(file_path)
-                    storage.update({name: attach_coordinates(Catalog(data, parmap=self._map))})
+                    storage.update({name: Catalog(data, parmap=self._map)})
                 except IndexError:
                     logging.error(f"No file found for dtype catalog in region {name}!")
         else:
@@ -55,7 +55,7 @@ class CsvCatalogHandler(handler.Handler):
                 data = ascii.read(file_path)
                 for name in region_names:
                     mask = data[self._config['region']] == name
-                    storage.update({name: attach_coordinates(Catalog(data[mask], parmap=self._map))})
+                    storage.update({name: Catalog(data[mask], parmap=self._map)})
         return storage
 
 
@@ -162,5 +162,6 @@ class SQLiteCatalogHandler(handler.Handler):
         missing_values = np.where(rows == None)
         rows[missing_values] = -1
         columns = [d[0] for d in cursor.description]
-        c = Catalog.from_rows(rows=rows, columns=columns, parmap = self._map)
-        return attach_coordinates(c)
+        data = Table(rows=rows, names=columns)
+        c = Catalog(data, parmap = self._map)
+        return c
