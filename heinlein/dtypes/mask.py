@@ -154,7 +154,6 @@ class _pixelArrayMask(_mask):
 
     def _check(self, coords, *args, **kwargs):
         pix_coords = self._wcs.world_to_pixel(coords)
-        import matplotlib.pyplot as plt
         shape = self._mask.shape
         x = np.round(pix_coords[0], 0).astype(int)
         y = np.round(pix_coords[1], 0).astype(int)
@@ -265,14 +264,11 @@ class _regionMask(_mask):
         self._init_tree()
     
     def _init_tree(self):
-        geo_list = np.array([reg.geometry for reg in self._mask])
-        indices = {id(geo): i for i, geo in enumerate(geo_list)}
-        self._geo_idx = indices
-        self._geo_tree = STRtree(geo_list)
+        self._geo_list = np.array([reg.geometry for reg in self._mask])
+        self._geo_tree = STRtree(self._geo_list)
 
     @singledispatchmethod
     def mask(self, catalog: Catalog):
-        import time
         mp = {'skycoords': catalog.coords, "points": MultiPoint(catalog.points)}
         mask = self._check(mp)
         return catalog[mask]
@@ -293,7 +289,7 @@ class _regionMask(_mask):
         for index, p in enumerate(points.geoms):
             a = self._geo_tree.query(p)
             for geo in a:
-                if geo.contains(p):
+                if self._geo_list[geo].contains(p):
                     mask[index] = False
                     break
         return mask
