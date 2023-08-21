@@ -24,6 +24,55 @@ def load_config():
     with open(catalog_config_location, "rb") as f:
         data = json.load(f)
     return data
+
+
+def attach_coordinates(catalog: Catalog):
+    labeled_catalog = label_coordinates(catalog)
+    if labeled_catalog._has_radec:
+        coords = SkyCoord(labeled_catalog['ra'], labeled_catalog['dec'])
+        labeled_catalog['coordinates'] = coords
+        lon = coords.ra.to_value("deg")
+        lat = coords.dec.to_value("deg")
+        labeled_catalog._cartesian_points = np.dstack(lonlat_to_vector(lon, lat))[0]
+        labeled_catalog._maskable_objects.update({'_cartesian_points': catalog._cartesian_points})
+
+
+
+    return labeled_catalog
+
+def label_coordinates(catalog: Catalog):
+    """
+    Takes a catalog and finds the coordinate columns (ra and dec)
+    returns the catalog with the coordinate columns labeled
+    """
+    config = load_config()
+    columns = set(catalog.colnames)
+    ras = set(config['columns']['ra'])
+    dec = set(config['columns']['dec'])
+    ra_col = columns.intersection(ras)
+    dec_col = columns.intersection(dec)
+
+    if len(ra_col) == 1 and len(dec_col) == 1:
+        ra_name = list(ra_col)[0]
+        dec_name = list(dec_col)[0]
+        catalog.rename_columns([ra_name, dec_name], ["ra", "dec"])
+        catalog._has_radec = True
+        try:
+            catalog['ra'].to(u.deg)
+        except u.UnitConversionError:
+            catalog['ra'] = catalog['ra']*u.deg
+        try:
+            catalog['dec'].to(u.deg)
+        except u.UnitConversionError:
+            catalog['dec'] = catalog['dec']*u.deg
+
+    else:
+        logging.warning("Unable to find a unique RA and DEC column")
+        catalog._has_radec = False
+    
+    return catalog
+
+
 class Catalog(Table):
     _config = load_config()
 
@@ -57,9 +106,7 @@ class Catalog(Table):
         """
         if len(self) == 0:
             return
-        if self._parmap is None or self._parmap.get("ra") is None:
-            self._find_coords()
-        
+                
         else:
             for param in self._parmap:
                 col = param.get_values(self)
@@ -68,18 +115,9 @@ class Catalog(Table):
                     unit = getattr(u, param.unit) 
                     col *= unit
                     self[param.col] = col
-            try:
-                ra = self['ra']
-                dec = self['dec']
-                self._has_radec = True
-            except KeyError:
-                logging.warning("Unable to find RA and DEC colunns, you may need to alias them")
-
 
         if self._maskable_objects:
             self.__dict__.update(self._maskable_objects)
-        else:
-            self._init_points()
             
     def post_setup(self, parmap, maskable_objects):
         self._parmap = parmap
@@ -190,43 +228,6 @@ class Catalog(Table):
         self._cartesian_points = np.dstack(lonlat_to_vector(lon, lat))[0]
         self._maskable_objects.update({'_cartesian_points': self._cartesian_points})
 
-
-    def _find_coords(self, *args, **kwargs):
-        """
-        Searches through the catalog to try to find
-        columns that could be coordinates.
-
-        Known column aliases can be found in
-        heinlein/config/dtypes/catalog.json
-        """
-        columns = set(self.colnames)
-        ras = set(self._config['columns']['ra'])
-        dec = set(self._config['columns']['dec'])
-        ra_col = columns.intersection(ras)
-        dec_col = columns.intersection(dec)
-
-        if len(ra_col) == 1 and len(dec_col) == 1:
-            ra_par = CatalogParam(list(ra_col)[0], "ra", unit="deg")
-            dec_par = CatalogParam(list(dec_col)[0], "dec", unit="deg")
-            self._has_radec = True
-        else:
-            logging.warning("Unable to find a unique RA and DEC column")
-            self._has_radec = False
-
-        if self._has_radec:
-            try:
-                self._parmap.update([ra_par, dec_par])
-            except AttributeError:
-                self._parmap = ParameterMap([ra_par, dec_par])
-            try:
-                self['ra'].to(u.deg)
-            except u.UnitConversionError:
-                self['ra'] = self['ra']*u.deg
-            try:
-                self['dec'].to(u.deg)
-            except u.UnitConversionError:
-                self['dec'] = self['dec']*u.deg
-
     def add_alias(self, column_name, alias_name, *args, **kwargs):
         """
         Adds a column alias. Once the alias has been added, the column
@@ -249,22 +250,6 @@ class Catalog(Table):
         pars = [CatalogParam(k, v) for k, v in aliases.items()]
         self._parmap.update(pars)
         
-
-    def _init_points(self, *args, **kwargs):
-        """
-        Initializes SkyCoords and cartesian points for
-        objects in the catalog. These are used to extract
-        objects from particular regions.
-        """
-        if not self._has_radec:
-            return 
-        coordinates = SkyCoord(self['ra'], self['dec'])
-        self['coordinates'] = coordinates
-        lon = coordinates.ra.to_value("deg")
-        lat = coordinates.dec.to_value("deg")
-        self._cartesian_points = np.dstack(lonlat_to_vector(lon, lat))[0]
-        self._maskable_objects.update({'_cartesian_points': self._cartesian_points})
-
  
     @property
     def coords(self):
@@ -296,9 +281,6 @@ class Catalog(Table):
     def get_data_from_region(self, region: BaseRegion):
         if len(self) == 0:
             return self
-        if not hasattr(self, "_cartesian_points"):
-            self._find_coords()
-            self._init_points()
         if region.type == "CircularRegion":
             return self._get_items_in_circular_region(region)
         elif region.type == "PolygonRegion":
