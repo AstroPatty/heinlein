@@ -17,7 +17,6 @@ from shapely import geometry
 from heinlein.region.region import CircularRegion
 from astropy.nddata import Cutout2D
 from astropy.nddata.utils import NoOverlapError
-from memory_profiler import profile
 warnings.simplefilter('ignore', category=AstropyWarning)
 
 
