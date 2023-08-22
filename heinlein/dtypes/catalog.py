@@ -80,7 +80,15 @@ class Catalog:
 
     def __init__(self, data: Table, cartesian_points = None, *args, **kwargs):
         """
-        A catalog is essentially an Astropy table with some additional functionality.        
+        A catalog is effectively an :class:`astropy.table.Table` with some additional 
+        functionality. It will automatically locate right acension and declination
+        columns and label them as such. It will the generate sky coordinate objects 
+        and palce them in the `coordinates` column.
+
+        In general, you should not create objects of this class directly.
+
+        :param data: The data to load into the catalog
+        :type data: :class:`astropy.table.Table`
         """
         try:
             self._data = label_coordinates(data)
@@ -102,6 +110,14 @@ class Catalog:
 
     def __str__(self) -> str:
         return self._data.__str__()
+    
+    def __getattr__(self, __name):
+        """
+        This allows operations to "fall through" to the underlying table.
+        astropy tables are not built for big-data analytics, so the eventual
+        goal is to replace this will a polars dataframe.
+        """
+        return getattr(self._data, __name)
     
     def __getitem__(self, key):
         """
@@ -163,4 +179,3 @@ class Catalog:
             mask = center.separation(self['coordinates']) <= radius
             return self[mask]
         raise NotImplementedError("Only circular regions are currently supported for catalogs")
-
