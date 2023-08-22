@@ -1,24 +1,16 @@
 from __future__ import annotations
-from ast import Param
 from astropy.table import Table, vstack
-import logging
 import numpy as np
 import astropy.units as u
-from astropy.coordinates import SkyCoord, concatenate as scc
+from astropy.coordinates import SkyCoord
 from astropy.table import vstack
-from abc import ABC, abstractmethod, abstractclassmethod
-from shapely.geometry import MultiPoint
 
 from spherical_geometry.vector import lonlat_to_vector
-from copy import copy
-from typing import TYPE_CHECKING, Type
 import json
-from heinlein.dtypes import mask
+
 from heinlein.locations import MAIN_CONFIG_DIR
-
-
 from heinlein.region import BaseRegion
-from heinlein.region import CircularRegion, PolygonRegion
+from heinlein.region import CircularRegion
 from heinlein.dtypes import dobj
 
 def load_config():
@@ -72,6 +64,20 @@ def label_coordinates(catalog: Table):
     
     return catalog
 
+def Catalog(data: Table, *args, **kwargs):
+    """
+    Produces a catalog object from an astropy table. This locates the ra and dec
+    columns, creates SkyCoords, and creates a cartesian representation of the 
+    coordinates for more efficient filtering. Produces a :class:`CatalogObject` which
+    is used internally by the DataManager. When a pieces of data is actuall requested
+    this object will produce a :class:`astropy.Table` with the data from the region.
+    
+    """
+    labeled_data = label_coordinates(data)
+    catalog_coordinates = get_coordinates(labeled_data)
+    cartesian_points = get_cartesian_points(catalog_coordinates)
+    data['coordinates'] = catalog_coordinates
+    return CatalogObject(data, cartesian_points)
 
 
 
@@ -100,13 +106,3 @@ class CatalogObject(dobj.HeinleinDataObject):
 
 
 
-def Catalog(data: Table, *args, **kwargs):
-    """
-    
-    
-    """
-    labeled_data = label_coordinates(data)
-    catalog_coordinates = get_coordinates(labeled_data)
-    cartesian_points = get_cartesian_points(catalog_coordinates)
-    data['coordinates'] = catalog_coordinates
-    return CatalogObject(data, cartesian_points)
