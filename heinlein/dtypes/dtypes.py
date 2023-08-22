@@ -3,6 +3,7 @@ from astropy.table import vstack
 from heinlein.region.base import BaseRegion
 from heinlein.dtypes.catalog import CatalogObject
 
+
 def get_data_object(dtype: str, values: dict) -> Any:
     if type(values) != dict:
         return values
