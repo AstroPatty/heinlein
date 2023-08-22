@@ -219,8 +219,9 @@ class DataManager(ABC):
                 logger.error(f"Unable to find data of type {dtype}")
                 continue
             try:
-                obj_ = self._handlers[dtype].get_data_object(values)
-                return_data.update({dtype: obj_})
+                objs = list(values.values())
+                data_obj = objs[0].combine(objs)
+                return_data.update({dtype: data_obj})
             except IndexError:
                 return_data.update({dtype: None})
         return return_data

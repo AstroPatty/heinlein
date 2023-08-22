@@ -17,6 +17,7 @@ from shapely import get_num_geometries
 from heinlein.region.region import CircularRegion
 from astropy.nddata import Cutout2D
 from astropy.nddata.utils import NoOverlapError
+from heinlein.dtypes.dobj import HeinleinDataObject
 warnings.simplefilter('ignore', category=AstropyWarning)
 
 
@@ -38,7 +39,7 @@ def get_mask_objects(input_list, *args, **kwargs):
 
     return output_data
 
-class Mask:
+class Mask(HeinleinDataObject):
 
     def __init__(self, masks = [], *args, **kwargs):
         """
@@ -49,6 +50,12 @@ class Mask:
         self._masks = get_mask_objects(masks, *args, **kwargs)
         self._check_filter = False
         self._can_filter = False
+
+    @classmethod
+    def combine(cls, masks, *args, **kwargs):
+        all_masks = [m._masks for m in masks]
+        all_masks = np.hstack(all_masks)
+        return cls.from_masks(all_masks)
 
     def __len__(self):
         return len(self._masks)
