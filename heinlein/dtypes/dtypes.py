@@ -1,7 +1,7 @@
 from typing import Protocol, Any
 from astropy.table import vstack
 from heinlein.region.base import BaseRegion
-from heinlein.dtypes.catalog import Catalog
+from heinlein.dtypes.catalog import CatalogObject
 
 def get_data_object(dtype: str, values: dict) -> Any:
     if type(values) != dict:
@@ -10,7 +10,7 @@ def get_data_object(dtype: str, values: dict) -> Any:
         return list(values.values())[0]
 
     if dtype == "catalog":
-        return Catalog.concatenate(list(values.values()))
+        return CatalogObject.combine(list(values.values()))
 
     else:
         good_values = [v for v in values.values() if v is not None]

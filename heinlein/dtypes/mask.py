@@ -269,17 +269,22 @@ class _regionMask(_mask):
 
     @singledispatchmethod
     def mask(self, catalog: Catalog):
-        points = MultiPoint(catalog.points)
-        mask = self._check(points)
-        return catalog[mask]
+        cmask = self.generate_mask(catalog['coordinates'])
+        return catalog[cmask]
 
     @mask.register
     def _(self, coords: SkyCoord):
+        cmask = self.generate_mask(coords)
+        return coords[cmask]
+
+    def generate_mask(self, coords: SkyCoord):
         ra = coords.ra.to_value("deg")
         dec = coords.dec.to_value("deg")
         points = MultiPoint(np.dstack(lonlat_to_vector(ra, dec))[0])
         mask = self._check(points)
-        return coords[mask]
+        return mask
+
+
 
     def _check(self, points):
         mask = np.ones(get_num_geometries(points), dtype=bool)

@@ -6,7 +6,7 @@ import numpy as np
 import astropy.units as u
 from astropy.coordinates import SkyCoord, concatenate as scc
 from astropy.table import vstack
-
+from abc import ABC, abstractmethod, abstractclassmethod
 from shapely.geometry import MultiPoint
 
 from spherical_geometry.vector import lonlat_to_vector
@@ -33,13 +33,11 @@ def get_coordinates(catalog: Table):
         and isinstance(catalog['coordinates'], SkyCoord):
             return catalog['coordinates']
     coords = SkyCoord(catalog['ra'], catalog['dec'])
-    catalog['coordinates'] = coords
-    return coords,
+    return coords
 
-def get_cartesian_points(catalog: Table):
-    coords = catalog['coordinates']
-    lon = coords.ra.to_value("deg")
-    lat = coords.dec.to_value("deg")
+def get_cartesian_points(coordinates: SkyCoord):
+    lon = coordinates.ra.to_value("deg")
+    lat = coordinates.dec.to_value("deg")
     cartesian_points = np.dstack(lonlat_to_vector(lon, lat))[0]
     return cartesian_points
 
@@ -75,9 +73,73 @@ def label_coordinates(catalog: Table):
     return catalog
 
 
+class HeinleinDataObject(ABC):
+    """
+    This is a generic class that is used for storing data objects in the cache. An
+    object of this type will never actually be given to the user. The data objects
+    must define a `get_data_from_region` method, which will return the data from the
+    region provided.
+    
+    """
+    @abstractmethod
+    def get_data_from_region(self, region: BaseRegion):
+        pass
 
-class Catalog:
+    @abstractclassmethod
+    def combine(cls, objects: list[HeinleinDataObject]):
+        pass
 
+
+class CatalogObject(HeinleinDataObject):
+
+    def __init__(self, data: Table, points: np.ndarray):
+        self._data = data
+        self._points = points
+    
+    def __len__(self):
+        return len(self._data)
+
+    def get_data_from_region(self, region: BaseRegion):
+        if type(region) == CircularRegion:
+            separation = region.coordinate.separation(self._data['coordinates'])
+            mask = separation <= region.radius
+            return self._data[mask]
+
+        return self._data
+    
+    @classmethod
+    def combine(cls, objects: list[CatalogObject]):
+        data = vstack([o._data for o in objects])
+        points = np.concatenate([o._points for o in objects])
+        return cls(data, points)
+
+
+
+def Catalog(data: Table, *args, **kwargs):
+    """
+    
+    
+    """
+    labeled_data = label_coordinates(data)
+    catalog_coordinates = get_coordinates(labeled_data)
+    cartesian_points = get_cartesian_points(catalog_coordinates)
+    data['coordinates'] = catalog_coordinates
+    return CatalogObject(data, cartesian_points)
+
+
+class Catalog_:
+    """
+    A catalog is effectively an :class:`astropy.table.Table` with some additional 
+    functionality. It will automatically locate right acension and declination
+    columns and label them as such. It will the generate sky coordinate objects 
+    and palce them in the `coordinates` column.
+
+    In general, you should not create objects of this class directly.
+
+    :param data: The data to load into the catalog
+    :type data: :class:`astropy.table.Table`
+
+    """
     def __init__(self, data: Table, cartesian_points = None, *args, **kwargs):
         """
         A catalog is effectively an :class:`astropy.table.Table` with some additional 
@@ -87,8 +149,6 @@ class Catalog:
 
         In general, you should not create objects of this class directly.
 
-        :param data: The data to load into the catalog
-        :type data: :class:`astropy.table.Table`
         """
         try:
             self._data = label_coordinates(data)
@@ -117,6 +177,7 @@ class Catalog:
         astropy tables are not built for big-data analytics, so the eventual
         goal is to replace this will a polars dataframe.
         """
+
         return getattr(self._data, __name)
     
     def __getitem__(self, key):

@@ -82,9 +82,12 @@ class SQLiteCatalogHandler(handler.Handler):
                         regions_to_get.update({split[0]: [split[1]]})
                 elif len(split) ==  2 and split[0] not in regions_to_get.keys():
                         regions_to_get.update({split[0]: []})
-            return self.get_with_subregions(regions_to_get)
+            storage = self.get_with_subregions(regions_to_get)
         else:
-            return self._get(region_names)
+            storage = self._get(region_names)
+        
+        return {k: Catalog(table) for k, table in storage.items()}
+
 
     def get_with_subregions(self, regions: dict):
         subregion_key = self._config.get('subregion', None)
@@ -161,5 +164,4 @@ class SQLiteCatalogHandler(handler.Handler):
         rows[missing_values] = -1
         columns = [d[0] for d in cursor.description]
         data = Table(rows=rows, names=columns)
-        c = Catalog(data)
-        return c
+        return data
