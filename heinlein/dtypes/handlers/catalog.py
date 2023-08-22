@@ -2,13 +2,14 @@
 from ast import Param
 from pathlib import Path
 import logging
-import sqlite3
 import numpy as np
-from yaml import parse
+from sqlalchemy import create_engine, URL, text
+
 from heinlein.dtypes.handlers import handler
 from heinlein.dtypes.catalog import Catalog
 from astropy.table import Table
 from astropy.io import ascii
+
 
 from heinlein.dtypes.catalog import Catalog
 
@@ -61,14 +62,15 @@ class CsvCatalogHandler(handler.Handler):
 class SQLiteCatalogHandler(handler.Handler):
     def __init__(self, path: Path, config: dict, *args, **kwargs):
         super().__init__(path, config, "catalog")
-        self._initialize_connection()
+        self._create_engine()
 
-    def _initialize_connection(self, *args, **kwargs):
-        self._con = sqlite3.connect(self._path, cached_statements=1)
+    def _create_engine(self, *args, **kwargs):
+        self._engine = create_engine(f"sqlite:///{self._path}")
+        self._con = self._engine.connect()
         sql = "SELECT * FROM sqlite_master where type='table'"
-        cur = self._con.execute(sql)
+        cur = self.execute_query(sql)
         self._tnames = [t[1] for t in cur.fetchall()]
-    
+
     def get_data(self, region_names: list, *args, **kwargs):
         subregion_key = self._config.get('subregion', None)
         if subregion_key is not None:
@@ -82,10 +84,12 @@ class SQLiteCatalogHandler(handler.Handler):
                         regions_to_get.update({split[0]: [split[1]]})
                 elif len(split) ==  2 and split[0] not in regions_to_get.keys():
                         regions_to_get.update({split[0]: []})
+
+                        
             storage = self.get_with_subregions(regions_to_get)
         else:
             storage = self._get(region_names)
-        
+
         return {k: Catalog(table) for k, table in storage.items()}
 
 
@@ -142,18 +146,19 @@ class SQLiteCatalogHandler(handler.Handler):
             else:
                 output_conditions.append(base_condition.format(k, vs))
         query =  base_query + " AND ".join(output_conditions)
-        return self.execute_query(query)
+        table = self.execute_query(query)
+        return self._parse_return(table)
 
 
     def get_all(self, tname):
         query = f"SELECT * FROM \"{tname}\""
-        return self.execute_query(query)
+        table = self.execute_query(query)
+        return self._parse_return(table)
 
     def execute_query(self, query):
-
-        cur = self._con.execute(query)
-        table = self._parse_return(cur)
-        return table
+        q = text(query)
+        cur = self._con.execute(q)
+        return cur
     
     def _parse_return(self, cursor, *args, **kwargs):
         rows = cursor.fetchall()
@@ -162,6 +167,6 @@ class SQLiteCatalogHandler(handler.Handler):
         rows = np.array(rows, dtype=object)
         missing_values = np.where(rows == None)
         rows[missing_values] = -1
-        columns = [d[0] for d in cursor.description]
+        columns = cursor.keys()
         data = Table(rows=rows, names=columns)
         return data
