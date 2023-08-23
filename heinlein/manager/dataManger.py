@@ -1,24 +1,23 @@
-from abc import abstractmethod
-from distutils import extension
-from importlib import import_module
 import json
-from abc import ABC
-from heinlein.region.base import BaseRegion
-from heinlein.utilities import warning_prompt_tf
+import logging
+import multiprocessing as mp
+import pathlib
+from abc import ABC, abstractmethod
+from inspect import getmembers, isclass, isfunction
+
+from cacheout import LRUCache
 from heinlein.config.config import globalConfig
 from heinlein.manager.dconfig import DatasetConfig
-import logging
-import pathlib
-from cacheout import LRUCache
-from cacheout import LRUCache
-import multiprocessing as mp
-from inspect import getmembers, isfunction, isclass
+from heinlein.region.base import BaseRegion
+from heinlein.utilities import warning_prompt_tf
 
 logger = logging.getLogger("manager")
 
+
 def write_config_atexit(config, path):
-    with open(path, 'w') as f:
+    with open(path, "w") as f:
         json.dump(config, f, indent=4)
+
 
 def check_overload(f):
     def wrapper(self, *args, **kwargs):
@@ -31,15 +30,17 @@ def check_overload(f):
                 return ext_fn(self, *args, **kwargs)
             except KeyError:
                 return f(self, *args, **kwargs)
+
     return wrapper
 
 
 logger = logging.getLogger("manager")
-class DataManager(ABC):
 
+
+class DataManager(ABC):
     def __init__(self, name, *args, **kwargs):
         """
-        The datamanger keeps track of where data is located, either on disk or 
+        The datamanger keeps track of where data is located, either on disk or
         otherwise.
         It also keeps a manifest, so it knows when files have been moved or changed.
         Managers should generally not be instatiated directly. They are used by Dataset
@@ -55,7 +56,6 @@ class DataManager(ABC):
         self._cache = {}
         self._cache_lock = mp.Lock()
 
-    
     def _setup(self, *args, **kwargs) -> None:
         """
         Performs basic setup of the manager
@@ -63,52 +63,63 @@ class DataManager(ABC):
         user if dataset does not exist.
         """
 
-        if not DatasetConfig.exists(self.name): #If this dataset does not exist
+        if not DatasetConfig.exists(self.name):  # If this dataset does not exist
             if self.globalConfig.interactive:
-                write_new = warning_prompt_tf(f"Survey {self.name} not found, would you like to initialize it? ")
+                write_new = warning_prompt_tf(
+                    f"Survey {self.name} not found, would you like to initialize it? "
+                )
                 if write_new:
                     self.config = DatasetConfig.create(self.name)
                 else:
                     self.ready = False
-            else: raise OSError(f"Dataset {self.name} does not exist!")
+            else:
+                raise OSError(f"Dataset {self.name} does not exist!")
 
-        else: #If it DOES exist, get the config data
+        else:  # If it DOES exist, get the config data
             self.config = DatasetConfig.load(self.name)
             self.external = self.config.external
             self._initialize_external_implementation()
             self._data = self.config.data
-    
-    def _initialize_external_implementation(self):
 
+    def _initialize_external_implementation(self):
         if self.external is None:
             self._external_definitions = {}
             return
         fns = [f for f in getmembers(self.external, isfunction)]
-        fns = list(filter(lambda f, m = self.external: f[1].__module__ == m.__name__, fns))
+        fns = list(
+            filter(lambda f, m=self.external: f[1].__module__ == m.__name__, fns)
+        )
         external_functions = {fn[0]: fn[1] for fn in fns}
 
         classes = [f for f in getmembers(self.external, isclass)]
-        classes = list(filter(lambda f, m = self.external: f[1].__module__ == m.__name__, classes))
+        classes = list(
+            filter(lambda f, m=self.external: f[1].__module__ == m.__name__, classes)
+        )
         external_classes = {cl[0]: cl[1] for cl in classes}
 
         fn_keys = set(external_functions.keys())
         cls_keys = set(external_classes.keys())
-        if len((keys_ := fn_keys.intersection(cls_keys))) != 0:
-            print(f"Error: Overloaded functions and classes in dataset implementations" \
-                "Should all have unique names, but found duplicates for {keys_}")
+        if len(fn_keys.intersection(cls_keys)) != 0:
+            print(
+                "Error: Overloaded functions and classes in dataset implementations"
+                "Should all have unique names, but found duplicates for {keys_}"
+            )
             exit()
         self._external_definitions = {**external_classes, **external_functions}
-    
+
     def get_external(self, key, *args, **kwargs):
         return self._external_definitions.get(key, None)
 
     def get_path(self, dtype: str, *args, **kwargs):
-        return pathlib.Path(self._data[dtype]['path'])
+        return pathlib.Path(self._data[dtype]["path"])
 
     def load_handlers(self, *args, **kwargs):
         from heinlein.dtypes import handlers
+
         if not hasattr(self, "_handlers"):
-            self._handlers =  handlers.get_file_handlers(self._data, self._external_definitions)
+            self._handlers = handlers.get_file_handlers(
+                self._data, self._external_definitions
+            )
 
     @staticmethod
     def exists(name: str) -> bool:
@@ -131,18 +142,18 @@ class DataManager(ABC):
     @abstractmethod
     def remove_data(self, *args, **kwargs):
         pass
-    
+
     @check_overload
     def get_from(self, dtypes: list, region_overlaps: list, *args, **kwargs):
         return_types = []
         new_data = {}
-        if type(region_overlaps[0]) != str:
+        if isinstance(region_overlaps[0], str):
             regnames = [r.name for r in region_overlaps]
         else:
             regnames = region_overlaps
 
         self.load_handlers()
-        
+
         for dtype in dtypes:
             try:
                 path = self._data[dtype]
@@ -151,7 +162,6 @@ class DataManager(ABC):
                 print(f"No data of type {dtype} found for dataset {self.name}!")
         cached = self.get_cached_values(dtypes, regnames)
         for dtype in return_types:
-
             if dtype in cached.keys():
                 dtype_cache = cached[dtype]
                 regions_to_get = [r for r in regnames if r not in dtype_cache.keys()]
@@ -173,7 +183,7 @@ class DataManager(ABC):
             if new_d is None and data is None:
                 path = self.get_path(k)
                 storage.update({k: path})
-            elif type(new_d) != dict:
+            elif not isinstance(new_d, dict):
                 storage.update({k: new_d})
             else:
                 data.update(new_d)
@@ -181,10 +191,18 @@ class DataManager(ABC):
         return storage
 
     @check_overload
-    def get_data(self, dtypes: list, query_region: BaseRegion, region_overlaps: list, *args, **kwargs) -> dict:
+    def get_data(
+        self,
+        dtypes: list,
+        query_region: BaseRegion,
+        region_overlaps: list,
+        *args,
+        **kwargs,
+    ) -> dict:
         """
         Get data of a specificed type
-        The manager is responsible for finding the path, and the giving it to the handlers
+        The manager is responsible for finding the path, and the giving
+        it to the handlers
         """
 
         storage = self.get_from(dtypes, region_overlaps, *args, **kwargs)
@@ -199,7 +217,7 @@ class DataManager(ABC):
 
     def dump(self, regions: list, *args, **kwargs):
         """
-        Dumps data for some particular named regions from the cache 
+        Dumps data for some particular named regions from the cache
         """
         for dtype, data in self._cache.items():
             nd = data.delete_many(regions)
@@ -210,11 +228,10 @@ class DataManager(ABC):
             nd = data.clear()
             logging.info(f"Delete {nd} items from the {dtype} cache")
 
-
     def parse_data(self, data, *args, **kwargs):
         return_data = {}
         for dtype, values in data.items():
-            #Now, we process into useful objects and filter further
+            # Now, we process into useful objects and filter further
             if data is None:
                 logger.error(f"Unable to find data of type {dtype}")
                 continue
@@ -233,34 +250,34 @@ class DataManager(ABC):
                 try:
                     dtype_cache = self._cache[dtype]
                 except KeyError:
-                    #No cache for this datatype, continue
+                    # No cache for this datatype, continue
                     continue
-                storage = {}
                 cached = dtype_cache.get_many(region_overlaps)
                 cached_values.update({dtype: cached})
         return cached_values
 
     def cache(self, data_storage: dict):
         """
-        Top-level modules think in terms of datatypes, but the cache thinks in terms of regions
-        So we have to do a translation
-        
+        Top-level modules think in terms of datatypes, but the cache thinks in terms
+        of regions so we have to do a translation
+
         """
         with self._cache_lock:
             for dtype, data in data_storage.items():
-                if (data is None) or (type(data) != dict):
+                if (data is None) or not isinstance(data, dict):
                     continue
                 try:
                     dtype_cache = self._cache[dtype]
                 except KeyError:
                     dtype_cache = LRUCache(maxsize=0)
                     self._cache.update({dtype: dtype_cache})
-                dtype_cache.add_many({reg_name: d_obj for reg_name, d_obj in data.items()})
+                dtype_cache.add_many(
+                    {reg_name: d_obj for reg_name, d_obj in data.items()}
+                )
                 self._cache.update({dtype: dtype_cache})
-    
 
     @abstractmethod
-    def clear_all_data(self, *args, **kwargs):  
+    def clear_all_data(self, *args, **kwargs):
         pass
 
     @abstractmethod

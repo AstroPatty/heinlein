@@ -1,12 +1,14 @@
-import pathlib
 import json
-from heinlein.utilities import warning_prompt
 import logging
+import pathlib
+
 from heinlein.manager.dataManger import DataManager
+from heinlein.utilities import warning_prompt
 
 logger = logging.getLogger("manager")
 
 active_managers = {}
+
 
 def get_manager(name):
     try:
@@ -17,8 +19,8 @@ def get_manager(name):
         active_managers.update({name: mgr})
         return mgr
 
-class FileManager(DataManager):
 
+class FileManager(DataManager):
     def __init__(self, name: str, *args, **kwargs) -> None:
         """
         A file manager manages files on local disk.
@@ -41,7 +43,7 @@ class FileManager(DataManager):
         if path.is_file():
             return
         manifest_file = path / ".heinlein"
-        manifest = FileManager.build_manifest(path, recursive = False)
+        manifest = FileManager.build_manifest(path, recursive=False)
         if manifest_file.exists():
             with open(manifest_file, "r") as f:
                 m_data = json.load(f)
@@ -51,30 +53,32 @@ class FileManager(DataManager):
         else:
             with open(manifest_file, "w") as f:
                 json.dump(manifest, f, indent=4)
-    
+
     @staticmethod
-    def check_manifest(path: pathlib.Path, recursive = False, modified = False, *args, **kwargs) -> bool:
+    def check_manifest(
+        path: pathlib.Path, recursive=False, modified=False, *args, **kwargs
+    ) -> bool:
         """
         Checks to ensure that a folder manifest is current.
         """
         if modified:
             FileManager.update_manifest(path)
             return True
-        
+
         if path.is_file() and path.exists():
             return True
-        
+
         manifest_file = path / ".henlein"
         if not manifest_file.exists():
             print(f"Errror: No file maniefest found in {str(path)}")
             return
-        good = True  
+        good = True
         with open(manifest_file, "r") as f:
             current_manifest = json.load(f)
         new_manifest = FileManager.build_manifest(path)
 
-        current_files = set(current_manifest['files'].keys())
-        new_files = set(new_manifest['files'].keys())
+        current_files = set(current_manifest["files"].keys())
+        new_files = set(new_manifest["files"].keys())
 
         if current_files != new_files:
             missing = current_files.difference(new_files)
@@ -87,13 +91,15 @@ class FileManager(DataManager):
                 good = False
         modified = []
         for file in current_files.intersection(new_files):
-            if new_manifest['files'][file] != current_manifest['files'][file]:
+            if new_manifest["files"][file] != current_manifest["files"][file]:
                 modified.append(file)
-        
+
         if len(modified) > 0:
             logging.warning(f"Warning: some files have been modified in {str(path)}")
         if not good:
-            logging.warning(f"Pass modfied = True to silence this warning and update the manifest")
+            logging.warning(
+                "Pass modfied = True to silence this warning and update the manifest"
+            )
         return good
 
     @staticmethod
@@ -101,7 +107,7 @@ class FileManager(DataManager):
         """
         Builds a manifest of files with last-modified dates.
         """
-        all = [f for f in path.glob('*') if not f.name.startswith('.')]
+        all = [f for f in path.glob("*") if not f.name.startswith(".")]
         files = []
         folders = []
 
@@ -123,8 +129,6 @@ class FileManager(DataManager):
             raise FileNotFoundError(f"Path {str(path)} was not initialized properly!")
         else:
             manifest.unlink()
-
-
 
     def add_data(self, dtype: str, path: pathlib.Path, overwrite=False) -> bool:
         """
@@ -152,12 +156,12 @@ class FileManager(DataManager):
         if dtype in data.keys() and not overwrite:
             msg = f"Datatype {dtype} already found for survey {self.name}."
             options = ["Overwrite", "Merge", "Abort"]
-            choice = warning_prompt(msg, options)        
+            choice = warning_prompt(msg, options)
             if choice == "A":
                 return False
             elif choice == "M":
                 raise NotImplementedError
-        
+
         self.update_manifest(path)
         self.config.add_data(dtype, str(path))
         return True
@@ -177,7 +181,7 @@ class FileManager(DataManager):
         """
         try:
             d = self._data[dtype]
-            path = d['path']
+            path = d["path"]
         except KeyError:
             print(f"Error: dataset {self.name} has no data of type {dtype}")
             return False
@@ -185,11 +189,11 @@ class FileManager(DataManager):
         if not path.is_file():
             self.delete_manifest(path)
         self._data.pop(dtype)
-            
+
     def get_handler(self, dtype: str, *args, **kwargs):
         pass
-            
+
     def clear_all_data(self, *args, **kwargs) -> None:
         for dtype, path in self._data.items():
-            self.delete_manifest(pathlib.Path(path)) 
+            self.delete_manifest(pathlib.Path(path))
         self._data = {}
