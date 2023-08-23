@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 from astropy.io import fits
+
 from heinlein.dtypes import mask
 from heinlein.dtypes.handlers.handler import Handler
 from heinlein.locations import BASE_DATASET_CONFIG_DIR

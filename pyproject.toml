@@ -33,6 +33,9 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.scripts]
 heinlein = "heinlein.entrypoint:delegate_command"
 
+[tool.isort]
+profile = "black"
+
 [tool.black]
 extend-exclude = '''
 (

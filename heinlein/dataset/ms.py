@@ -3,9 +3,10 @@ import logging
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
+from shapely import geometry
+
 from heinlein import Region
 from heinlein.dataset.dataset import Dataset, dataset_extension
-from shapely import geometry
 
 
 def setup(dataset, *args, **kwargs):

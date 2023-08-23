@@ -3,14 +3,15 @@ from typing import Union
 
 import astropy.units as u
 from astropy.coordinates import SkyCoord
-from heinlein.region import sampling
-from heinlein.region.base import BaseRegion
-from heinlein.utilities.utilities import initialize_grid
 from shapely import geometry
 from shapely.geometry import Point
 from shapely.geometry.base import BaseGeometry
 from spherical_geometry.polygon import SingleSphericalPolygon
 from spherical_geometry.vector import vector_to_lonlat
+
+from heinlein.region import sampling
+from heinlein.region.base import BaseRegion
+from heinlein.utilities.utilities import initialize_grid
 
 
 class Region:

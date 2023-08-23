@@ -6,10 +6,11 @@ import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.table import Table, vstack
+from spherical_geometry.vector import lonlat_to_vector
+
 from heinlein.dtypes import dobj
 from heinlein.locations import MAIN_CONFIG_DIR
 from heinlein.region import BaseRegion, CircularRegion
-from spherical_geometry.vector import lonlat_to_vector
 
 
 def load_config():

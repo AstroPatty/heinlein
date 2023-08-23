@@ -1,6 +1,6 @@
 from dynaconf import Dynaconf
-from heinlein.locations import MAIN_CONFIG_DIR
 
+from heinlein.locations import MAIN_CONFIG_DIR
 
 globalConfig = Dynaconf(
     envvar_prefix="DYNACONF",

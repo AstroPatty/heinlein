@@ -1,10 +1,10 @@
 import argparse
 import json
-from heinlein import cmds
 from pydoc import locate
 
-from heinlein.locations import MAIN_CONFIG_DIR
+from heinlein import cmds
 from heinlein.config import globalConfig
+from heinlein.locations import MAIN_CONFIG_DIR
 
 cmd_config_location = MAIN_CONFIG_DIR / "cmds.json"
 with open(cmd_config_location, "rb") as cfg:

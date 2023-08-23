@@ -7,9 +7,10 @@ from functools import singledispatchmethod
 from typing import Any
 
 from astropy.coordinates import SkyCoord
-from heinlein.locations import MAIN_CONFIG_DIR
 from shapely.geometry import Polygon
 from spherical_geometry.vector import lonlat_to_vector, vector_to_lonlat
+
+from heinlein.locations import MAIN_CONFIG_DIR
 
 logger = logging.getLogger("region")
 

@@ -4,9 +4,10 @@ from pathlib import Path
 import numpy as np
 from astropy.io import ascii
 from astropy.table import Table
+from sqlalchemy import create_engine, text
+
 from heinlein.dtypes.catalog import Catalog
 from heinlein.dtypes.handlers import handler
-from sqlalchemy import create_engine, text
 
 
 def get_catalog_handler(path: Path, dconfig: dict):

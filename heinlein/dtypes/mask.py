@@ -11,12 +11,13 @@ from astropy.nddata import Cutout2D
 from astropy.nddata.utils import NoOverlapError
 from astropy.utils.exceptions import AstropyWarning
 from astropy.wcs import WCS, utils
-from heinlein.dtypes.dobj import HeinleinDataObject
-from heinlein.region import BaseRegion, CircularRegion
 from shapely import get_num_geometries
 from shapely.geometry import MultiPoint
 from shapely.strtree import STRtree
 from spherical_geometry.vector import lonlat_to_vector
+
+from heinlein.dtypes.dobj import HeinleinDataObject
+from heinlein.region import BaseRegion, CircularRegion
 
 warnings.simplefilter("ignore", category=AstropyWarning)
 

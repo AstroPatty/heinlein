@@ -5,11 +5,12 @@ import numpy as np
 import pandas as pd
 import pymangle
 from astropy.io import fits
+from spherical_geometry.polygon import SingleSphericalPolygon
+
 from heinlein import Region
 from heinlein.dtypes.handlers.handler import Handler
 from heinlein.dtypes.mask import Mask
 from heinlein.locations import BASE_DATASET_CONFIG_DIR
-from spherical_geometry.polygon import SingleSphericalPolygon
 
 EXPORT = ["load_regions"]
 

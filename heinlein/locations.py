@@ -1,4 +1,5 @@
 from pathlib import Path
+
 import appdirs
 
 base = Path(__file__).parents[0]

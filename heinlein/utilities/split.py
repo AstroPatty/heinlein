@@ -3,8 +3,9 @@ import multiprocessing as mp
 import sqlite3
 from pathlib import Path
 
-import heinlein
 import pandas as pd
+
+import heinlein
 from heinlein import api
 
 

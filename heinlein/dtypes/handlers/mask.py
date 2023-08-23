@@ -3,6 +3,7 @@ from pathlib import Path
 
 import numpy as np
 from astropy.io import fits
+
 from heinlein.dtypes import mask
 
 from .handler import Handler

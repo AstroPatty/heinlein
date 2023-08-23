@@ -5,12 +5,13 @@ import re
 
 import numpy as np
 import regions as reg
+from shapely import affinity, geometry
+from spherical_geometry.polygon import SingleSphericalPolygon
+
 from heinlein.dtypes.handlers.handler import Handler
 from heinlein.dtypes.mask import Mask
 from heinlein.locations import BASE_DATASET_CONFIG_DIR
 from heinlein.region import Region
-from shapely import affinity, geometry
-from spherical_geometry.polygon import SingleSphericalPolygon
 
 
 def setup(self, *args, **kwargs):

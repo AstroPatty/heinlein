@@ -5,10 +5,11 @@ from typing import List, Union
 
 import astropy.units as u
 import numpy as np
+from shapely.strtree import STRtree
+
 from heinlein.manager import get_manager
 from heinlein.manager.dataManger import DataManager
 from heinlein.region import BaseRegion, Region
-from shapely.strtree import STRtree
 
 logger = logging.getLogger("Dataset")
 

@@ -1,9 +1,10 @@
 import multiprocessing
+from pathlib import Path
+
+from heinlein import api
 from heinlein.config import globalConfig
 from heinlein.manager.managers import FileManager
-from heinlein.utilities import warning_prompt_tf, split_catalog
-from heinlein import api
-from pathlib import Path
+from heinlein.utilities import split_catalog, warning_prompt_tf
 
 
 def add(args) -> bool:
