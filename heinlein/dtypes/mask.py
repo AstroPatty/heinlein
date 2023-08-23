@@ -1,55 +1,60 @@
+import warnings
 from abc import ABC, abstractmethod
-from functools import  singledispatchmethod
+from functools import singledispatchmethod
 from gettext import Catalog
+
 import numpy as np
 import pymangle
-from astropy.io.fits import HDUList
-from astropy.wcs import WCS, utils
-from astropy.utils.exceptions import AstropyWarning
-import warnings
-from shapely.geometry.base import BaseGeometry
-from shapely.geometry import MultiPoint
-from shapely.strtree import STRtree
-from heinlein.region import BaseRegion, CircularRegion, PolygonRegion
 from astropy.coordinates import SkyCoord
-from spherical_geometry.vector import lonlat_to_vector, vector_to_lonlat
-from shapely import geometry
-from heinlein.region.region import CircularRegion
+from astropy.io.fits import HDUList
 from astropy.nddata import Cutout2D
 from astropy.nddata.utils import NoOverlapError
-from memory_profiler import profile
-warnings.simplefilter('ignore', category=AstropyWarning)
+from astropy.utils.exceptions import AstropyWarning
+from astropy.wcs import WCS, utils
+from shapely import get_num_geometries
+from shapely.geometry import MultiPoint
+from shapely.strtree import STRtree
+from spherical_geometry.vector import lonlat_to_vector
+
+from heinlein.dtypes.dobj import HeinleinDataObject
+from heinlein.region import BaseRegion, CircularRegion
+
+warnings.simplefilter("ignore", category=AstropyWarning)
 
 
 def get_mask_objects(input_list, *args, **kwargs):
     output_data = np.empty(len(input_list), dtype="object")
     for index, obj in enumerate(input_list):
         if type(obj) == HDUList:
-            #if kwargs.get("pixarray", False):
+            # if kwargs.get("pixarray", False):
             #    output_data[index] = _pixelArrayMask(obj, *args, **kwargs)
-            #else:
+            # else:
             output_data[index] = _fitsMask.from_hdu(obj, *args, **kwargs)
         elif type(obj) == pymangle.Mangle:
             output_data[index] = _mangleMask(obj)
         elif type(obj) == np.ndarray:
-            if isinstance(obj[0], BaseGeometry):
-                output_data[index] = _shapelyMask(obj)
-            elif isinstance(obj[0], BaseRegion):
+            if isinstance(obj[0], BaseRegion):
                 output_data[index] = _regionMask(obj)
 
     return output_data
 
-class Mask:
 
-    def __init__(self, masks = [], *args, **kwargs):
+class Mask(HeinleinDataObject):
+    def __init__(self, masks=[], *args, **kwargs):
         """
         Masks are much less regular than catalogs. There are many different
-        formats, and some surveys mix formats. The "Mask" object is a wraper class  
+        formats, and some surveys mix formats. The "Mask" object is a wraper class
         that handles interfacing with all these different formats.
         """
         self._masks = get_mask_objects(masks, *args, **kwargs)
         self._check_filter = False
         self._can_filter = False
+
+    @classmethod
+    def combine(cls, masks, *args, **kwargs):
+        all_masks = [m._masks for m in masks]
+        all_masks = np.hstack(all_masks)
+        return cls.from_masks(all_masks)
 
     def __len__(self):
         return len(self._masks)
@@ -67,22 +72,22 @@ class Mask:
                 return catalog
         return catalog
 
-
     def append(self, other):
-
         if len(other) == 0:
             return self
 
         masks = np.empty(1 + len(other), dtype=object)
         for index, m_ in enumerate(other):
-            masks[index+1] = m_._masks
+            masks[index + 1] = m_._masks
         masks[0] = self._masks
         all_masks = np.hstack(masks)
         return Mask.from_masks(all_masks)
 
     def get_data_from_region(self, region: BaseRegion):
         if not self._check_filter:
-            self._can_filter = any([hasattr(mask, "get_data_from_region") for mask in self._masks])
+            self._can_filter = any(
+                [hasattr(mask, "get_data_from_region") for mask in self._masks]
+            )
         if not self._can_filter:
             raise AttributeError
 
@@ -92,14 +97,12 @@ class Mask:
                 submask = mask.get_data_from_region(region)
                 if submask is not None:
                     return_vals.append(submask)
-            except AttributeError as e:
+            except AttributeError:
                 return_vals.append(mask)
         return Mask.from_masks(return_vals)
-        
-  
+
 
 class _mask(ABC):
-
     def __init__(self, mask, *args, **kwargs):
         """
         Basic mask object. Handles a single mask of an arbitary type.
@@ -113,6 +116,7 @@ class _mask(ABC):
         """
         pass
 
+
 class _mangleMask(_mask):
     def __init__(self, mask, *args, **kwargs):
         """
@@ -122,7 +126,7 @@ class _mangleMask(_mask):
 
     @singledispatchmethod
     def mask(self, catalog: Catalog, *args, **kwargs):
-        coords = catalog.coords
+        coords = catalog["coordinates"]
         contains = self._check(coords)
         return catalog[~contains]
 
@@ -137,6 +141,7 @@ class _mangleMask(_mask):
         contains = self._mask.contains(ra, dec)
         return contains
 
+
 class _pixelArrayMask(_mask):
     def __init__(self, mask, mask_key, *args, **kwargs):
         super().__init__(mask)
@@ -146,7 +151,7 @@ class _pixelArrayMask(_mask):
 
     def _init_pixel_array(self, *args, **kwargs):
         mask = self._mask[self._mask_key].data
-        
+
         pixels = np.where(mask > 0)
         pixel_coords = np.ones(mask.shape, dtype=bool)
         pixel_coords[pixels] = False
@@ -155,45 +160,42 @@ class _pixelArrayMask(_mask):
 
     def _check(self, coords, *args, **kwargs):
         pix_coords = self._wcs.world_to_pixel(coords)
-        import matplotlib.pyplot as plt
         shape = self._mask.shape
         x = np.round(pix_coords[0], 0).astype(int)
         y = np.round(pix_coords[1], 0).astype(int)
         x_lims = (x < 0) | (x >= shape[0])
         y_lims = (y < 0) | (y >= shape[1])
-        m_ = x_lims | y_lims #These objects are outside this particular mask
+        m_ = x_lims | y_lims  # These objects are outside this particular mask
 
-        plt.imshow(self._mask.astype(int), origin="lower")
-        #plt.scatter(coords.ra, coords.dec, transform=ax.get_transform('world'))
+        # plt.scatter(coords.ra, coords.dec, transform=ax.get_transform('world'))
 
-        unmasked_objects = np.zeros(len(coords), dtype=bool )
+        unmasked_objects = np.zeros(len(coords), dtype=bool)
         unmasked_objects[~m_] = self._mask[x[~m_], y[~m_]]
-
 
         return unmasked_objects
 
     @singledispatchmethod
     def mask(self, catalog: Catalog, *args, **kwargs):
-        coords = catalog.coords
+        coords = catalog["coordinates"]
         mask = self._check(coords)
         return catalog[mask]
-    
+
     @mask.register
     def _(self, coords: SkyCoord):
         mask = self._check(coords)
         return coords[mask]
 
-class _fitsMask(_mask):
 
+class _fitsMask(_mask):
     def __init__(self, mask, wcs, mask_data):
         super().__init__(mask)
         self._wcs = wcs
         self._mask_plane = mask_data
 
     @classmethod
-    def from_hdu(cls, mask, mask_key, pixarray = False, *args, **kwargs):
+    def from_hdu(cls, mask, mask_key, pixarray=False, *args, **kwargs):
         """
-        If the mask is stored in a fits file, we assume we can 
+        If the mask is stored in a fits file, we assume we can
         get the WCS info from the header in HDU 0, but we need to
         know where the actual mask is located, so we pass a key.
         A fits mask assumes masked pixels have a value > 0
@@ -211,34 +213,34 @@ class _fitsMask(_mask):
         return cls(cutout, wcs, data)
 
     def _check(self, coords):
-        y,x = utils.skycoord_to_pixel(coords, self._wcs)
-        #The order of numpy axes is the opposite of the order
-        #in fits images. All the data is being stored in
-        #arrays, so we have to flip things here. 
-        x = np.round(x,0).astype(int)
-        y = np.round(y,0).astype(int)
+        y, x = utils.skycoord_to_pixel(coords, self._wcs)
+        # The order of numpy axes is the opposite of the order
+        # in fits images. All the data is being stored in
+        # arrays, so we have to flip things here.
+        x = np.round(x, 0).astype(int)
+        y = np.round(y, 0).astype(int)
         masked = np.ones(len(x), dtype=bool)
 
         x_limit = self._mask_plane.shape[0]
         y_limit = self._mask_plane.shape[1]
 
         negative_check = (x < 0) | (y < 0)
-        #Note: We already inverted indices above
+        # Note: We already inverted indices above
         x_limit_check = x >= x_limit
         y_limit_check = y >= y_limit
         to_skip = negative_check | x_limit_check | y_limit_check
 
         masked[to_skip] = False
-        pixel_values = self._mask_plane[x[~to_skip], y[~to_skip]] 
-        masked[~to_skip] = (pixel_values > 0)
+        pixel_values = self._mask_plane[x[~to_skip], y[~to_skip]]
+        masked[~to_skip] = pixel_values > 0
         return ~masked
 
     @singledispatchmethod
     def mask(self, catalog: Catalog, *args, **kwargs):
-        coords = catalog.coords
+        coords = catalog["coordinates"]
         mask = self._check(coords)
         return catalog[mask]
-    
+
     def get_data_from_region(self, region):
         if type(region) == CircularRegion:
             center = region.coordinate
@@ -257,6 +259,8 @@ class _fitsMask(_mask):
     def _(self, coords: SkyCoord):
         mask = self._check(coords)
         return coords[mask]
+
+
 class _regionMask(_mask):
     def __init__(self, mask, *args, **kwargs):
         """
@@ -264,61 +268,34 @@ class _regionMask(_mask):
         """
         super().__init__(mask)
         self._init_tree()
-    
+
     def _init_tree(self):
-        geo_list = np.array([reg.geometry for reg in self._mask])
-        indices = {id(geo): i for i, geo in enumerate(geo_list)}
-        self._geo_idx = indices
-        self._geo_tree = STRtree(geo_list)
+        self._geo_list = np.array([reg.geometry for reg in self._mask])
+        self._geo_tree = STRtree(self._geo_list)
 
     @singledispatchmethod
     def mask(self, catalog: Catalog):
-        import time
-        mp = {'skycoords': catalog.coords, "points": MultiPoint(catalog.points)}
-        mask = self._check(mp)
-        return catalog[mask]
+        cmask = self.generate_mask(catalog["coordinates"])
+        return catalog[cmask]
 
     @mask.register
     def _(self, coords: SkyCoord):
+        cmask = self.generate_mask(coords)
+        return coords[cmask]
+
+    def generate_mask(self, coords: SkyCoord):
         ra = coords.ra.to_value("deg")
         dec = coords.dec.to_value("deg")
-        points = np.dstack(lonlat_to_vector(ra, dec))[0]
-        mp = {'skycoords': coords, 'points': MultiPoint(points)}
-        mask = self._check(mp)
-        return coords[mask]
+        points = MultiPoint(np.dstack(lonlat_to_vector(ra, dec))[0])
+        mask = self._check(points)
+        return mask
 
-    def _check(self, points_dict):
-        points = points_dict['points']
-        skycoords = points_dict['skycoords']
-        mask = np.ones(len(points.geoms), dtype=bool)
+    def _check(self, points):
+        mask = np.ones(get_num_geometries(points), dtype=bool)
         for index, p in enumerate(points.geoms):
             a = self._geo_tree.query(p)
             for geo in a:
-                if geo.contains(p):
+                if self._geo_list[geo].contains(p):
                     mask[index] = False
                     break
         return mask
-
-class _shapelyMask(_mask):
-    def __init__(self, mask, *args, **kwargs):
-        """
-        Implmentations for masks defined as shapely polygons
-        """
-        super().__init__(mask)
-        self._init_region_tree
-
-    def _init_region_tree(self, *args, **kwargs):
-        self._tree = STRtree(self._mask)
-
-    def mask(self, catalog):
-        ras = catalog.coords.ra.to_value("deg")
-        decs = catalog.coords.dec.to_value("deg")
-        points = geometry.MultiPoint(list(zip(ras, decs)))
-        mask = np.ones(len(catalog), dtype=bool)
-        for index, point in enumerate(points.geoms):
-            if mask[index]:
-                for submask in self._mask:
-                    if submask.contains(point):
-                        mask[index] = False
-        
-        return catalog[mask]

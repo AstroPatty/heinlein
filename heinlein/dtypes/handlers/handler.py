@@ -1,13 +1,10 @@
-from pathlib import Path
 from abc import ABC, abstractmethod
-from heinlein import dtypes
-from heinlein.dtypes import mask
-from heinlein.dtypes.handlers import catalog
+from pathlib import Path
 
+from heinlein import dtypes
 
 
 class Handler(ABC):
-
     def __init__(self, path: Path, dconfig: dict, type: str, *args, **kwargs):
         self._type = type
         self._path = path

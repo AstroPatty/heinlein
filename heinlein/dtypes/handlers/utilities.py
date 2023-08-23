@@ -1,7 +1,7 @@
 from pathlib import Path
-from . import catalog
-from . import mask
-from .handler import Handler
+
+from . import catalog, mask
+
 
 def get_file_handlers(data: dict, external: dict, *args, **kwargs):
     if external is not None:
@@ -10,9 +10,9 @@ def get_file_handlers(data: dict, external: dict, *args, **kwargs):
         external_handlers = {dtype: None for dtype in data.keys()}
     handlers_ = {}
     for dtype, dconfig in data.items():
-        path = dconfig['path']
+        path = dconfig["path"]
         try:
-            dc_ = dconfig['config']
+            dc_ = dconfig["config"]
         except KeyError:
             dc_ = {}
         if external_handlers[dtype] is not None:
@@ -25,6 +25,7 @@ def get_file_handlers(data: dict, external: dict, *args, **kwargs):
             cl = mask.get_mask_handler(Path(path), dc_)
             handlers_.update({dtype: cl})
     return handlers_
+
 
 def get_external_handlers(data, external):
     output = {}
