@@ -1,16 +1,17 @@
-
-from pathlib import Path
-import portalocker
-import pandas as pd
 import functools
 import multiprocessing as mp
-import numpy as np
-from astropy.coordinates import SkyCoord
 from math import ceil
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import portalocker
+from astropy.coordinates import SkyCoord
+
 
 def warning_prompt(warning: str, options: list) -> str:
     print(warning)
-    keys = [l[0].upper() for l in options]
+    keys = [opt[0].upper() for opt in options]
     while True:
         for index, option in enumerate(options):
             print(f"{option} ({keys[index]})")
@@ -28,14 +29,15 @@ def warning_prompt_tf(warning: str) -> bool:
     return False
 
 
-def split(path: Path, key: str, threads = 1) -> None:
+def split(path: Path, key: str, threads=1) -> None:
     files = [f for f in path.glob("*.csv") if not f.name.startswith(".")]
     print(f"Found {len(files)} files to split")
     func = functools.partial(_split, key=key)
     with mp.Pool(threads) as p:
         p.map(func, files)
 
-def _split(file_path: Path, key: str):   
+
+def _split(file_path: Path, key: str):
     print(f"Working on file {file_path}")
     df = pd.read_csv(file_path)
     try:
@@ -55,33 +57,33 @@ def _split(file_path: Path, key: str):
 
 def write_split_output_file(dfs, output):
     for key, df in dfs.items():
-        fpath = output / '.'.join([str(key), 'csv'])
+        fpath = output / ".".join([str(key), "csv"])
         try:
             first = pd.read_csv(fpath)
             output_df = pd.concat([first, df])
-        except:
+        except FileNotFoundError:
             output_df = df
 
-        with portalocker.Lock(fpath, 'w') as of:
+        with portalocker.Lock(fpath, "w") as of:
             output_df.to_csv(of, index=False)
 
 
 def initialize_grid(bounds, area, density):
-        ra1,ra2 = bounds[0], bounds[2]
-        dec1, dec2 = bounds[1], bounds[3]
-        dra = ra2 - ra1
-        ddec = dec2 - dec1
-        npoints = round(density*area)
-        ratio = ddec/dra
-        nra = np.sqrt(npoints/ratio)
-        ndec = nra*ratio
-        nra = ceil(nra) + 1
-        ndec = ceil(ndec) + 1
-        dra_ = dra/(nra+1)
-        ddec_ = ddec/(ndec+1)
-        gra = [ra1 + i*dra_ for i in range(1, nra+1)]
-        gdec = [dec1 + i*ddec_ for i in range(1, ndec+1)]
-        x_, y_= np.meshgrid(gra, gdec)
-        cpoints = np.vstack([x_.ravel(), y_.ravel()])
-        coords = SkyCoord(cpoints[0], cpoints[1], unit="deg")
-        return coords
+    ra1, ra2 = bounds[0], bounds[2]
+    dec1, dec2 = bounds[1], bounds[3]
+    dra = ra2 - ra1
+    ddec = dec2 - dec1
+    npoints = round(density * area)
+    ratio = ddec / dra
+    nra = np.sqrt(npoints / ratio)
+    ndec = nra * ratio
+    nra = ceil(nra) + 1
+    ndec = ceil(ndec) + 1
+    dra_ = dra / (nra + 1)
+    ddec_ = ddec / (ndec + 1)
+    gra = [ra1 + i * dra_ for i in range(1, nra + 1)]
+    gdec = [dec1 + i * ddec_ for i in range(1, ndec + 1)]
+    x_, y_ = np.meshgrid(gra, gdec)
+    cpoints = np.vstack([x_.ravel(), y_.ravel()])
+    coords = SkyCoord(cpoints[0], cpoints[1], unit="deg")
+    return coords
