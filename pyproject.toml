@@ -20,7 +20,10 @@ cacheout = "^0.14.1"
 regions = "0.7"
 sqlalchemy = "^2.0.20"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
+black = "^23.7.0"
+isort = "^5.12.0"
+ruff = "^0.0.285"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -28,3 +31,19 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 heinlein = "heinlein.entrypoint:delegate_command"
+
+[tool.black]
+extend-exclude = '''
+(
+dev/*
+| io/*
+)
+'''
+
+[tool.ruff]
+
+exclude = [
+"dev",
+"io",
+"test*"
+]

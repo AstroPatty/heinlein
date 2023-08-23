@@ -1,12 +1,10 @@
-from genericpath import isfile
 import multiprocessing
-from heinlein.locations import INSTALL_DIR, MAIN_CONFIG_DIR
 from heinlein.config import globalConfig
 from heinlein.manager.managers import FileManager
 from heinlein.utilities import warning_prompt_tf, split_catalog
 from heinlein import api
-import numpy as np
 from pathlib import Path
+
 
 def add(args) -> bool:
     """
@@ -14,15 +12,17 @@ def add(args) -> bool:
     """
     name = args.dataset_name
     dtype = args.dtype
-    path = args.path    
+    path = args.path
     api.add(name, dtype, path)
     return True
+
 
 def remove(args):
     name = args.dataset_name
     dtype = args.dtype
     api.remove(name, dtype)
     return True
+
 
 def clear(args) -> bool:
     """
@@ -32,14 +32,17 @@ def clear(args) -> bool:
     if not FileManager.exists(name):
         print(f"Error: dataset {name} does not exist!")
         return True
-    msg = f"This will delete all references to data for the {name} dataset." \
-                                " Are you sure you want to do this?"
+    msg = (
+        f"This will delete all references to data for the {name} dataset."
+        " Are you sure you want to do this?"
+    )
     delete = warning_prompt_tf(msg)
 
     if delete:
         mgr = FileManager(name)
         mgr.clear_all_data()
     return True
+
 
 def get_path(args) -> bool:
     """
@@ -54,6 +57,7 @@ def get_path(args) -> bool:
     if path is not None:
         print(str(path))
 
+
 def list_all(args) -> None:
     data = api.list_all()
     if len(data) == 0 or all([len(d) == 0 for d in data.values()]):
@@ -61,11 +65,12 @@ def list_all(args) -> None:
         return
     header = "DATASET".ljust(20) + "AVAILABLE DATA"
     print(header)
-    print("-"*len(header))
+    print("-" * len(header))
     for name, dtypes in data.items():
         s1 = name
         s2 = ",".join(list(dtypes.keys()))
         print(s1.ljust(20) + s2)
+
 
 def split(args) -> None:
     path = Path(args.input_path)
@@ -84,10 +89,13 @@ def split(args) -> None:
                 max_threads = multiprocessing.cpu_count()
                 nthreads = int(nthreads)
                 if max_threads < nthreads:
-                    print(f"Error: Maximum number of threads available on this machine is {max_threads}")
+                    print(
+                        f"Error: Maximum number of threads available "
+                        f"on this machine is {max_threads}"
+                    )
                     continue
                 elif nthreads < 1:
-                    print(f"Error: I need at least one thread!")
+                    print("Error: I need at least one thread!")
                     continue
 
                 break
@@ -95,7 +103,7 @@ def split(args) -> None:
                 print("Number of threads must be an integer")
         args.threads = nthreads
 
-    if args.output == None:
+    if args.output is None:
         if path.is_file():
             output_path = path.parents[0]
         else:
