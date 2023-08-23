@@ -89,7 +89,7 @@ class SQLiteCatalogHandler(handler.Handler):
             storage = self.get_with_subregions(regions_to_get)
         else:
             storage = self._get(region_names)
-
+        
         return {k: Catalog(table) for k, table in storage.items()}
 
 
