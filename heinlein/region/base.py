@@ -51,14 +51,12 @@ class BaseRegion(ABC):
         """
         Perform setup for the region
         """
-        try:
-            pass
-        except AttributeError:
+
+        if not hasattr(self, "_flat_geometry"):
             points = self._spherical_geometry.points
             self._flat_geometry = Polygon(points)
-        try:
-            pass
-        except AttributeError:
+
+        if not hasattr(self, "_flat_sky_geometry"):
             points = self._spherical_geometry.points
             v = vector_to_lonlat(points[:, 0], points[:, 1], points[:, 2])
             ra = [r.round(2) for r in v[0]]

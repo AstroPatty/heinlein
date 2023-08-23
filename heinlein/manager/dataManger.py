@@ -148,7 +148,7 @@ class DataManager(ABC):
     def get_from(self, dtypes: list, region_overlaps: list, *args, **kwargs):
         return_types = []
         new_data = {}
-        if isinstance(region_overlaps[0], str):
+        if not isinstance(region_overlaps[0], str):
             regnames = [r.name for r in region_overlaps]
         else:
             regnames = region_overlaps
