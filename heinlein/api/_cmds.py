@@ -1,7 +1,8 @@
 import pathlib
+from pathlib import Path
+
 from heinlein import manager
 from heinlein.manager.dconfig import get_config_paths
-from pathlib import Path
 
 """
 Backend API functions
