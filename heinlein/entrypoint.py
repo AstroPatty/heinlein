@@ -42,4 +42,7 @@ for key, data in commands.items():
 def delegate_command():
     globalConfig.interactive = True
     args = parser.parse_args()
-    args.function(args)
+    try:
+        args.function(args)
+    except AttributeError:
+        parser.print_help()

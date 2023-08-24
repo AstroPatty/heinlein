@@ -1,1 +1,3 @@
-__all___ = "globalConfig"
+from .config import globalConfig
+
+__all__ = ["globalConfig"]
