@@ -40,4 +40,4 @@ DES, HSC SSP, CFHTLS
 Catalogs (plaintext (csv, tsv etc), sqlite)
 Masks (.fits, .reg, mangle)
 
-Interested in adding something to these lists? Don't hesitate to add it in "Issues"
+Interested in adding something to these lists? Don't hesitate to add it in "Issues."
