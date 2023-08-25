@@ -30,6 +30,9 @@ pub(crate) fn get_default_config() -> HashMap<String, Value> {
 }
     
 pub(crate) fn load_config(dsn: &str) -> Option<(HashMap<String, Value>, PathBuf)> {
+    if !util::ds_exists(dsn) {
+        return None;
+    }
     let cfg_path = util::get_ds_dir();
     let ds_dir = cfg_path.join(&dsn);
     let config_path = ds_dir.join("config.json");

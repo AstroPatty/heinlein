@@ -25,7 +25,7 @@ pub(crate) struct AddArgs {
     pub(crate) overwrite: bool
 }
 
-pub(crate) fn add(args: &AddArgs, term: &Term) -> io::Result<String> {
+pub(crate) fn add(args: &AddArgs, term: &Term) -> io::Result<(String, String)> {
     let exists = util::ds_exists(&args.dataset);
     let cfg: (HashMap<String, serde_json::Value>, PathBuf);
     if exists {
@@ -56,8 +56,9 @@ pub(crate) fn add(args: &AddArgs, term: &Term) -> io::Result<String> {
     let mut data: HashMap<String, serde_json::Value> = serde_json::from_value(config.get("data").unwrap().clone()).unwrap();
 
     if !args.overwrite && data.contains_key(&args.datatype) {
-        term.write_line(format!("Data of type {} already exists. Use --overwrite/-o to overwrite", &args.datatype).as_str())?;
-
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::AlreadyExists,
+            format!("Data of type {} already exists. Use --overwrite/-o to overwrite", &args.datatype).as_str()));
     }
 
     let abs_path = args.path.canonicalize().unwrap();
@@ -66,7 +67,7 @@ pub(crate) fn add(args: &AddArgs, term: &Term) -> io::Result<String> {
     let file = std::fs::File::create(&path).unwrap();
     let mut writer = std::io::BufWriter::new(file);
     serde_json::to_writer_pretty(&mut writer, &config).unwrap();
-    Ok((&args.dataset).to_string())
+    Ok(((&args.dataset).to_string(), (&args.datatype).to_string()))
 
 }
 

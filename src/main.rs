@@ -37,10 +37,27 @@ fn main() {
     match &cli.command {
         Commands::Add(args) => {
             let result = add::add(args, &term);
-            println!("{:?}", result);
+            match result {
+                Ok((dataset, datatype)) => {
+                    term.write_line(format!("Sucessfully added {} to {}", datatype, dataset).as_str()).unwrap();
+                },
+                Err(e) => {
+                    term.write_line(format!("Error: {}", e).as_str()).unwrap();
+                }
+
+            }
         },
-        Commands::Remove(name) => {
-            println!("'myapp remove' was used, name is: {:?}", name.dataset)
+        Commands::Remove(args) => {
+            let result = remove::remove(args);
+            match result {
+                Ok((dataset, datatype)) => {
+                    term.write_line(format!("Sucessfully removed data `{}` from dataset `{}`", datatype, dataset).as_str()).unwrap();
+                },
+                Err(e) => {
+                    term.write_line(format!("Error: {}", e).as_str()).unwrap();
+                }
+
+            }
         },
         Commands::Get(name) => {
             println!("'myapp get' was used, name is: {:?}", name.dataset)
