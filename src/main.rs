@@ -1,9 +1,13 @@
 use clap::{Parser, Subcommand};
+use console::Term;
+
 mod add;
 mod get;
 mod list;
 mod remove;
-
+mod util;
+mod dataset;
+mod resource;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -27,12 +31,13 @@ enum Commands {
 
 fn main() {
     let cli = Cli::parse();
-
+    let term = Term::stdout();
     // You can check for the existence of subcommands, and if found use their
     // matches just as you would the top level cmd
     match &cli.command {
-        Commands::Add(name) => {
-            println!("'myapp add' was used, name is: {:?}", name.dataset)
+        Commands::Add(args) => {
+            let result = add::add(args, &term);
+            println!("{:?}", result);
         },
         Commands::Remove(name) => {
             println!("'myapp remove' was used, name is: {:?}", name.dataset)
