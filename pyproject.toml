@@ -1,7 +1,7 @@
 
 [project]
 name = "heinlein"
-version = "0.6.0"
+version = "0.6.1"
 description = "Library for interacting with large astronomical survey datasets"
 authors = [{name = "Patrick Wells", email = "patrick.wells.95@gmail.com"}]
 requires-python = ">=3.9"
