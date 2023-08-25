@@ -18,8 +18,11 @@ pub(crate) struct AddArgs {
     pub(crate) dataset: String,
     /// The data type to add
     pub(crate) datatype: String,
-    /// The path to the data type
+    /// The path to the data
     pub(crate) path: PathBuf,
+    ///Overwrite existing data of this type
+    #[clap(short, long)]
+    pub(crate) overwrite: bool
 }
 
 pub(crate) fn add(args: &AddArgs, term: &Term) -> io::Result<String> {
@@ -33,13 +36,13 @@ pub(crate) fn add(args: &AddArgs, term: &Term) -> io::Result<String> {
         loop {
             term.write_str("Dataset does not exist. Would you like to create it? (y/n) ")?;
             let result = term.read_char()?;
-            match result {
-                'y' =>{
+            match result.to_ascii_uppercase() {
+                'Y' =>{
                     term.write_str(format!("Creating dataset {}", &args.dataset).as_str());
                     cfg = dataset::create_dataset(&args.dataset);
                     break
                 }
-                'n' => {
+                'N' => {
                     term.write_str("Exiting...");
                     return Err(std::io::Error::new(std::io::ErrorKind::NotFound, "Dataset does not exist"));
                 }
@@ -51,6 +54,12 @@ pub(crate) fn add(args: &AddArgs, term: &Term) -> io::Result<String> {
     let path = cfg.1;
     //get the data field from the config
     let mut data: HashMap<String, serde_json::Value> = serde_json::from_value(config.get("data").unwrap().clone()).unwrap();
+
+    if !args.overwrite && data.contains_key(&args.datatype) {
+        term.write_line(format!("Data of type {} already exists. Use --overwrite/-o to overwrite", &args.datatype).as_str())?;
+
+    }
+
     let abs_path = args.path.canonicalize().unwrap();
     data.insert(args.datatype.clone(), serde_json::to_value(&abs_path).unwrap());
     config.insert(String::from("data"), serde_json::to_value(&data).unwrap());
