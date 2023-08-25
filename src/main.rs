@@ -62,8 +62,14 @@ fn main() {
         Commands::Get(name) => {
             println!("'myapp get' was used, name is: {:?}", name.dataset)
         },
-        Commands::List(name) => {
-            println!("'myapp list' was used, name is: {:?}", name.dataset)
+        Commands::List(args) => {
+            let result = list::list(&args, &term);
+            match result {
+                Err(e) => {
+                    term.write_line(format!("Error: {}", e).as_str()).unwrap();
+                },
+                _ => ()
+            }
         },
     }
 }
