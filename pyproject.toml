@@ -1,40 +1,40 @@
-[tool.poetry]
+
+[project]
 name = "heinlein"
 version = "0.5.1"
 description = "Library for interacting with large astronomical survey datasets"
-authors = ["Patrick Wells <pwells@ucdavis.edu>"]
-include = [
-    "conf/*.json"
-]
+authors = [{name = "Patrick Wells", email = "patrick.wells.95@gmail.com"}]
+requires-python = ">=3.9"
+
 exclude = ["heinlein/config/support/hsc_regions.csv", "heinlein/config/support/**/*.txt"]
+dependencies = [
+    "numpy>=1.23.1",
+    "pymongo>=4.2.0",
+    "Shapely>=2.0.0",
+    "pandas>=1.4.3",
+    "astropy>=5.1",
+    "appdirs>=1.4.4",
+    "portalocker>=2.5.1",
+    "spherical-geometry>=1.2.22",
+    "dynaconf>=3.1.9",
+    "cacheout>=0.14.1",
+    "regions>=0.7",
+    "sqlalchemy>=2.0.20",
+]
 
-[tool.poetry.dependencies]
-python = "^3.8"
-numpy = "^1.23.1"
-pymongo = "^4.2.0"
-Shapely = "^2.0.0"
-pandas = "^1.4.3"
-astropy = "^5.1"
-appdirs = "^1.4.4"
-portalocker = "^2.5.1"
-spherical-geometry = "^1.2.22"
-dynaconf = "^3.1.9"
-cacheout = "^0.14.1"
-regions = "0.7"
-sqlalchemy = "^2.0.20"
+[project.optional-dependencies]
+develop = [
+    "black>=23.7.0",
+    "isort>=5.12.0",
+    "ruff>=0.0.285",
+    "pre-commit>=3.3.3"
+]
 
-[tool.poetry.group.dev.dependencies]
-black = "^23.7.0"
-isort = "^5.12.0"
-ruff = "^0.0.285"
-pre-commit = "^3.3.3"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
 
-[tool.poetry.scripts]
-heinlein = "heinlein.entrypoint:delegate_command"
 
 [tool.isort]
 profile = "black"
