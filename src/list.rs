@@ -25,6 +25,10 @@ pub(crate) fn list(args: &ListArgs, term: &Term) -> Result<String>{
 
 fn list_datasets(term: &Term) {
     let datasets = util::list_ds();
+    if datasets.len() == 0 {
+        term.write_line("No datasets found").unwrap();
+        return
+    }
     term.write_line("Known datasets:").unwrap();
     for dataset in datasets {
         term.write_line(format!("\t{}", dataset).as_str()).unwrap();

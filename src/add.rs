@@ -6,7 +6,7 @@ use crate::{util,
 
 use std::path::PathBuf;
 use std::collections::HashMap;
-use serde_json;
+use serde_json::{Value, Map};
 use console::Term;
 use std::io;
 
@@ -53,14 +53,25 @@ pub(crate) fn add(args: &AddArgs, term: &Term) -> io::Result<(String, String)> {
     let mut config = cfg.0;
     let path = cfg.1;
     //get the data field from the config
-    let mut data: HashMap<String, serde_json::Value> = serde_json::from_value(config.get("data").unwrap().clone()).unwrap();
+    let mut data: HashMap<String, serde_json::Value>;
+    if config.contains_key("data") {
+        data = serde_json::from_value(config.get("data").unwrap().clone()).unwrap();
+    }
+    else {
+        data = HashMap::new();
+    }
 
     if !args.overwrite && data.contains_key(&args.datatype) {
         return Err(std::io::Error::new(
             std::io::ErrorKind::AlreadyExists,
             format!("Data of type {} already exists. Use --overwrite/-o to overwrite", &args.datatype).as_str()));
     }
-
+    println!("Adding data at path {}", args.path.display());
+    if !args.path.exists() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Path {} does not exist", args.path.display()).as_str()));
+    }
     let abs_path = args.path.canonicalize().unwrap();
     data.insert(args.datatype.clone(), serde_json::to_value(&abs_path).unwrap());
     config.insert(String::from("data"), serde_json::to_value(&data).unwrap());

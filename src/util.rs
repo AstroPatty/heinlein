@@ -9,7 +9,7 @@ fn get_project_dir() -> PathBuf {
     let config_dir = BaseDirs::new()
                                 .unwrap()
                                 .config_dir()
-                                .join("heinlein2")
+                                .join("heinlein")
                                 .to_path_buf();
     if !config_dir.exists() {
         std::fs::create_dir_all(&config_dir).unwrap();

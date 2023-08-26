@@ -39,7 +39,7 @@ pub(crate) fn remove(args: &RemoveArgs) -> Result<(String, String)> {
     config_data.insert("data".to_string(), serde_json::to_value(&data).unwrap());
     let file = std::fs::File::create(&config.1).unwrap();
     let mut writer = std::io::BufWriter::new(file);
-
+    serde_json::to_writer_pretty(&mut writer, &config_data).unwrap();
     Ok(((&args.dataset).to_string(), "test".to_string()))
 
 }
