@@ -10,17 +10,19 @@ from heinlein.locations import (
     BASE_DATASET_CONFIG_DIR,
     BUILTIN_DTYPES,
     DATASET_CONFIG_DIR,
-    MAIN_DATASET_CONFIG,
 )
 
 
 def get_config_paths():
-    BASE_DATASET_CONFIG_DIR / "surveys.json"
-    stored_config_location = MAIN_DATASET_CONFIG
-    with open(stored_config_location, "r") as f2:
-        stored_config = json.load(f2)
-
-    return stored_config
+    # find all subfolders of the base dataset config
+    # and return a dict of {name: {config_path: path}}
+    surveys = {}
+    for path in DATASET_CONFIG_DIR.iterdir():
+        if path.is_dir():
+            config_path = path / "config.json"
+            if config_path.exists():
+                surveys.update({path.name: {"config_path": config_path}})
+    return surveys
 
 
 def write_config(config, path):
@@ -68,17 +70,9 @@ class DatasetConfig:
         default_survey_config.update(
             {"name": name, "survey_region": "None", "implementation": False}
         )
-        output_location = DATASET_CONFIG_DIR / f"{name}.json"
+        output_location = DATASET_CONFIG_DIR / name / "config.json"
         with open(output_location, "w") as f:
             json.dump(default_survey_config, f, indent=4)
-
-        all_survey_config_location = DATASET_CONFIG_DIR / "surveys.json"
-        with open(all_survey_config_location, "r+") as f:
-            data = json.load(f)
-            f.seek(0)
-            f.truncate(0)
-            data.update({name: {"config_path": f"{name}.json"}})
-            json.dump(data, f, indent=4)
 
         cls.reload_datasets()
         return cls.load(name)
@@ -124,11 +118,15 @@ class DatasetConfig:
 
     def setup(self, *args, **kwargs):
         self.reconcile_configs()
-        try:
-            self._data = self.config_data["data"]
-        except KeyError:
-            self._data = {}
-            self.config_data["data"] = self._data
+        data = copy(self.config_data.get("data", None))
+        updated_data = {}
+        for k, v in data.items():
+            if isinstance(v, str):
+                updated_data.update({k: {"path": v}})
+            else:
+                updated_data.update({k: v})
+        self._data = updated_data
+
         try:
             # Find the external implementation for this dataset, if it exists.
             self.external = import_module(f".{self['slug']}", "heinlein.dataset")
@@ -137,7 +135,7 @@ class DatasetConfig:
 
     def reconcile_configs(self, *args, **kwargs):
         cp = self.surveys[self.name]["config_path"]
-        base_config_path = BASE_DATASET_CONFIG_DIR / cp
+        base_config_path = BASE_DATASET_CONFIG_DIR / f"{self.name}.json"
         stored_config_path = DATASET_CONFIG_DIR / cp
 
         try:
