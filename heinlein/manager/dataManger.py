@@ -1,7 +1,6 @@
 import json
 import logging
 import multiprocessing as mp
-import pathlib
 from abc import ABC, abstractmethod
 from inspect import getmembers, isclass, isfunction
 
@@ -80,7 +79,6 @@ class DataManager(ABC):
             self.config = DatasetConfig.load(self.name)
             self.external = self.config.external
             self._initialize_external_implementation()
-            self._data = self.config.data
 
     def _initialize_external_implementation(self):
         if self.external is None:
@@ -112,7 +110,7 @@ class DataManager(ABC):
         return self._external_definitions.get(key, None)
 
     def get_path(self, dtype: str, *args, **kwargs):
-        return pathlib.Path(self._data[dtype]["path"])
+        return self.config.get_data(dtype)
 
     def load_handlers(self, *args, **kwargs):
         from heinlein.dtypes import handlers
@@ -157,7 +155,7 @@ class DataManager(ABC):
 
         for dtype in dtypes:
             try:
-                path = self._data[dtype]
+                path = self.config.get_data(dtype)
                 return_types.append(dtype)
             except KeyError:
                 print(f"No data of type {dtype} found for dataset {self.name}!")
