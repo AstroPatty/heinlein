@@ -148,12 +148,10 @@ class FileManager(DataManager):
         """
         if not self.ready:
             return False
-        try:
-            data = self._data
-        except AttributeError:
-            data = {}
 
-        if dtype in data.keys() and not overwrite:
+        has_dtype_already = dtype in self.config.list("data")["files"]
+
+        if has_dtype_already and not overwrite:
             msg = f"Datatype {dtype} already found for survey {self.name}."
             options = ["Overwrite", "Merge", "Abort"]
             choice = warning_prompt(msg, options)
@@ -162,8 +160,7 @@ class FileManager(DataManager):
             elif choice == "M":
                 raise NotImplementedError
 
-        self.update_manifest(path)
-        self.config.add_data(dtype, str(path))
+        self.config.link(f"data/{dtype}", path)
         return True
 
     def remove_data(self, dtype: str) -> bool:
@@ -179,21 +176,12 @@ class FileManager(DataManager):
 
         bool: Whether or not the file was sucessfully removed
         """
-        try:
-            d = self._data[dtype]
-            path = d["path"]
-        except KeyError:
+        if dtype not in self.config.list("data")["files"]:
             print(f"Error: dataset {self.name} has no data of type {dtype}")
-            return False
-        path = pathlib.Path(path)
-        if not path.is_file():
-            self.delete_manifest(path)
-        self._data.pop(dtype)
+        self.config.remove(dtype)
 
     def get_handler(self, dtype: str, *args, **kwargs):
         pass
 
     def clear_all_data(self, *args, **kwargs) -> None:
-        for dtype, path in self._data.items():
-            self.delete_manifest(pathlib.Path(path))
-        self._data = {}
+        self.config.remove("data", recursive=True)
