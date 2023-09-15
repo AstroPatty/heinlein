@@ -1,6 +1,7 @@
 import json
 import logging
 import pathlib
+from itertools import chain
 
 from heinlein.manager.dataManger import DataManager
 from heinlein.utilities import warning_prompt
@@ -148,10 +149,12 @@ class FileManager(DataManager):
         """
         if not self.ready:
             return False
-        has_dtype_already = (
-            "data" in self.config.list()["folders"]
-            and dtype in self.config.list("data")["files"]
-        )
+
+        has_dtype_already = False
+        has_any_data = "data" in self.config.list()["folders"]
+        if has_any_data:
+            known_dtypes = chain.from_iterable(self.config.list("data").values())
+            has_dtype_already = dtype in known_dtypes
 
         if has_dtype_already and not overwrite:
             msg = f"Datatype {dtype} already found for survey {self.name}."
@@ -162,7 +165,10 @@ class FileManager(DataManager):
             elif choice == "M":
                 raise NotImplementedError
 
-        self.config.link(path, f"data/{dtype}")
+        if path.is_file():
+            self.config.link(path, f"data/{dtype}")
+        else:
+            raise NotImplementedError("Godata needs to implement a bulk add method")
         return True
 
     def remove_data(self, dtype: str) -> bool:
