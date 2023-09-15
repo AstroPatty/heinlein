@@ -2,7 +2,6 @@ import pathlib
 from pathlib import Path
 
 from heinlein import manager
-from heinlein.manager.dconfig import get_config_paths
 
 """
 Backend API functions
@@ -53,12 +52,3 @@ def get_path(name: str, dtype: str) -> pathlib.Path:
         return path
     except KeyError:
         print(f"No data of dtype {dtype} found for dataset {name}")
-
-
-def list_all():
-    """
-    List all available data
-    """
-    surveys = get_config_paths()
-    data = {name: d.get("data", []) for name, d in surveys.items()}
-    return data

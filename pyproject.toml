@@ -20,7 +20,7 @@ dependencies = [
     "cacheout>=0.14.1",
     "regions>=0.7",
     "sqlalchemy>=2.0.20",
-    "godata>=0.2.3",
+    "godata>=0.2.5",
 ]
 
 [project.optional-dependencies]
@@ -31,6 +31,8 @@ develop = [
     "pre-commit>=3.3.3"
 ]
 
+[project.scripts]
+heinlein = "heinlein.entrypoint:delegate_command"
 
 [build-system]
 requires = ["maturin>=1.0,<2.0"]

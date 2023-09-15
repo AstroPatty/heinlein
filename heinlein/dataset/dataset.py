@@ -39,7 +39,7 @@ class dataset_extension:
 class Dataset:
     def __init__(self, manager: DataManager, *args, **kwargs):
         self.manager = manager
-        self.config = manager.config
+        self.config = manager.get_config()
         self._extensions = {}
         self._parameters = {}
         self._setup()

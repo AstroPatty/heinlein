@@ -148,8 +148,10 @@ class FileManager(DataManager):
         """
         if not self.ready:
             return False
-
-        has_dtype_already = dtype in self.config.list("data")["files"]
+        has_dtype_already = (
+            "data" in self.config.list()["folders"]
+            and dtype in self.config.list("data")["files"]
+        )
 
         if has_dtype_already and not overwrite:
             msg = f"Datatype {dtype} already found for survey {self.name}."
@@ -160,7 +162,7 @@ class FileManager(DataManager):
             elif choice == "M":
                 raise NotImplementedError
 
-        self.config.link(f"data/{dtype}", path)
+        self.config.link(path, f"data/{dtype}")
         return True
 
     def remove_data(self, dtype: str) -> bool:
@@ -178,7 +180,7 @@ class FileManager(DataManager):
         """
         if dtype not in self.config.list("data")["files"]:
             print(f"Error: dataset {self.name} has no data of type {dtype}")
-        self.config.remove(dtype)
+        self.config.remove(f"data/{dtype}")
 
     def get_handler(self, dtype: str, *args, **kwargs):
         pass
