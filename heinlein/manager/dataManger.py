@@ -7,6 +7,7 @@ from pathlib import Path
 
 from cacheout import LRUCache
 from godata import create_project, has_collection, has_project, load_project
+from godata.project import GodataProjectError
 
 from heinlein.config.config import globalConfig
 from heinlein.locations import BASE_DATASET_CONFIG_DIR
@@ -136,10 +137,12 @@ class DataManager(ABC):
         from heinlein.dtypes import handlers
 
         if not hasattr(self, "_handlers"):
-            known_dtypes = self.config.list("data")["files"]
-            config = self.config.get("config")
+            known_dtypes_ = self.config.list("data")
+            known_dtypes = []
+            for ff in known_dtypes_.values():
+                known_dtypes.extend(ff)
             self._handlers = handlers.get_file_handlers(
-                known_dtypes, config, self._external_definitions
+                known_dtypes, self.config, self._external_definitions
             )
 
     @staticmethod
@@ -147,7 +150,10 @@ class DataManager(ABC):
         """
         Checks if a datset exists
         """
-        return has_project(name, ".heinlein")
+        try:
+            return has_project(name, ".heinlein")
+        except GodataProjectError:  # Need to eport the GodataProjectError here
+            return False
 
     @abstractmethod
     def setup(self, *args, **kwargs):
@@ -177,7 +183,7 @@ class DataManager(ABC):
 
         for dtype in dtypes:
             try:
-                path = self.config.get_data(dtype)
+                path = self.config.has_path(f"data/{dtype}")
                 return_types.append(dtype)
             except KeyError:
                 print(f"No data of type {dtype} found for dataset {self.name}!")

@@ -55,6 +55,18 @@
         },
         "function": "get_path"
     },
+    "list": {
+        "help": "List all datasets, or all data types in a dataset",
+        "options": {
+            "dataset_name": {
+                "help": "The name of the dataset",
+                "nargs": "?",
+                "default": null
+            }
+        }
+    },
+
+
     "split": {
         "help": "Split catalogs from a known dataset based on regions for easier retrieval",
         "options":{

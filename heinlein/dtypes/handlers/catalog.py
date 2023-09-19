@@ -1,25 +1,30 @@
 import logging
-from pathlib import Path
 
 import numpy as np
 from astropy.io import ascii
 from astropy.table import Table
+from godata.project import GodataProject, GodataProjectError
 from sqlalchemy import create_engine, text
 
 from heinlein.dtypes.catalog import Catalog
 from heinlein.dtypes.handlers import handler
 
 
-def get_catalog_handler(path: Path, dconfig: dict):
+class heinleinIoException(Exception):
+    pass
+
+
+def get_catalog_handler(project: GodataProject, dconfig: dict):
+    path = project.get("data/catalog")
     if not path.is_file():
-        return CsvCatalogHandler(path, dconfig)
+        return CsvCatalogHandler(project, dconfig)
     elif path.suffix == ".db":
-        return SQLiteCatalogHandler(path, dconfig)
+        return SQLiteCatalogHandler(project, dconfig)
 
 
 class CsvCatalogHandler(handler.Handler):
-    def __init__(self, path: Path, config: dict, *args, **kwargs):
-        super().__init__(path, config, "catalog")
+    def __init__(self, project: GodataProject, config: dict, *args, **kwargs):
+        super().__init__(project, config, "catalog")
 
     def get_data(self, region_names: list, *args, **kwargs):
         """
@@ -67,12 +72,20 @@ class CsvCatalogHandler(handler.Handler):
 
 
 class SQLiteCatalogHandler(handler.Handler):
-    def __init__(self, path: Path, config: dict, *args, **kwargs):
-        super().__init__(path, config, "catalog")
+    def __init__(self, project, config: dict, *args, **kwargs):
+        super().__init__(project, config, "catalog")
+        try:
+            self.db_path = self._project.get("data/catalog")
+        except GodataProjectError:
+            raise heinleinIoException(
+                "SQLite catalog handler requires SQLite "
+                "database, but found a folder!"
+            )
+
         self._create_engine()
 
     def _create_engine(self, *args, **kwargs):
-        self._engine = create_engine(f"sqlite:///{self._path}")
+        self._engine = create_engine(f"sqlite:///{self.db_path}")
         self._con = self._engine.connect()
         sql = "SELECT * FROM sqlite_master where type='table'"
         cur = self.execute_query(sql)

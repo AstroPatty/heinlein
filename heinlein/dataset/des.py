@@ -56,33 +56,21 @@ class MaskHandler(Handler):
     def __init__(self, *args, **kwargs):
         kwargs.update({"type": "mask"})
         super().__init__(*args, **kwargs)
-        self.mangle_files = [
-            f
-            for f in (self._path / "mangle").glob("*.pol")
-            if not f.name.startswith(".")
-        ]
-        self.plane_files = [
-            f
-            for f in (self._path / "plane").glob("*.fits")
-            if not f.name.startswith(".")
-        ]
+        self.mangle_files = self._project.list("data/mask/mangle")["files"]
+        self.plane_files = self._project.list("data/mask/plane")["files"]
 
     def get_data(self, region_names, *args, **kwargs):
-        len(region_names)
         regex = re.compile("|".join(region_names))
-        mangle_matches = list(
-            filter(lambda x, y=regex: regex.match(x.name), self.mangle_files)
-        )
-        plane_matches = list(
-            filter(lambda x, y=regex: regex.match(x.name), self.plane_files)
-        )
+        mangle_matches = list(filter(lambda x: regex.match(x), self.mangle_files))
+        plane_matches = list(filter(lambda x: regex.match(x), self.plane_files))
+
         return self._get(region_names, mangle_matches, plane_matches, *args, **kwargs)
 
     def _get(self, regions, mangle_files, plane_files, *args, **kwargs):
         output = {}
         for region in regions:
-            mangle_file = list(filter(lambda x, y=region: y in x.name, mangle_files))
-            plane_file = list(filter(lambda x, y=region: y in x.name, plane_files))
+            mangle_file = list(filter(lambda x, y=region: y in x, mangle_files))
+            plane_file = list(filter(lambda x, y=region: y in x, plane_files))
             bad = False
             if len(mangle_file) == 0:
                 print(f"Unable to find Mangle mask for region {region}")
@@ -93,8 +81,10 @@ class MaskHandler(Handler):
             if bad:
                 continue
 
-            mangle_msk = pymangle.Mangle(str(mangle_file[0]))
-            plane_msk = fits.open(plane_file[0], memmap=True)
+            mangle_path = self._project.get(f"data/mask/mangle/{mangle_file[0]}")
+            plane_path = self._project.get(f"data/mask/plane/{plane_file[0]}")
+            mangle_msk = pymangle.Mangle(str(mangle_path))
+            plane_msk = fits.open(plane_path, memmap=True)
             output.update(
                 {region: Mask([mangle_msk, plane_msk], pixarray=True, **self._config)}
             )

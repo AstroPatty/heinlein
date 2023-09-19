@@ -165,10 +165,12 @@ class FileManager(DataManager):
             elif choice == "M":
                 raise NotImplementedError
 
-        if path.is_file():
-            self.config.link(path, f"data/{dtype}")
-        else:
-            raise NotImplementedError("Godata needs to implement a bulk add method")
+        if path.is_dir():
+            print(
+                "Adding folder to the dataset recursively. This may take some"
+                " time if there are a lot of folders or sub-folders."
+            )
+        self.config.link(path, f"data/{dtype}", recursive=True)
         return True
 
     def remove_data(self, dtype: str) -> bool:

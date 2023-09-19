@@ -20,7 +20,7 @@ dependencies = [
     "cacheout>=0.14.1",
     "regions>=0.7",
     "sqlalchemy>=2.0.20",
-    "godata>=0.2.5",
+    "godata>=0.2.7",
 ]
 
 [project.optional-dependencies]
