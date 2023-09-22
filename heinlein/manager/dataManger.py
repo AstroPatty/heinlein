@@ -93,12 +93,9 @@ class DataManager(ABC):
 
         else:  # If it DOES exist, get the config data
             self.config = load_project(self.name, ".heinlein")
-            print(self.name)
-            print(self.config.name)
             try:
                 # Find the external implementation for this dataset, if it exists.
                 cfg = self.config.get("config")
-                print(cfg)
                 self.external = import_module(f".{cfg['slug']}", "heinlein.dataset")
             except KeyError:
                 self.external = None
