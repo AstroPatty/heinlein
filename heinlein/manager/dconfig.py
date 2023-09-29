@@ -1,4 +1,5 @@
-import atexit
+from __future__ import annotations
+
 import json
 import shutil
 from copy import copy
@@ -6,11 +7,17 @@ from functools import singledispatchmethod
 from importlib import import_module
 from typing import List
 
+from godata import create_project, has_project, load_project
+
 from heinlein.locations import (
     BASE_DATASET_CONFIG_DIR,
     BUILTIN_DTYPES,
     DATASET_CONFIG_DIR,
 )
+
+
+class heinleinProjectConfigError(Exception):
+    pass
 
 
 def get_config_paths():
@@ -31,16 +38,75 @@ def write_config(config, path):
 
 
 class DatasetConfig:
+    def __init__(self, name: str, *args, **kwargs) -> DatasetConfig:
+        self.name = name
+        self.setup()
+
+    def setup(self, *args, **kwargs) -> None:
+        self._data = load_project(self.name, collection=".heinlein")
+        self._dconfig = self._project.get("config")
+        try:
+            self._external = import_module(f".{self['slug']}", "heinlein.dataset")
+        except KeyError:
+            self._external = None
+
+    @staticmethod
+    def exists(name: str) -> bool:
+        return has_project(name, collection=".heinlein")
+
+    @classmethod
+    def create(cls, name: str, *args, **kwargs) -> DatasetConfig:
+        project = create_project(name, collection=".heinlein")
+        # Note, we just want to propogate any errors here
+        survey_config_location = BASE_DATASET_CONFIG_DIR / f"{name}.json"
+        if not survey_config_location.exists():
+            config_location = BASE_DATASET_CONFIG_DIR / "default.json"
+        else:
+            config_location = survey_config_location
+        project.store(config_location, "config")
+        if not survey_config_location.exists():
+            cfg = project.get("config")
+            cfg.update({"name": name, "survey_region": "None", "implementation": False})
+            project.store(cfg, "config")
+
+        return cls(name)
+
+    def add_data(self, dtype, path):
+        self.project.link(f"data/{dtype}", path)
+
+    def get_data(self, dtype):
+        return self.project.get(f"data/{dtype}")
+
+    def get_data_types(self):
+        data = self.project.list("data")
+        return data["files"]
+
+
+class OldDatasetConfig:
     surveys = get_config_paths()
 
     def __init__(self, name: str, *args, **kwargs):
         self.name = name
         self.setup()
 
-        def write_atexit(x=self.config, y=self.config_path):
-            return write_config(x, y)
+    def setup(self, *args, **kwargs):
+        self._project = load_project(self.name, collection=".heinlein")
+        self._config = self.project
+        self.reconcile_configs()
+        data = copy(self.config_data.get("data", None))
+        updated_data = {}
+        for k, v in data.items():
+            if isinstance(v, str):
+                updated_data.update({k: {"path": v}})
+            else:
+                updated_data.update({k: v})
+        self._data = updated_data
 
-        atexit.register(write_atexit)
+        try:
+            # Find the external implementation for this dataset, if it exists.
+            self.external = import_module(f".{self['slug']}", "heinlein.dataset")
+        except KeyError:
+            self.external = None
 
     @classmethod
     def reload_datasets(cls, *args, **kwargs):
@@ -115,23 +181,6 @@ class DatasetConfig:
                 found_values = set(dconfig.keys())
                 if not required_values.issubset(found_values):
                     self._update_dconfig(dtype)
-
-    def setup(self, *args, **kwargs):
-        self.reconcile_configs()
-        data = copy(self.config_data.get("data", None))
-        updated_data = {}
-        for k, v in data.items():
-            if isinstance(v, str):
-                updated_data.update({k: {"path": v}})
-            else:
-                updated_data.update({k: v})
-        self._data = updated_data
-
-        try:
-            # Find the external implementation for this dataset, if it exists.
-            self.external = import_module(f".{self['slug']}", "heinlein.dataset")
-        except KeyError:
-            self.external = None
 
     def reconcile_configs(self, *args, **kwargs):
         cp = self.surveys[self.name]["config_path"]

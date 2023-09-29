@@ -1,13 +1,14 @@
 from abc import ABC, abstractmethod
-from pathlib import Path
+
+from godata.project import GodataProject
 
 from heinlein import dtypes
 
 
 class Handler(ABC):
-    def __init__(self, path: Path, dconfig: dict, type: str, *args, **kwargs):
+    def __init__(self, data: GodataProject, dconfig: dict, type: str, *args, **kwargs):
+        self._project = data
         self._type = type
-        self._path = path
         self._config = dconfig
 
     @abstractmethod

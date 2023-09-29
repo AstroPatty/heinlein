@@ -1,6 +1,9 @@
 import multiprocessing
 from pathlib import Path
 
+from godata import list_projects, load_project
+from godata.project import GodataProjectError
+
 from heinlein import api
 from heinlein.config import globalConfig
 from heinlein.manager.managers import FileManager
@@ -59,18 +62,25 @@ def get_path(args) -> bool:
         print(str(path))
 
 
-def list_all(args) -> None:
-    data = api.list_all()
-    if len(data) == 0 or all([len(d) == 0 for d in data.values()]):
-        print("No data found!")
-        return
-    header = "DATASET".ljust(20) + "AVAILABLE DATA"
-    print(header)
-    print("-" * len(header))
-    for name, dtypes in data.items():
-        s1 = name
-        s2 = ",".join(list(dtypes.keys()))
-        print(s1.ljust(20) + s2)
+def list(args) -> None:
+    if args.dataset_name is None:
+        try:
+            project_names = list_projects(".heinlein")
+            print("KNOWN DATASETS")
+            print("-" * 20)
+            for name in project_names:
+                print(name)
+        except GodataProjectError:
+            print("No datasets found!")
+    else:
+        try:
+            project = load_project(args.dataset_name, ".heinlein")
+            print(f"DATASET: {args.dataset_name}")
+            print("-" * 20)
+            for dtype in project:
+                print(dtype)
+        except GodataProjectError:
+            print(f"Error: dataset {args.dataset_name} does not exist!")
 
 
 def split(args) -> None:

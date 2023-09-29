@@ -5,12 +5,14 @@
     "slug": "ms",
     "dconfig": {
         "catalog": {
-            "ra": {
-                "key": "pos_0[rad]",
-                "unit": "rad"},
-            "dec": {
-                "key": "pos_1[rad]",
-                "unit": "rad"
+            "columns" :{
+                "ra": {
+                    "key": "pos_0[rad]",
+                    "unit": "rad"},
+                "dec": {
+                    "key": "pos_1[rad]",
+                    "unit": "rad"
+                }
             }
         }
     }

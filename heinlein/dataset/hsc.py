@@ -174,12 +174,13 @@ class MaskHandler(Handler):
 
         for index, name in enumerate(regions):
             split = name.split(".")
-            basename = "BrightStarMask-{}-{},{}-HSC-I.reg"
+            basename = "BrightStarMask-{}-{},{}-HSC-I"
             patch_tuple = _patch_int_to_tuple(int(split[1]))
 
             fname = basename.format(split[0], patch_tuple[0], patch_tuple[1])
-            path = self._path / split[0] / fname
-            mask = reg.Regions.read(str(path))
+            project_path = "/".join(["data", "mask", split[0], fname])
+            file_path = self._project.get(project_path)
+            mask = reg.Regions.read(str(file_path))
             new_masks = np.empty(len(mask), dtype=object)
 
             for i, r in enumerate(mask):

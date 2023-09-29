@@ -1,23 +1,20 @@
-import json
 import logging
 import multiprocessing as mp
-import pathlib
 from abc import ABC, abstractmethod
+from importlib import import_module
 from inspect import getmembers, isclass, isfunction
+from pathlib import Path
 
 from cacheout import LRUCache
+from godata import create_project, has_collection, has_project, load_project
+from godata.project import GodataProjectError
 
 from heinlein.config.config import globalConfig
-from heinlein.manager.dconfig import DatasetConfig
+from heinlein.locations import BASE_DATASET_CONFIG_DIR
 from heinlein.region.base import BaseRegion
 from heinlein.utilities import warning_prompt_tf
 
 logger = logging.getLogger("manager")
-
-
-def write_config_atexit(config, path):
-    with open(path, "w") as f:
-        json.dump(config, f, indent=4)
 
 
 def check_overload(f):
@@ -33,6 +30,16 @@ def check_overload(f):
                 return f(self, *args, **kwargs)
 
     return wrapper
+
+
+def get_default_config(name: str) -> Path:
+    """
+    Returns the default config for a dataset
+    """
+    path = BASE_DATASET_CONFIG_DIR / f"{name}.json"
+    if not path.exists():
+        path = BASE_DATASET_CONFIG_DIR / "default.json"
+    return path
 
 
 logger = logging.getLogger("manager")
@@ -57,6 +64,9 @@ class DataManager(ABC):
         self._cache = {}
         self._cache_lock = mp.Lock()
 
+    def get_config(self):
+        return self.config.get("config")
+
     def _setup(self, *args, **kwargs) -> None:
         """
         Performs basic setup of the manager
@@ -64,23 +74,32 @@ class DataManager(ABC):
         user if dataset does not exist.
         """
 
-        if not DatasetConfig.exists(self.name):  # If this dataset does not exist
+        if not has_collection(".heinlein") or not has_project(
+            self.name, ".heinlein"
+        ):  # If this dataset does not exist
             if self.globalConfig.interactive:
                 write_new = warning_prompt_tf(
                     f"Survey {self.name} not found, would you like to initialize it? "
                 )
                 if write_new:
-                    self.config = DatasetConfig.create(self.name)
+                    self.config = create_project(self.name, ".heinlein")
+                    config_path = get_default_config(self.name)
+                    self.config.store(config_path, "config")
+
                 else:
                     self.ready = False
             else:
                 raise OSError(f"Dataset {self.name} does not exist!")
 
         else:  # If it DOES exist, get the config data
-            self.config = DatasetConfig.load(self.name)
-            self.external = self.config.external
+            self.config = load_project(self.name, ".heinlein")
+            try:
+                # Find the external implementation for this dataset, if it exists.
+                cfg = self.config.get("config")
+                self.external = import_module(f".{cfg['slug']}", "heinlein.dataset")
+            except KeyError:
+                self.external = None
             self._initialize_external_implementation()
-            self._data = self.config.data
 
     def _initialize_external_implementation(self):
         if self.external is None:
@@ -112,14 +131,18 @@ class DataManager(ABC):
         return self._external_definitions.get(key, None)
 
     def get_path(self, dtype: str, *args, **kwargs):
-        return pathlib.Path(self._data[dtype]["path"])
+        return self.config.get(f"data/{dtype}", as_path=True)
 
     def load_handlers(self, *args, **kwargs):
         from heinlein.dtypes import handlers
 
         if not hasattr(self, "_handlers"):
+            known_dtypes_ = self.config.list("data")
+            known_dtypes = []
+            for ff in known_dtypes_.values():
+                known_dtypes.extend(ff)
             self._handlers = handlers.get_file_handlers(
-                self._data, self._external_definitions
+                known_dtypes, self.config, self._external_definitions
             )
 
     @staticmethod
@@ -127,7 +150,10 @@ class DataManager(ABC):
         """
         Checks if a datset exists
         """
-        return DatasetConfig.exists(name)
+        try:
+            return has_project(name, ".heinlein")
+        except GodataProjectError:  # Need to eport the GodataProjectError here
+            return False
 
     @abstractmethod
     def setup(self, *args, **kwargs):
@@ -157,7 +183,7 @@ class DataManager(ABC):
 
         for dtype in dtypes:
             try:
-                path = self._data[dtype]
+                path = self.config.has_path(f"data/{dtype}")
                 return_types.append(dtype)
             except KeyError:
                 print(f"No data of type {dtype} found for dataset {self.name}!")

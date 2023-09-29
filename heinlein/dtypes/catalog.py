@@ -36,39 +36,47 @@ def get_cartesian_points(coordinates: SkyCoord):
     return cartesian_points
 
 
-def label_coordinates(catalog: Table):
+def label_coordinates(catalog: Table, config: dict = {}):
     """
     Takes a catalog and finds the coordinate columns (ra and dec)
     returns the catalog with the coordinate columns labeled
     """
-
-    config = load_config()
-    columns = set(catalog.colnames)
-    ras = set(config["columns"]["ra"])
-    dec = set(config["columns"]["dec"])
-    ra_col = columns.intersection(ras)
-    dec_col = columns.intersection(dec)
-    if len(ra_col) == 1 and len(dec_col) == 1:
+    if not config:
+        config = load_config()
+        columns = set(catalog.colnames)
+        ras = set(config["columns"]["ra"])
+        dec = set(config["columns"]["dec"])
+        ra_col = columns.intersection(ras)
+        dec_col = columns.intersection(dec)
+        if len(ra_col) != 1 or len(dec_col) != 1:
+            raise ValueError("Catalog does not have the correct columns for ra and dec")
         ra_name = list(ra_col)[0]
         dec_name = list(dec_col)[0]
-        catalog.rename_columns([ra_name, dec_name], ["ra", "dec"])
-        catalog._has_radec = True
-        try:
-            catalog["ra"].to(u.deg)
-        except u.UnitConversionError:
-            catalog["ra"] = catalog["ra"] * u.deg
-        try:
-            catalog["dec"].to(u.deg)
-        except u.UnitConversionError:
-            catalog["dec"] = catalog["dec"] * u.deg
-
+        ra_unit = u.deg
+        dec_unit = u.deg
     else:
-        raise ValueError("Catalog does not have the correct columns for ra and dec")
+        ra_name = config["columns"]["ra"]["key"]
+        dec_name = config["columns"]["dec"]["key"]
+        ra_unit_name = config["columns"]["ra"].get("unit", "deg")
+        dec_unit_name = config["columns"]["dec"].get("unit", "deg")
+        ra_unit = getattr(u, ra_unit_name)
+        dec_unit = getattr(u, dec_unit_name)
+
+    catalog.rename_columns([ra_name, dec_name], ["ra", "dec"])
+    catalog._has_radec = True
+    try:
+        catalog["ra"].to(u.deg)
+    except u.UnitConversionError:
+        catalog["ra"] = catalog["ra"] * ra_unit
+    try:
+        catalog["dec"].to(u.deg)
+    except u.UnitConversionError:
+        catalog["dec"] = catalog["dec"] * dec_unit
 
     return catalog
 
 
-def Catalog(data: Table, *args, **kwargs):
+def Catalog(data: Table, config: dict = {}, *args, **kwargs):
     """
     Produces a catalog object from an astropy table. This locates the ra and dec
     columns, creates SkyCoords, and creates a cartesian representation of the
@@ -77,7 +85,7 @@ def Catalog(data: Table, *args, **kwargs):
     this object will produce a :class:`astropy.Table` with the data from the region.
 
     """
-    labeled_data = label_coordinates(data)
+    labeled_data = label_coordinates(data, config)
     catalog_coordinates = get_coordinates(labeled_data)
     cartesian_points = get_cartesian_points(catalog_coordinates)
     data["coordinates"] = catalog_coordinates
