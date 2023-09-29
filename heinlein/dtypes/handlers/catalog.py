@@ -1,5 +1,3 @@
-import logging
-
 import numpy as np
 from astropy.io import ascii
 from astropy.table import Table
@@ -15,10 +13,12 @@ class heinleinIoException(Exception):
 
 
 def get_catalog_handler(project: GodataProject, dconfig: dict):
-    path = project.get("data/catalog")
-    if not path.is_file():
+    try:
+        path = project.get("data/catalog")
+    except GodataProjectError:
+        _ = project.list("data/catalog").get
         return CsvCatalogHandler(project, dconfig)
-    elif path.suffix == ".db":
+    if path.suffix == ".db":
         return SQLiteCatalogHandler(project, dconfig)
 
 
@@ -32,42 +32,24 @@ class CsvCatalogHandler(handler.Handler):
         Loads a single catalog, assuming the region name can be found in the file name.
         """
         storage = {}
-        parent_region = kwargs.get("parent_region", False)
-        if not self._path.exists():
-            print(
-                f"Path {self._path} does not exist! Perhaps it is in an external"
-                " storage device that isn't attached."
-            )
-            return None
-        if not self._path.is_file():
-            for name in region_names:
-                files = [
-                    f
-                    for f in self._path.glob(f"*{name}*")
-                    if not f.name.startswith(".")
-                ]
-                if len(files) > 1:
-                    raise NotImplementedError
-                if len(files) == 0:
-                    new_path = self._path / str(parent_region.name)
-                    files = [
-                        f
-                        for f in new_path.glob(f"*{name}*")
-                        if not f.name.startswith(".")
-                    ]
-                try:
-                    file_path = files[0]
-                    data = ascii.read(file_path)
-                    storage.update({name: Catalog(data)})
-                except IndexError:
-                    logging.error(f"No file found for dtype catalog in region {name}!")
-        else:
-            file_path = self._path
-            if file_path.suffix == ".csv":
-                data = ascii.read(file_path)
-                for name in region_names:
-                    mask = data[self._config["region"]] == name
-                    storage.update({name: Catalog(data[mask])})
+        known_files = self._project.list("data/catalog")
+        files = {}
+        for name in region_names:
+            region_file = list(filter(lambda x: name in x, known_files["files"]))
+            if len(region_file) != 1:
+                raise heinleinIoException(f"Multiple files found for region {name}! ")
+            path = self._project.get("data/catalog/" + region_file[0], as_path=True)
+            files.update({name: path})
+
+        for name, path in files.items():
+            if not path.exists():
+                print(
+                    f"Path {self._path} does not exist! Perhaps it is in an external"
+                    " storage device that isn't attached."
+                )
+                return None
+            data = ascii.read(path)
+            storage.update({name: Catalog(data, self._config)})
         return storage
 
 

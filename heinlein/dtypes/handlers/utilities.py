@@ -17,7 +17,6 @@ def get_file_handlers(
     all_dconfig = config.get("dconfig", {})
     for dtype in dtypes:
         dconfig = all_dconfig.get(dtype, {})
-
         if external_handlers[dtype] is not None:
             cl = external_handlers[dtype](pconfig, dconfig)
             handlers_.update({dtype: cl})
