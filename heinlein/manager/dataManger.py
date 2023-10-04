@@ -1,3 +1,4 @@
+import json
 import logging
 import multiprocessing as mp
 from abc import ABC, abstractmethod
@@ -56,14 +57,15 @@ def check_overload(f):
     return wrapper
 
 
-def get_default_config(name: str) -> Path:
+def get_default_config() -> Path:
     """
     Returns the default config for a dataset
     """
-    path = BASE_DATASET_CONFIG_DIR / f"{name}.json"
-    if not path.exists():
-        path = BASE_DATASET_CONFIG_DIR / "default.json"
-    return path
+    path = BASE_DATASET_CONFIG_DIR / "default.json"
+    with open(path, "rb") as f:
+        data = json.load(f)
+
+    return data
 
 
 logger = logging.getLogger("manager")
@@ -97,6 +99,12 @@ class DataManager(ABC):
         Loads datset config if it exists, or prompts
         user if dataset does not exist.
         """
+        try:
+            # Find the external implementation for this dataset, if it exists.
+            self.external = get_external_implementation(self.name)
+        except KeyError:
+            self.external = None
+        self._initialize_external_implementation()
 
         if not has_collection(".heinlein") or not has_project(
             self.name, ".heinlein"
@@ -106,9 +114,12 @@ class DataManager(ABC):
                     f"Survey {self.name} not found, would you like to initialize it? "
                 )
                 if write_new:
+                    if self.external is not None:
+                        config_data = self.external.get_config()
+                    else:
+                        config_data = get_default_config()
                     self.config = create_project(self.name, ".heinlein")
-                    config_path = get_default_config(self.name)
-                    self.config.store(config_path, "config")
+                    self.config.store(config_data, "config")
 
                 else:
                     self.ready = False
@@ -117,13 +128,6 @@ class DataManager(ABC):
 
         else:  # If it DOES exist, get the config data
             self.config = load_project(self.name, ".heinlein")
-            try:
-                # Find the external implementation for this dataset, if it exists.
-                cfg = self.config.get("config")
-                self.external = get_external_implementation(cfg["slug"])
-            except KeyError:
-                self.external = None
-            self._initialize_external_implementation()
 
     def _initialize_external_implementation(self):
         if self.external is None:
