@@ -65,6 +65,15 @@
             }
         }
     },
+    "install": {
+        "help": "Install the implementation for a given dataset",
+        "options": {
+            "dataset_name": {
+                "help": "The name of the dataset",
+                "nargs": "+"
+            }
+        }
+    },
 
 
     "split": {
