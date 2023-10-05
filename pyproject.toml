@@ -30,6 +30,19 @@ develop = [
     "ruff>=0.0.285",
     "pre-commit>=3.3.3"
 ]
+des = [
+    "heinlein_des>=0.1.0"
+]
+hsc = [
+    "heinlein_hsc>=0.1.0"
+]
+cfht = [
+    "heinlein_cfht>=0.1.0"
+]
+ms = [
+    "heinlein_ms>=0.1.0"
+]
+
 
 [project.scripts]
 heinlein = "heinlein.entrypoint:delegate_command"
