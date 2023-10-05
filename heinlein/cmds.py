@@ -1,6 +1,4 @@
-import importlib
 import multiprocessing
-import subprocess
 from pathlib import Path
 
 from godata import list_projects, load_project
@@ -83,20 +81,6 @@ def list(args) -> None:
                 print(dtype)
         except GodataProjectError:
             print(f"Error: dataset {args.dataset_name} does not exist!")
-
-
-def install(args) -> None:
-    dataset_names = [n.lower() for n in args.dataset_name]
-    for name in dataset_names:
-        pkg_name = "heinlein-" + name
-        cmd = ["pip", "install", pkg_name]
-        subprocess.run(cmd, capture_output=True)
-        try:
-            internal_name = "heinlein_" + name
-            importlib.import_module(internal_name)
-            print(f"Successfully installed dataset {name}")
-        except ImportError:
-            print(f"Failed to install dataset {name}")
 
 
 def split(args) -> None:

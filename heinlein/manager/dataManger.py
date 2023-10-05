@@ -36,7 +36,7 @@ def get_external_implementation(name: str) -> ModuleType:
         except ImportError:
             print(
                 f"Dataset `{name}` is a known dataset, but needs to be installed"
-                f" separately. You can install it with `heinlein install {name}`."
+                f" separately. You can install it with `pip install heinlein[{name}]`."
             )
             exit()
         return getattr(module, name)

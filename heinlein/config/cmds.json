@@ -65,16 +65,6 @@
             }
         }
     },
-    "install": {
-        "help": "Install the implementation for a given dataset",
-        "options": {
-            "dataset_name": {
-                "help": "The name of the dataset",
-                "nargs": "+"
-            }
-        }
-    },
-
 
     "split": {
         "help": "Split catalogs from a known dataset based on regions for easier retrieval",
