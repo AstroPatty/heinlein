@@ -31,16 +31,16 @@ develop = [
     "pre-commit>=3.3.3"
 ]
 des = [
-    "heinlein_des>=0.1.0"
+    "heinlein-des>=0.1.0"
 ]
 hsc = [
-    "heinlein_hsc>=0.1.0"
+    "heinlein-hsc>=0.1.0"
 ]
 cfht = [
-    "heinlein_cfht>=0.1.0"
+    "heinlein-cfht>=0.1.0"
 ]
 ms = [
-    "heinlein_ms>=0.1.0"
+    "heinlein-ms>=0.1.0"
 ]
 
 
