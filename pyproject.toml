@@ -1,7 +1,7 @@
 
 [project]
 name = "heinlein"
-version = "0.6.7"
+version = "0.7.0"
 description = "Library for interacting with large astronomical survey datasets"
 authors = [{name = "Patrick Wells", email = "patrick.wells.95@gmail.com"}]
 requires-python = ">=3.9"
@@ -30,6 +30,19 @@ develop = [
     "ruff>=0.0.285",
     "pre-commit>=3.3.3"
 ]
+des = [
+    "heinlein-des>=0.1.0"
+]
+hsc = [
+    "heinlein-hsc>=0.1.0"
+]
+cfht = [
+    "heinlein-cfht>=0.1.0"
+]
+ms = [
+    "heinlein-ms>=0.1.0"
+]
+
 
 [project.scripts]
 heinlein = "heinlein.entrypoint:delegate_command"
