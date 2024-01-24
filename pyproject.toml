@@ -21,6 +21,12 @@ sqlalchemy = "^2.0.25"
 godata = "^0.8.0"
 
 
+[tool.poetry.group.develop.dependencies]
+black = "^23.12.1"
+isort = "^5.13.2"
+ruff = "^0.1.14"
+pre-commit = "^3.6.0"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
@@ -29,12 +35,6 @@ build-backend = "poetry.core.masonry.api"
 exclude = ["heinlein/config/support/hsc_regions.csv", "heinlein/config/support/**/*.txt"]
 
 [project.optional-dependencies]
-develop = [
-    "black>=23.7.0",
-    "isort>=5.12.0",
-    "ruff>=0.0.285",
-    "pre-commit>=3.3.3"
-]
 des = [
     "heinlein-des>=0.1.0"
 ]
@@ -49,7 +49,7 @@ ms = [
 ]
 
 
-[project.scripts]
+[tool.poetry.scripts]
 heinlein = "heinlein.entrypoint:delegate_command"
 
 
