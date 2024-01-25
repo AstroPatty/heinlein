@@ -14,6 +14,10 @@ WORKDIR /app
 
 # install dependencies
 RUN ~/.local/bin/poetry install
+RUN git clone https://github.com/esheldon/pymangle.git
+RUN cd pymangle && pip install . && rm -r tests
+
+RUN pip install heinlein_des
 
 COPY ./tests /app/tests
 
