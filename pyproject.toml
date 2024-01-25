@@ -51,7 +51,7 @@ ms = [
 
 
 [tool.poetry.scripts]
-heinlein = "heinlein.entrypoint:delegate_command"
+heinlein = "heinlein.entrypoint:cli"
 
 
 [tool.isort]
