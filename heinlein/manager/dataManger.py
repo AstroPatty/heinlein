@@ -22,6 +22,20 @@ logger = logging.getLogger("manager")
 known_datasets = ["des", "cfht", "hsc", "ms"]
 
 
+def initialize_dataset(name: str, *args, **kwargs):
+    """
+    Initializes a new dataset. Checks to see if a custom implementation exists for a
+    given dataset. These have to be installed separately from the main package.
+    """
+    project = create_project(name, ".heinlein")
+    try:
+        ext = get_external_implementation(name)
+        config_data = ext.get_config()
+    except KeyError:
+        config_data = get_default_config()
+    project.store(config_data, "config")
+
+
 def get_external_implementation(name: str) -> ModuleType:
     """
     Checks to see if a custom implementation exists for a given dataset. These have

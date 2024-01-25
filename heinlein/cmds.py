@@ -9,11 +9,12 @@ from heinlein import api
 @click.argument("dataset_name")
 @click.argument("data_type")
 @click.argument("path")
-def add(dataset_name, data_type, path) -> bool:
+@click.option("-o", "--overwrite", is_flag=True)
+def add(dataset_name, data_type, path, overwrite=False) -> bool:
     """
     Add a location on disk to a dataset
     """
-    api.add(dataset_name, data_type, path)
+    api.add(dataset_name, data_type, path, overwrite)
     return True
 
 

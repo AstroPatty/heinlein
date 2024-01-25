@@ -1,14 +1,17 @@
-import pathlib
 from pathlib import Path
 
-from heinlein import manager
+from godata import load_project
+from godata.project import GodataProjectError
+
+from heinlein.manager.dataManger import initialize_dataset
+from heinlein.utilities import warning_prompt_tf
 
 """
 Backend API functions
 """
 
 
-def add(name, dtype, path, *args, **kwargs) -> bool:
+def add(name, dtype, path, overwrite=False, *args, **kwargs) -> bool:
     """
     Add a location on disk to a dataset
     """
@@ -22,8 +25,19 @@ def add(name, dtype, path, *args, **kwargs) -> bool:
         print(f"Error: {path} not found!")
         return
 
-    mgr = manager.get_manager(name)
-    mgr.add_data(dtype, path, *args, **kwargs)
+    try:
+        project = load_project(name, ".heinlein")
+    except GodataProjectError:
+        write_new = warning_prompt_tf(
+            f"Survey {name} not found, would you like to initialize it? "
+        )
+        if not write_new:
+            print("Aborting...")
+            return
+        initialize_dataset(name, path)
+        project = load_project(name, ".heinlein")
+
+    project.link(path, "data/" + dtype, overwrite=overwrite)
     return True
 
 
@@ -31,24 +45,11 @@ def remove(name: str, dtype: str):
     """
     Remove a datatype from a dataset
     """
-    if not manager.managers.FileManager.exists(name):
-        print(f"Error: dataset {name} does not exist!")
-        return True
-    mgr = manager.get_manager(name)
-    mgr.remove_data(dtype)
-    return True
-
-
-def get_path(name: str, dtype: str) -> pathlib.Path:
-    """
-    Get the path to a specific data type in a specific datset
-    """
-    if not manager.managers.FileManager.exists(name):
-        print(f"Error: dataset {name} does not exist!")
-        return True
-    mgr = manager.get_manager(name)
     try:
-        path = mgr.get_path(dtype)
-        return path
-    except KeyError:
-        print(f"No data of dtype {dtype} found for dataset {name}")
+        project = load_project(name, ".heinlein")
+    except GodataProjectError:
+        print(f"Error: dataset {name} does not exist!")
+        return True
+
+    project.remove("data/" + dtype)
+    return True
