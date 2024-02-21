@@ -5,6 +5,8 @@ version = "0.7.0"
 description = ""
 authors = ["Patrick Wells <pwells@ucdavis.edu>"]
 readme = "README.md"
+exclude = ["surveys"]
+
 
 [tool.poetry.dependencies]
 python = "^3.10"
