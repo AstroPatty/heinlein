@@ -11,7 +11,7 @@ Backend API functions
 """
 
 
-def add(name, dtype, path, overwrite=False, *args, **kwargs) -> bool:
+def add(name, dtype, path, force=False, *args, **kwargs) -> bool:
     """
     Add a location on disk to a dataset
     """
@@ -28,16 +28,17 @@ def add(name, dtype, path, overwrite=False, *args, **kwargs) -> bool:
     try:
         project = load_project(name, ".heinlein")
     except GodataProjectError:
-        write_new = warning_prompt_tf(
-            f"Survey {name} not found, would you like to initialize it? "
-        )
-        if not write_new:
-            print("Aborting...")
-            return
+        if not force:
+            write_new = warning_prompt_tf(
+                f"Survey {name} not found, would you like to initialize it? "
+            )
+            if not write_new:
+                print("Aborting...")
+                return
         initialize_dataset(name, path)
         project = load_project(name, ".heinlein")
 
-    project.link(path, "data/" + dtype, overwrite=overwrite)
+    project.link(path, "data/" + dtype, overwrite=force, recursive=True)
     return True
 
 

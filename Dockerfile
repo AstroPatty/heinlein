@@ -4,6 +4,10 @@ ENV PATH="~/.local/bin:${PATH}"
 # get poetry
 RUN curl -sSL https://install.python-poetry.org | python3 -
 
+RUN pip install godata
+RUN godata server install
+RUN godata server stop
+
 # copy library into container
 COPY pyproject.toml /app/pyproject.toml
 COPY poetry.lock /app/poetry.lock
@@ -11,13 +15,8 @@ COPY README.md /app/README.md
 COPY heinlein /app/heinlein
 
 WORKDIR /app
-
 # install dependencies
-RUN ~/.local/bin/poetry install
-RUN git clone https://github.com/esheldon/pymangle.git
-RUN cd pymangle && pip install . && rm -r tests
-
-RUN pip install heinlein_des
+RUN ~/.local/bin/poetry install --with surveys
 
 COPY ./tests /app/tests
 

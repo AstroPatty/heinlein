@@ -29,6 +29,12 @@ ruff = "^0.1.14"
 pre-commit = "^3.6.0"
 pytest = "^7.4.4"
 
+[tool.poetry.group.surveys]
+optional = true
+
+
+[tool.poetry.group.surveys.dependencies]
+heinlein_des = "^0.1.4"
 
 [build-system]
 requires = ["poetry-core"]
@@ -39,7 +45,7 @@ exclude = ["heinlein/config/support/hsc_regions.csv", "heinlein/config/support/*
 
 [project.optional-dependencies]
 des = [
-    "heinlein-des>=0.1.0"
+    "heinlein-des>=0.1.2"
 ]
 hsc = [
     "heinlein-hsc>=0.1.0"

@@ -30,10 +30,11 @@ def initialize_dataset(name: str, *args, **kwargs):
     project = create_project(name, ".heinlein")
     try:
         ext = get_external_implementation(name)
-        config_data = ext.get_config()
+        config_data = ext.load_config()
     except KeyError:
         config_data = get_default_config()
-    project.store(config_data, "config")
+    print(f"Initializing dataset {name} with config {config_data}")
+    project.store(config_data, "meta/config")
 
 
 def get_external_implementation(name: str) -> ModuleType:
@@ -105,7 +106,7 @@ class DataManager(ABC):
         self._cache_lock = mp.Lock()
 
     def get_config(self):
-        return self.config.get("config")
+        return self.config.get("meta/config")
 
     def _setup(self, *args, **kwargs) -> None:
         """

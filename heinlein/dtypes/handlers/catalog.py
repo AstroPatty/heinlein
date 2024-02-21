@@ -169,8 +169,8 @@ class SQLiteCatalogHandler(handler.Handler):
         if len(rows) == 0:
             return Catalog()
         rows = np.array(rows, dtype=object)
-        missing_values = np.where(rows is None)
-        rows[missing_values] = -1
+        # replace all None with np.nan
+        rows[rows is None] = np.nan
         columns = cursor.keys()
         data = Table(rows=rows, names=columns)
         return data

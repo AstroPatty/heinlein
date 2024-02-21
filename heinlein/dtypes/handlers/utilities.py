@@ -13,7 +13,7 @@ def get_file_handlers(
     else:
         external_handlers = {dtype: None for dtype in dtypes}
     handlers_ = {}
-    config = pconfig.get("config")
+    config = pconfig.get("meta/config")
     all_dconfig = config.get("dconfig", {})
     for dtype in dtypes:
         dconfig = all_dconfig.get(dtype, {})
