@@ -3,7 +3,7 @@ from pathlib import Path
 from godata import load_project
 from godata.project import GodataProjectError
 
-from heinlein.manager.dataManger import initialize_dataset
+from heinlein.manager import initialize_dataset
 from heinlein.utilities import warning_prompt_tf
 
 """

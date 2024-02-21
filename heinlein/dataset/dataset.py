@@ -8,7 +8,7 @@ import numpy as np
 from shapely.strtree import STRtree
 
 from heinlein.manager import get_manager
-from heinlein.manager.dataManger import DataManager
+from heinlein.manager.manager import DataManager
 from heinlein.region import BaseRegion, Region
 
 logger = logging.getLogger("Dataset")
