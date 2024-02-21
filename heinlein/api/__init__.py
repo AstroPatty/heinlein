@@ -1,3 +1,3 @@
-from ._cmds import add, get_path, remove
+from ._cmds import add, remove
 
-__all__ = ["get_path", "add", "remove"]
+__all__ = ["add", "remove"]

@@ -1,0 +1,16 @@
+{
+    "name": "Dark Energy Survey",
+    "survey_region": "None",
+    "implementation": true,
+    "slug": "des",
+    "data": {
+    },
+    "dconfig": {
+        "catalog": {
+            "region": "TILENAME"
+        },
+        "mask": {
+            "mask_key": "MSK"
+        }
+    }
+}

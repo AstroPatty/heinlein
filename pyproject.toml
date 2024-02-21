@@ -1,37 +1,53 @@
 
-[project]
+[tool.poetry]
 name = "heinlein"
 version = "0.7.0"
-description = "Library for interacting with large astronomical survey datasets"
-authors = [{name = "Patrick Wells", email = "patrick.wells.95@gmail.com"}]
-requires-python = ">=3.9"
+description = ""
+authors = ["Patrick Wells <pwells@ucdavis.edu>"]
+readme = "README.md"
+exclude = ["surveys"]
+
+
+[tool.poetry.dependencies]
+python = "^3.10"
+numpy = "^1.26.3"
+shapely = "^2.0.2"
+pandas = "^2.2.0"
+appdirs = "^1.4.4"
+portalocker = "^2.8.2"
+spherical-geometry = "^1.3.0"
+dynaconf = "^3.2.4"
+cacheout = "^0.16.0"
+regions = "^0.8"
+sqlalchemy = "^2.0.25"
+godata = "^0.8.0"
+click = "^8.1.7"
+
+
+[tool.poetry.group.develop.dependencies]
+black = "^23.12.1"
+isort = "^5.13.2"
+ruff = "^0.1.14"
+pre-commit = "^3.6.0"
+pytest = "^7.4.4"
+
+[tool.poetry.group.surveys]
+optional = true
+
+
+[tool.poetry.group.surveys.dependencies]
+heinlein_des = "^0.1.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
 
 exclude = ["heinlein/config/support/hsc_regions.csv", "heinlein/config/support/**/*.txt"]
-dependencies = [
-    "numpy>=1.23.1",
-    "pymongo>=4.2.0",
-    "Shapely>=2.0.0",
-    "pandas>=1.4.3",
-    "astropy>=5.1",
-    "appdirs>=1.4.4",
-    "portalocker>=2.5.1",
-    "spherical-geometry>=1.2.22",
-    "dynaconf>=3.1.9",
-    "cacheout>=0.14.1",
-    "regions>=0.7",
-    "sqlalchemy>=2.0.20",
-    "godata>=0.2.7",
-]
 
 [project.optional-dependencies]
-develop = [
-    "black>=23.7.0",
-    "isort>=5.12.0",
-    "ruff>=0.0.285",
-    "pre-commit>=3.3.3"
-]
 des = [
-    "heinlein-des>=0.1.0"
+    "heinlein-des>=0.1.2"
 ]
 hsc = [
     "heinlein-hsc>=0.1.0"
@@ -44,12 +60,8 @@ ms = [
 ]
 
 
-[project.scripts]
-heinlein = "heinlein.entrypoint:delegate_command"
-
-[build-system]
-requires = ["maturin>=1.0,<2.0"]
-build-backend = "maturin"
+[tool.poetry.scripts]
+heinlein = "heinlein.entrypoint:cli"
 
 
 [tool.isort]
@@ -70,3 +82,4 @@ exclude = [
 "io",
 "test*"
 ]
+

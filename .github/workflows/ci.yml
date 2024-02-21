@@ -18,101 +18,57 @@ permissions:
   contents: read
 
 jobs:
-  linux:
+  build-core-wheel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.10"
+      - name: install poetry
+        uses: abatilo/actions-poetry@v3
+      - name: Build with poetry
+        run: poetry build
+  build-dataset-wheels:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [x86_64, x86, aarch64, armv7, s390x, ppc64le]
+        dataset: ["des", "hsc", "cfht", "ms"]
     steps:
-      - uses: actions/checkout@v3
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v2
         with:
-          target: ${{ matrix.target }}
-          args: --release --out dist
-          sccache: 'true'
-          manylinux: auto
-      - name: Upload wheels
-        uses: actions/upload-artifact@v3
-        with:
-          name: wheels
-          path: dist
+          python-version: "3.10"
+      - name: install poetry
+        uses: abatilo/actions-poetry@v3
+      - name: Build ${{ matrix.dataset }}
+        run: |
+          cd datasets/${{ matrix.dataset }}
+          poetry build
 
-  windows:
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        target: [x64, x86]
-    steps:
-      - uses: actions/checkout@v3
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          target: ${{ matrix.target }}
-          args: --release --out dist
-          sccache: 'true'
-      - name: Upload wheels
-        uses: actions/upload-artifact@v3
-        with:
-          name: wheels
-          path: dist
-
-  macos:
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        target: [x86_64, aarch64]
-    steps:
-      - uses: actions/checkout@v3
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          target: ${{ matrix.target }}
-          args: --release --out dist
-          sccache: 'true'
-      - name: Upload wheels
-        uses: actions/upload-artifact@v3
-        with:
-          name: wheels
-          path: dist
-
-  sdist:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Build sdist
-        uses: PyO3/maturin-action@v1
-        with:
-          command: sdist
-          args: --out dist
-      - name: Upload sdist
-        uses: actions/upload-artifact@v3
-        with:
-          name: wheels
-          path: dist
 
   release-pypi:
     name: release-pypi
     runs-on: ubuntu-latest
-    if: "startsWith(github.ref, 'refs/tags/')"
-    needs: [linux, windows, macos, sdist]
+    if: startsWith(github.ref, 'refs/tags/')
+
+    needs: [build-core-wheel]
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
+      - uses: actions/setup-python@v2
         with:
-          name: wheels
-      - name: Publish to PyPI
-        uses: PyO3/maturin-action@v1
-        env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+          python-version: "3.10"
+      - uses: JRubics/poetry-publish@v2.0
         with:
-          command: upload
-          args: --non-interactive --skip-existing *
+          pypi_token: ${{ secrets.PYPI_API_TOKEN }}
 
   release-github:
     name: release-github
     runs-on: ubuntu-latest
-    if: "startsWith(github.ref, 'refs/tags/')"
-    needs: [linux, windows, macos, sdist]
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [release-pypi]
     permissions:
         contents: write
 

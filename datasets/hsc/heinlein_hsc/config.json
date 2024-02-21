@@ -1,0 +1,13 @@
+{
+    "name": "Subaru Hyper-Suprime Cam Strategic Survey Program",
+    "survey_region": "None",
+    "implementation": true,
+    "slug": "hsc",
+    "dconfig": {
+        "catalog": {
+            "region": "tract",
+            "subregion": "patch"
+        }
+    }
+
+}

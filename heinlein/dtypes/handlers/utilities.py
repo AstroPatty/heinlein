@@ -1,6 +1,6 @@
-from godata.project import GodataProject
+from types import ModuleType
 
-from heinlein.manager.dconfig import DatasetConfig
+from godata.project import GodataProject
 
 from . import catalog, mask
 
@@ -13,7 +13,7 @@ def get_file_handlers(
     else:
         external_handlers = {dtype: None for dtype in dtypes}
     handlers_ = {}
-    config = pconfig.get("config")
+    config = pconfig.get("meta/config")
     all_dconfig = config.get("dconfig", {})
     for dtype in dtypes:
         dconfig = all_dconfig.get(dtype, {})
@@ -29,7 +29,7 @@ def get_file_handlers(
     return handlers_
 
 
-def get_external_handlers(data: DatasetConfig, external):
+def get_external_handlers(data: GodataProject, external: ModuleType):
     output = {}
     known_dtypes_ = data.list("data")
     known_dtypes = []

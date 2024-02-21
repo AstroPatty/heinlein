@@ -4,7 +4,6 @@ from functools import singledispatchmethod
 from gettext import Catalog
 
 import numpy as np
-import pymangle
 from astropy.coordinates import SkyCoord
 from astropy.io.fits import HDUList
 from astropy.nddata import Cutout2D
@@ -30,8 +29,6 @@ def get_mask_objects(input_list, *args, **kwargs):
             #    output_data[index] = _pixelArrayMask(obj, *args, **kwargs)
             # else:
             output_data[index] = _fitsMask.from_hdu(obj, *args, **kwargs)
-        elif type(obj) == pymangle.Mangle:
-            output_data[index] = _mangleMask(obj)
         elif type(obj) == np.ndarray:
             if isinstance(obj[0], BaseRegion):
                 output_data[index] = _regionMask(obj)
