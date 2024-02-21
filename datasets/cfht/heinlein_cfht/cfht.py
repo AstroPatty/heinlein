@@ -11,10 +11,6 @@ from heinlein.dtypes import mask
 from heinlein.dtypes.handlers.handler import Handler
 
 
-def setup(self, *args, **kwargs):
-    self._regions = load_regions()
-
-
 def load_regions():
     data = read_binary("heinlein_cfht", "regions.reg")
     regions = pickle.loads(data)

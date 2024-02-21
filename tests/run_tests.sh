@@ -1,3 +1,3 @@
 #!/bin/bash
 godata server start
-poetry run pytest 
+cd tests && poetry run pytest 

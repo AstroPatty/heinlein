@@ -30,13 +30,11 @@ isort = "^5.13.2"
 ruff = "^0.1.14"
 pre-commit = "^3.6.0"
 pytest = "^7.4.4"
+heinlein-des = {path = "datasets/des"}
+heinlein-cfht = {path = "datasets/cfht"}
+heinlein-ms = {path = "datasets/ms"}
+heinlein-hsc = {path = "datasets/hsc"}
 
-[tool.poetry.group.surveys]
-optional = true
-
-
-[tool.poetry.group.surveys.dependencies]
-heinlein_des = "^0.1.4"
 
 [build-system]
 requires = ["poetry-core"]

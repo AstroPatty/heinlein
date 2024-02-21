@@ -15,11 +15,6 @@ from heinlein.dtypes.mask import Mask
 from heinlein.region import Region
 
 
-def setup(self, *args, **kwargs):
-    _regions = load_regions()
-    self._regions = _regions
-
-
 def load_regions():
     regions = read_binary("heinlein_hsc", "regions.reg")
     regions = pickle.loads(regions)

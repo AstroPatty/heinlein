@@ -13,10 +13,15 @@ COPY pyproject.toml /app/pyproject.toml
 COPY poetry.lock /app/poetry.lock
 COPY README.md /app/README.md
 COPY heinlein /app/heinlein
+COPY datasets /app/datasets
 
 WORKDIR /app
 # install dependencies
-RUN ~/.local/bin/poetry install --with surveys
+RUN ~/.local/bin/poetry install --with develop
+
+# Install the datasets
+# loop through the datasets and install them
+
 
 COPY ./tests /app/tests
 

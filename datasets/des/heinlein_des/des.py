@@ -21,10 +21,6 @@ except ImportError:
 EXPORT = ["load_regions"]
 
 
-def setup(self, *args, **kwargs):
-    self._regions = list(load_regions().values())
-
-
 def load_regions():
     data = read_binary("heinlein_des", "regions.reg")
     regions = pickle.loads(data)

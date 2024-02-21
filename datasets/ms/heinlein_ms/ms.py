@@ -17,7 +17,7 @@ def load_config():
     return config
 
 
-def setup(dataset, *args, **kwargs):
+def load_regions():
     width = (4.0 * u.degree).to(u.radian).value
     region = geometry.box(0, 0, width, width)  # in degrees
     region = Region.polygon(region.exterior.coords)
@@ -40,7 +40,7 @@ def setup(dataset, *args, **kwargs):
                     key = f"{i}_{j}_{x_i}_{y_i}"
                     reg = Region.polygon(subregion, name=key)
                     regions.append(reg)
-    dataset._regions = regions
+    return regions
 
 
 def get_region_overlaps(dataset: Dataset, query_region, *args, **kwargs):

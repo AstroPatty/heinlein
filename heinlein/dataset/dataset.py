@@ -1,15 +1,14 @@
 import logging
 from functools import partial, singledispatchmethod
 from inspect import getmembers
-from typing import List, Union
+from typing import Union
 
 import astropy.units as u
-import numpy as np
-from shapely.strtree import STRtree
 
 from heinlein.manager import get_manager
 from heinlein.manager.manager import DataManager
 from heinlein.region import BaseRegion, Region
+from heinlein.region.footprint import Footprint
 
 logger = logging.getLogger("Dataset")
 
@@ -70,31 +69,21 @@ class Dataset:
             )
 
         try:
-            setup_f = self.manager.get_external("setup")
-            setup_f(self)
-            self._validate_setup()
+            get_regions = self.manager.get_external("load_regions")
         except KeyError:
             raise NotImplementedError(
                 f"Dataset {self.name} does not have a setup method!"
             )
 
+        regions = get_regions()
+        self.footprint = Footprint(regions)
         self._load_extensions()
-        self._build_region_tree()
 
     def set_parameter(self, name, value):
         self._parameters.update({name: value})
 
     def get_parameter(self, name):
         return self._parameters.get(name, None)
-
-    def _validate_setup(self, *args, **kwargs) -> None:
-        try:
-            self._regions = np.array(self._regions, dtype=object)
-            self._region_names = np.array(
-                [reg.name for reg in self._regions], dtype=str
-            )
-        except AttributeError:
-            logging.error(f"No region found for survey {self.name}")
 
     def _load_extensions(self, *args, **kwargs):
         """
@@ -108,31 +97,11 @@ class Dataset:
         )
         self._extensions.update({f[0]: f[1] for f in ext_objs})
 
-    def _build_region_tree(self, *args, **kwargs) -> None:
-        """
-        For larger surveys, we subidivide into smaller regions for easier
-        querying. Shapely implements a tree-based searching algorithm for
-        finding region overlaps, so we create that tree here.
-        """
-        geo_list = np.array([reg.geometry for reg in self._regions])
-        indices = {id(geo): i for i, geo in enumerate(geo_list)}
-        self._geo_idx = indices
-        self._geo_tree = STRtree(geo_list)
-
     def get_path(self, dtype: str, *args, **kwargs):
         """
         Gets the path to where a particular item in a dataset is stored on disk
         """
         return self.manager.get_path(dtype)
-
-    def add_aliases(self, dtype: str, aliases, *args, **kwargs):
-        """
-        Adds an alias for the current interpreter
-        """
-        try:
-            self._aliases.update({dtype: aliases})
-        except AttributeError:
-            self._aliases = {dtype: aliases}
 
     def sample_generator(
         self,
@@ -156,7 +125,7 @@ class Dataset:
 
         samples = [Region.circle(center=s, radius=sample_dimensions) for s in samples]
 
-        overlaps = self.get_overlapping_region_names(samples)
+        overlaps = self.footprint.get_overlapping_region_names(samples)
         partitions = {}
 
         for i, sample in enumerate(samples):
@@ -204,28 +173,6 @@ class Dataset:
                 for s_ in s:
                     yield (s_, self.get_data_from_region(s_, dtypes))
                 self.dump_all()
-
-    @check_overload
-    def get_region_overlaps(self, other: BaseRegion, *args, **kwargs) -> list:
-        """
-        Find the subregions inside a dataset that overlap with a given region
-        Uses the shapely STRTree for speed.
-        """
-        region_overlaps = self._geo_tree.query(other.geometry)
-        overlaps = [self._regions[i] for i in region_overlaps]
-        overlaps = [o for o in overlaps if o.intersects(other)]
-        return overlaps
-
-    def _get_many_region_overlaps(self, others: list, *args, **kwargs):
-        region_overlaps = [self._geo_tree.query(other.geometry) for other in others]
-        overlaps = [
-            [self._regions[i] for i in overlaps] for overlaps in region_overlaps
-        ]
-        overlaps = [
-            [o for o in overlap if o.intersects(others[i])]
-            for i, overlap in enumerate(overlaps)
-        ]
-        return overlaps
 
     @check_overload
     def get_data_from_named_region(
@@ -276,8 +223,7 @@ class Dataset:
         dtypes <str> or <list>: list of data types to return
 
         """
-        overlaps = self.get_region_overlaps(query_region, *args, **kwargs)
-        overlaps = [o for o in overlaps if o.intersects(query_region)]
+        overlaps = self.footprint.get_overlapping_regions(query_region)
         if len(overlaps) == 0:
             print("Error: No objects found in this region!")
             return
@@ -312,41 +258,6 @@ class Dataset:
     def cone_search(self, center, radius, *args, **kwargs):
         reg = Region.circle(center=center, radius=radius)
         return self.get_data_from_region(reg, *args, **kwargs)
-
-    @check_overload
-    def get_overlapping_region_names(self, query_region: BaseRegion):
-        if isinstance(query_region, BaseRegion):
-            return [r.name for r in self.get_region_overlaps(query_region)]
-        elif isinstance(query_region, list):
-            overlaps = self._get_many_region_overlaps(query_region)
-            return [[r.name for r in o] for o in overlaps]
-
-    def get_many_overlapping_region_names(self, query_regions: list):
-        pass
-
-    @check_overload
-    def get_region_by_name(self, name: str, override=False):
-        matches = self._regions[self._region_names == name]
-        if len(matches) == 0:
-            print(f"No regions with name {name} found in survey {self.name}")
-        if len(matches) > 1 and not override:
-            print("Error: multiple regions found with this name")
-            print(
-                'Call with "override = True" to silence this message and'
-                " return the regions"
-            )
-        elif override:
-            return matches
-        else:
-            return matches[0]
-
-    @check_overload
-    def get_regions_by_name(self, names: List[str]):
-        matches = self._regions[np.in1d(self._region_names, names)]
-        if len(matches) == 0:
-            print(f"No matches were found in dataset {self.name}")
-        else:
-            return matches
 
     @singledispatchmethod
     def mask_fraction(self, region_name: str, *args, **kwargs):
