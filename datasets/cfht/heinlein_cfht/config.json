@@ -1,0 +1,15 @@
+{
+    "name": "cfht",
+    "survey_region": "None",
+    "implementation": true,
+    "slug": "cfht",
+    "dconfig": {
+        "catalog": {
+            "region": "field"
+        },
+        "mask": {
+            "mask_key": 1,
+            "mask_type": "fits"
+        }
+    }
+}
