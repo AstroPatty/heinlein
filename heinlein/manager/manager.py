@@ -1,7 +1,6 @@
 import json
 import logging
 import multiprocessing as mp
-from abc import abstractmethod
 from importlib import import_module
 from inspect import getmembers, isclass, isfunction
 from itertools import chain
@@ -102,8 +101,8 @@ logger = logging.getLogger("manager")
 class DataManager:
     def __init__(self, name, *args, **kwargs):
         """
-        The datamanger keeps track of where data is located, either on disk or
-        otherwise.
+        The datamanger is a fairly thin wrapper around godata to track where data is
+        and store configuration.
 
         parameters:
 
@@ -207,13 +206,6 @@ class DataManager:
             return has_project(name, ".heinlein")
         except GodataProjectError:  # Need to eport the GodataProjectError here
             return False
-
-    @abstractmethod
-    def setup(self, *args, **kwargs):
-        pass
-
-    def validate_data(self, *args, **kwargs):
-        pass
 
     def add_data(self, dtype: str, path: Path, overwrite=False) -> bool:
         """
