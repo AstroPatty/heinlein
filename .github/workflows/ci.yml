@@ -32,6 +32,9 @@ jobs:
         run: poetry build
   build-dataset-wheels:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dataset: ["des", "hsc", "cfht", "ms"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -40,10 +43,10 @@ jobs:
           python-version: "3.10"
       - name: install poetry
         uses: abatilo/actions-poetry@v3
-      - name: Build all
+      - name: Build ${{ matrix.dataset }}
         run: |
-          cd datasets
-          for d in ./*/ ; do (cd "$d" && poetry build); done
+          cd datasets/${{ matrix.dataset }}
+          poetry build
 
 
   release-pypi:
