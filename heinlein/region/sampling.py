@@ -1,44 +1,17 @@
-from abc import ABC, abstractmethod
-
 import numpy as np
-
-from . import region as reg
-
-
-def Sampler(region):
-    if type(region) == reg.PolygonRegion:
-        return PolygonSampler(region)
+from shapely import GeometryCollection, Point
 
 
-class BaseSampler(ABC):
-    def __init__(self, region, *args, **kwargs):
+class Sampler:
+    def __init__(self, footprint: GeometryCollection, *args, **kwargs):
         """
-        A sampler that
+        Base class for samplers
         """
-        self._region = region
+        self.setup(footprint)
 
-    @abstractmethod
-    def get_circular_sample(self, *args, **kwargs):
-        pass
-
-
-class PolygonSampler(BaseSampler):
-    def __init__(self, region, *args, **kwargs):
-        """
-        Sampler that works with generically-shaped polygon regions
-        parameters:
-
-        region <heinlien.region.PolygonRegion>: The region being sampled on
-        """
-        super().__init__(region)
-        self.setup()
-
-    def setup(self, *args, **kwargs):
-        """
-        Performs setup for the sampler.
-        """
-
-        bounds = self._region.sky_geometry.bounds
+    def setup(self, footprint: GeometryCollection, *args, **kwargs):
+        self._footprint = footprint
+        bounds = self._footprint.bounds
         ra1, ra2 = bounds[0], bounds[2]
         dec1, dec2 = bounds[1], bounds[3]
         ra_range = (min(ra1, ra2), max(ra1, ra2))
@@ -55,43 +28,14 @@ class PolygonSampler(BaseSampler):
         self._high_sampler_range = [phi_range[1], costheta_range[1]]
         self._sampler = np.random.default_rng()
 
-    def get_circular_sample(self, radius, *args, **kwargs):
-        """
-        The sampler samples over the bounding box that contains the region.
-        This means it certain cases it may return a region that is outside the
-        actual requested region. It is up to the caller to perform validation.
-
-        parameters:
-
-        radius <astropy.units.quantity>: The size of the region
-        """
+    def sample(self, n=1, *args, **kwargs):
         vals = self._sampler.uniform(self._low_sampler_range, self._high_sampler_range)
         ra = np.degrees(vals[0])
         theta = np.degrees(np.arccos(vals[1]))
         dec = 90 - theta
-        new_region = reg.Region.circle((ra, dec), radius)
-        if not self._region.contains(new_region):
-            return self.get_circular_sample(radius)
-        return new_region
 
-    def get_circular_samples(self, radius, n, *args, **kwargs):
-        """
-        The sampler samples over the bounding box that contains the region.
-        This means it certain cases it may return a region that is outside the
-        actual requested region. It is up to the caller to perform validation.
+        shapely_point = Point(ra, dec)
 
-        parameters:
-
-        radius <astropy.units.quantity>: The size of the region
-        """
-        vals = self._sampler.uniform(
-            self._low_sampler_range, self._high_sampler_range, (n, 2)
-        )
-        ra = np.degrees(vals[:, 0])
-        theta = np.degrees(np.arccos(vals[:, 1]))
-        dec = 90 - theta
-        new_regions = [reg.Region.circle(p, radius) for p in list(zip(ra, dec))]
-        for i in range(len(new_regions)):
-            if not self._region.contains(new_regions[i]):
-                new_regions[i] = self.get_circular_sample(radius)
-        return new_regions
+        if self._footprint.contains(shapely_point):
+            return ra, dec
+        return self.sample(n)

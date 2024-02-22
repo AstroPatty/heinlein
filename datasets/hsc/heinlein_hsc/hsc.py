@@ -18,7 +18,7 @@ from heinlein.region import Region
 def load_regions():
     regions = read_binary("heinlein_hsc", "regions.reg")
     regions = pickle.loads(regions)
-    return regions
+    return {r.name: r for r in regions}
 
 
 def load_config():
@@ -172,7 +172,17 @@ class MaskHandler(Handler):
             patch_tuple = _patch_int_to_tuple(int(split[1]))
 
             fname = basename.format(split[0], patch_tuple[0], patch_tuple[1])
-            project_path = "/".join(["data", "mask", split[0], fname])
+            project_path = "/".join(["data", "mask", split[0]])
+
+            files = self._project.list(project_path)["files"]
+            file = list(filter(lambda x: fname in x, files))
+            if not file:
+                raise ValueError(f"Could not find mask for region {name}")
+            elif len(file) > 1:
+                raise ValueError(f"Found more than one mask for region {name}")
+
+            project_path = "/".join([project_path, file[0]])
+
             file_path = self._project.get(project_path)
             mask = reg.Regions.read(str(file_path))
             new_masks = np.empty(len(mask), dtype=object)

@@ -14,6 +14,7 @@ from heinlein.dtypes.handlers.handler import Handler
 def load_regions():
     data = read_binary("heinlein_cfht", "regions.reg")
     regions = pickle.loads(data)
+    regions = {r.name: r for r in regions}
     return regions
 
 
