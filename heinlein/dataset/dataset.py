@@ -223,7 +223,11 @@ class Dataset:
         dtypes <str> or <list>: list of data types to return
 
         """
-        overlaps = self.footprint.get_overlapping_regions(query_region)
+        method = self.manager.get_external("get_overlapping_regions")
+        if method is not None:
+            overlaps = method(self, query_region)
+        else:
+            overlaps = self.footprint.get_overlapping_regions(query_region)
         if len(overlaps) == 0:
             print("Error: No objects found in this region!")
             return

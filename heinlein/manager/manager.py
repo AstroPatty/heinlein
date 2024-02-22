@@ -39,12 +39,10 @@ def initialize_dataset(name: str, *args, **kwargs):
     Initializes a new dataset. Checks to see if a custom implementation exists for a
     given dataset. These have to be installed separately from the main package.
     """
+    ext = get_external_implementation(name)
+    config_data = ext.load_config()
+
     project = create_project(name, ".heinlein")
-    try:
-        ext = get_external_implementation(name)
-        config_data = ext.load_config()
-    except KeyError:
-        config_data = get_default_config()
     print(f"Initializing dataset {name} with config {config_data}")
     project.store(config_data, "meta/config")
 
@@ -55,7 +53,9 @@ def get_external_implementation(name: str) -> ModuleType:
     to be installed separately from the main package. Prompts the user to install
     the package if it is not found, but is known.
     """
-    if name in known_datasets:
+    if name not in known_datasets:
+        raise ValueError(f"Dataset {name} is not supported!")
+    else:
         # try to import it
         module_name = "heinlein_" + name
         try:
