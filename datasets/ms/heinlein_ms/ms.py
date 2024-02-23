@@ -17,33 +17,31 @@ def load_config():
     return config
 
 
-def setup(dataset, *args, **kwargs):
-    width = (4.0 * u.degree).to(u.radian).value
-    region = geometry.box(0, 0, width, width)  # in degrees
-    region = Region.polygon(region.exterior.coords)
+def load_regions():
+    full_width = (4.0 * u.degree).value
     width = (1.0 * u.degree).value
     min = (-1.5 * u.degree).value
     # Locations in the MS are given in radians for reasons unknown.
-    regions = []
-    for x_i in range(4):
-        for y_i in range(4):
-            x_center = min + x_i * width
-            y_center = min + y_i * width
-            x_min = x_center - width / 2
-            y_min = y_center - width / 2
-            x_max = x_center + width / 2
-            y_max = y_center + width / 2
-            subregion = geometry.box(x_min, y_min, x_max, y_max)
-            key = "{}_{}".format(str(x_i), str(y_i))
-            for i in range(8):
-                for j in range(8):
+    regions = {}
+    for i in range(8):
+        for j in range(8):
+            for x_i in range(4):
+                for y_i in range(4):
+                    x_center = full_width * i + min + x_i * width
+                    y_center = full_width * j + min + y_i * width
+                    x_min = x_center - width / 2
+                    y_min = y_center - width / 2
+                    x_max = x_center + width / 2
+                    y_max = y_center + width / 2
+                    subregion = geometry.box(x_min, y_min, x_max, y_max)
+                    key = "{}_{}".format(str(x_i), str(y_i))
                     key = f"{i}_{j}_{x_i}_{y_i}"
                     reg = Region.polygon(subregion, name=key)
-                    regions.append(reg)
-    dataset._regions = regions
+                    regions.update({key: reg})
+    return regions
 
 
-def get_region_overlaps(dataset: Dataset, query_region, *args, **kwargs):
+def get_overlapping_regions(dataset: Dataset, query_region, *args, **kwargs):
     field = dataset.get_parameter("ms_field")
     if not field:
         print(
@@ -52,9 +50,12 @@ def get_region_overlaps(dataset: Dataset, query_region, *args, **kwargs):
         )
         print("Call ms.set_field(field) to set")
         return []
-    field_key = f"{field[0]}_{field[1]}"
-    overlaps = dataset.get_region_overlaps(query_region, bypass=True)
-    overlaps = list(filter(lambda x: x.name.startswith(field_key), overlaps))
+    # move the query region to the correct field
+    overlap_region = query_region.translate(
+        field[0] * 4 * u.degree, field[1] * 4 * u.degree
+    )
+
+    overlaps = dataset.footprint.get_overlapping_regions(overlap_region)
     return overlaps
 
 

@@ -664,18 +664,56 @@ docs = ["Sphinx", "furo"]
 test = ["objgraph", "psutil"]
 
 [[package]]
+name = "heinlein-cfht"
+version = "0.1.0"
+description = ""
+optional = false
+python-versions = "^3.10"
+files = []
+develop = false
+
+[package.source]
+type = "directory"
+url = "datasets/cfht"
+
+[[package]]
 name = "heinlein-des"
 version = "0.1.4"
 description = "DES plugin for heinlein"
 optional = false
-python-versions = ">=3.10,<4.0"
-files = [
-    {file = "heinlein_des-0.1.4-py3-none-any.whl", hash = "sha256:1f3c77697bdd83442655ed684207126c3b5286cb5b6a5d9fd8a59e550fa01a73"},
-    {file = "heinlein_des-0.1.4.tar.gz", hash = "sha256:e6ad39240ed130333d1621748a0fb3bc02f9f8528f6ce87fe09ce7bae6a89317"},
-]
+python-versions = "^3.10"
+files = []
+develop = false
 
-[package.dependencies]
-heinlein = ">=0.7.0,<0.8.0"
+[package.source]
+type = "directory"
+url = "datasets/des"
+
+[[package]]
+name = "heinlein-hsc"
+version = "0.1.0"
+description = ""
+optional = false
+python-versions = "^3.10"
+files = []
+develop = false
+
+[package.source]
+type = "directory"
+url = "datasets/hsc"
+
+[[package]]
+name = "heinlein-ms"
+version = "0.1.0"
+description = ""
+optional = false
+python-versions = "^3.10"
+files = []
+develop = false
+
+[package.source]
+type = "directory"
+url = "datasets/ms"
 
 [[package]]
 name = "identify"
@@ -1705,4 +1743,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "0fcd690dfa1a8aabc32c9b5e40d0617e9a5bc579c2743e5b6c55408443914905"
+content-hash = "241a34ccc17152e22704217f187b48328d740bf77b9cabc829f8380913651c93"

@@ -7,8 +7,11 @@ readme = "README.md"
 packages = [{include = "heinlein_hsc"}]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 
+
+[tool.poetry.group.heinlein.dependencies]
+heinlein = "^0.7.0"
 
 [build-system]
 requires = ["poetry-core"]

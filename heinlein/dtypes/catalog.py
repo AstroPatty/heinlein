@@ -76,7 +76,7 @@ def label_coordinates(catalog: Table, config: dict = {}):
     return catalog
 
 
-def Catalog(data: Table, config: dict = {}, *args, **kwargs):
+def Catalog(data: Table = None, config: dict = {}, *args, **kwargs):
     """
     Produces a catalog object from an astropy table. This locates the ra and dec
     columns, creates SkyCoords, and creates a cartesian representation of the
@@ -85,6 +85,12 @@ def Catalog(data: Table, config: dict = {}, *args, **kwargs):
     this object will produce a :class:`astropy.Table` with the data from the region.
 
     """
+    if data is None:
+        data = Table()
+    if len(data) == 0:
+        points = np.array([])
+        return CatalogObject(data, points)
+
     labeled_data = label_coordinates(data, config)
     catalog_coordinates = get_coordinates(labeled_data)
     cartesian_points = get_cartesian_points(catalog_coordinates)
@@ -110,6 +116,6 @@ class CatalogObject(dobj.HeinleinDataObject):
 
     @classmethod
     def combine(cls, objects: list[CatalogObject]):
-        data = vstack([o._data for o in objects])
+        data = vstack([o._data for o in objects if len(o._data) > 0])
         points = np.concatenate([o._points for o in objects])
         return cls(data, points)

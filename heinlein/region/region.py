@@ -148,6 +148,13 @@ class CircularRegion(BaseRegion):
         )
         super().__init__(geometry, "CircularRegion", name, *args, **kwargs)
 
+    def translate(self, x: u.Quantity, y: u.Quantity, *args, **kwargs):
+        """
+        Translate the region by x and y
+        """
+        new_center = (self._skypoint.ra + x, self._skypoint.dec + y)
+        return Region.circle(new_center, self.radius)
+
     @property
     def center(self) -> Point:
         return self._center

@@ -11,13 +11,10 @@ from heinlein.dtypes import mask
 from heinlein.dtypes.handlers.handler import Handler
 
 
-def setup(self, *args, **kwargs):
-    self._regions = load_regions()
-
-
 def load_regions():
     data = read_binary("heinlein_cfht", "regions.reg")
     regions = pickle.loads(data)
+    regions = {r.name: r for r in regions}
     return regions
 
 
@@ -33,7 +30,6 @@ class MaskHandler(Handler):
 
     def get_data(self, regions, *args, **kwargs):
         known_masks = self._project.list("data/mask")["files"]
-
         output = {}
         super_region_names = list(set([n.split("_")[0] for n in regions]))
         regions_ = {

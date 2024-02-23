@@ -121,7 +121,7 @@ class SQLiteCatalogHandler(handler.Handler):
                     mask = table[subregion_key] == sr
                     storage.update({region_names[index]: table[mask]})
             else:
-                storage.update({sr: Catalog() for sr in region_names})
+                storage.update({sr: Table() for sr in region_names})
         return storage
 
     def _get(self, region_names: list):
