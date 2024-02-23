@@ -1,11 +1,17 @@
 name: Datasets
 
 on:
-    push:
-        branches:
-            - main
-    pull_request:
-    workflow_dispatch:
+  push:
+      branches:
+          - main
+      tags:
+          - '*'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  
 jobs:
     build:
         runs-on: ubuntu-latest
