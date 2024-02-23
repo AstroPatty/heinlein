@@ -1,5 +1,5 @@
 import logging
-from functools import partial, singledispatchmethod
+from functools import partial
 from inspect import getmembers
 from typing import Union
 
@@ -36,6 +36,14 @@ class dataset_extension:
 
 
 class Dataset:
+    """
+    The Dataset class is the core of heinlein's user interface. It contains routines
+    for querying data from the underlying dataset.
+
+    The dataset class should not be created directly. Instead use "load_dataset."
+
+    """
+
     def __init__(self, manager: DataManager, *args, **kwargs):
         self.manager = manager
         self.config = manager.get_config()
@@ -44,6 +52,16 @@ class Dataset:
         self._setup()
 
     def __getattr__(self, key__):
+        """
+        I went through a phase where I thought defining magic methods all over the place
+        was really cool. I've since learned that it sometimes creates more complexity
+        than it is worth, but this is one case where it makes sense.
+
+        There are certain methods that need to be defined or overloaded for specific
+        datasets. This method allows that to be largely transparent to the end user,
+        without cluttering the main class with a bunch of extra methods.
+        """
+
         try:
             f = self._extensions[key__]
             return partial(f, self)
@@ -80,6 +98,9 @@ class Dataset:
         self._load_extensions()
 
     def set_parameter(self, name, value):
+        """
+        Parameters are used to store metadata that may be useful to plugins etc.
+        """
         self._parameters.update({name: value})
 
     def get_parameter(self, name):
@@ -178,6 +199,9 @@ class Dataset:
     def get_data_from_named_region(
         self, name: str, dtypes: Union[str, list] = "catalog"
     ):
+        """
+        Given a region name, returns the data of type dtypes in that region.
+        """
         if name not in self._region_names:
             print(f"Unable to find region named {name} in dataset {self.name}")
             return
@@ -260,35 +284,12 @@ class Dataset:
         return return_data
 
     def cone_search(self, center, radius, *args, **kwargs):
+        """
+        A convinience method for doing a cone search. Basically just
+        constructs a circular region and calls get_data_from_region.
+        """
         reg = Region.circle(center=center, radius=radius)
         return self.get_data_from_region(reg, *args, **kwargs)
-
-    @singledispatchmethod
-    def mask_fraction(self, region_name: str, *args, **kwargs):
-        """
-        Returns the fraction of the named region covered by some sort of mask.
-        Initializes a grid of points, then masks them to get an approximate
-
-        """
-        if region_name not in self._region_names:
-            print(f"Unable to find region named {region_name} for dataset {self.name}")
-        reg = self._regions[self._region_names == region_name]
-        mask = self.get_data_from_named_region(region_name, dtypes=["mask"])["mask"][
-            region_name
-        ]
-        grid = reg[0].get_grid(density=10000)
-        return self._mask_fraction(mask, grid)
-
-    @mask_fraction.register
-    def _(self, region: BaseRegion, *args, **kwargs):
-        mask = self.get_data_from_region(region, dtypes=["mask"])["mask"]
-        grid = region.get_grid(density=200000)
-        return self._mask_fraction(mask, grid)
-
-    @staticmethod
-    def _mask_fraction(mask, grid):
-        masked_grid = mask.mask(grid)
-        return round(1 - len(masked_grid) / len(grid), 3)
 
 
 def load_dataset(name: str) -> Dataset:
