@@ -1,3 +1,4 @@
+import astropy.units as u
 import numpy as np
 from shapely import GeometryCollection, Point
 
@@ -28,7 +29,7 @@ class Sampler:
         self._high_sampler_range = [phi_range[1], costheta_range[1]]
         self._sampler = np.random.default_rng()
 
-    def sample(self, n=1, *args, **kwargs):
+    def sample(self, n=1, tolerance: u.Quantity = None, *args, **kwargs):
         vals = self._sampler.uniform(self._low_sampler_range, self._high_sampler_range)
         ra = np.degrees(vals[0])
         theta = np.degrees(np.arccos(vals[1]))
@@ -37,5 +38,9 @@ class Sampler:
         shapely_point = Point(ra, dec)
 
         if self._footprint.contains(shapely_point):
-            return ra, dec
+            if tolerance is None:
+                return ra, dec
+            region = shapely_point.buffer(tolerance.to(u.deg).value)
+            if self._footprint.contains_properly(region):
+                return ra, dec
         return self.sample(n)

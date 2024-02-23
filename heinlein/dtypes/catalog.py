@@ -116,6 +116,6 @@ class CatalogObject(dobj.HeinleinDataObject):
 
     @classmethod
     def combine(cls, objects: list[CatalogObject]):
-        data = vstack([o._data for o in objects])
+        data = vstack([o._data for o in objects if len(o._data) > 0])
         points = np.concatenate([o._points for o in objects])
         return cls(data, points)

@@ -30,7 +30,6 @@ class MaskHandler(Handler):
 
     def get_data(self, regions, *args, **kwargs):
         known_masks = self._project.list("data/mask")["files"]
-
         output = {}
         super_region_names = list(set([n.split("_")[0] for n in regions]))
         regions_ = {

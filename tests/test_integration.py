@@ -11,7 +11,6 @@ from heinlein.region.footprint import Footprint
 DATA_PATH = Path("/home/data")
 DES_DATA_PATH = DATA_PATH / "des"
 MS_DATA_PATH = DATA_PATH / "ms"
-des_center = (7.8, -33.9)
 radius = 120 * u.arcsecond
 
 
@@ -55,16 +54,11 @@ def test_hsc():
         regions = pickle.load(f)
     regions = {r.name: r for r in regions}
     f = Footprint(regions)
+    center = f._footprint.centroid
+    center = (center.x, center.y)
     d = load_dataset("hsc")
 
-    sample = f.sample(1)
-
-    print("HSC CONE SEARCH: ", sample, radius)
-    circle = Region.circle(sample, radius)
-    overlaps = d.footprint.get_overlapping_region_names(circle)
-    print(overlaps)
-
-    data = d.cone_search(sample, radius, dtypes=["catalog", "mask"])
+    data = d.cone_search(center, radius, dtypes=["catalog", "mask"])
     cat = data["catalog"]
     mask = data["mask"]
     masked_cat = mask.mask(cat)
@@ -79,9 +73,10 @@ def test_cfht():
     regions = {r.name: r for r in regions}
     f = Footprint(regions)
     d = load_dataset("cfht")
-    sample = f.sample(1)
+    center = f._footprint.centroid
+    center = (center.x, center.y)
 
-    a = d.cone_search(sample, radius, dtypes=["catalog", "mask"])
+    a = d.cone_search(center, radius, dtypes=["catalog", "mask"])
     cat = a["catalog"]
     mask = a["mask"]
     masked_cat = mask.mask(cat)
@@ -90,7 +85,7 @@ def test_cfht():
 
 
 def test_des():
-    print("TESTING DES")
+    des_center = (7.8, -33.9)
     d = load_dataset("des")
     a = d.cone_search(des_center, radius, dtypes=["catalog", "mask"])
     cat = a["catalog"]
@@ -100,7 +95,6 @@ def test_des():
 
 
 def test_ms():
-    print("TESTING MS")
     d = load_dataset("ms")
     d.set_field((3, 5))
     a = d.cone_search((0, 0), radius, dtypes=["catalog"])

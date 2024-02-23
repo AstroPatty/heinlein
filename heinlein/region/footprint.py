@@ -1,3 +1,4 @@
+import astropy.units as u
 from shapely import GeometryCollection, STRtree, union_all
 
 from .region import BaseRegion
@@ -50,11 +51,11 @@ class Footprint:
         """
         return [r.name for r in self.get_overlapping_regions(region)]
 
-    def sample(self, n: int = 1):
+    def sample(self, n: int = 1, tolerance: u.Quantity = None, *args, **kwargs):
         """
         Return n random points from the footprint
         """
         if n == 1:
-            return self._sampler.sample()
+            return self._sampler.sample(tolerance=tolerance)
         else:
-            return [self._sampler.sample() for _ in range(n)]
+            return [self._sampler.sample(tolerance=tolerance) for _ in range(n)]
