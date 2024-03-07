@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "heinlein_des"
-version = "0.1.5"
+version = "0.2.0"
 description = "DES plugin for heinlein"
 authors = ["Patrick Wells <pwells@ucdavis.edu>"]
 readme = "README.md"
