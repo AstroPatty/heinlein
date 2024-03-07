@@ -1,40 +1,34 @@
+from pathlib import Path
 from types import ModuleType
-
-from godata.project import GodataProject
 
 from . import catalog, mask
 
 
-def get_file_handlers(
-    dtypes: list, pconfig: GodataProject, external: dict, *args, **kwargs
-):
+def get_file_handlers(dtypes: list, config: dict, external: dict, *args, **kwargs):
     if external is not None:
-        external_handlers = get_external_handlers(pconfig, external)
+        external_handlers = get_external_handlers(config, external)
     else:
         external_handlers = {dtype: None for dtype in dtypes}
     handlers_ = {}
-    config = pconfig.get("meta/config")
     all_dconfig = config.get("dconfig", {})
+    data = config.get("data", {})
     for dtype in dtypes:
         dconfig = all_dconfig.get(dtype, {})
         if external_handlers[dtype] is not None:
-            cl = external_handlers[dtype](pconfig, dconfig)
+            cl = external_handlers[dtype](Path(data[dtype]), dconfig)
             handlers_.update({dtype: cl})
         elif dtype == "catalog":
-            cl = catalog.get_catalog_handler(pconfig, dconfig)
+            cl = catalog.get_catalog_handler(config, dconfig)
             handlers_.update({dtype: cl})
         elif dtype == "mask":
-            cl = mask.get_mask_handler(pconfig, dconfig)
+            cl = mask.get_mask_handler(config, dconfig)
             handlers_.update({dtype: cl})
     return handlers_
 
 
-def get_external_handlers(data: GodataProject, external: ModuleType):
+def get_external_handlers(config: dict, external: ModuleType):
     output = {}
-    known_dtypes_ = data.list("data")
-    known_dtypes = []
-    for dtype in known_dtypes_:
-        known_dtypes.extend(known_dtypes_[dtype])
+    known_dtypes = list(config.get("data", {}).keys())
 
     for dtype in known_dtypes:
         function_key = f"{dtype.capitalize()}Handler"

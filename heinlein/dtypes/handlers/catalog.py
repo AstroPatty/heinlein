@@ -1,7 +1,8 @@
+from pathlib import Path
+
 import numpy as np
 from astropy.io import ascii
 from astropy.table import Table
-from godata.project import GodataProject, GodataProjectError
 from sqlalchemy import create_engine, text
 
 from heinlein.dtypes.catalog import Catalog
@@ -12,19 +13,26 @@ class heinleinIoException(Exception):
     pass
 
 
-def get_catalog_handler(project: GodataProject, dconfig: dict):
+def get_catalog_handler(config: dict, dconfig: dict):
+    data = config.get("data", {})
     try:
-        path = project.get("data/catalog")
-    except GodataProjectError:
-        _ = project.list("data/catalog").get
-        return CsvCatalogHandler(project, dconfig)
-    if path.suffix == ".db":
-        return SQLiteCatalogHandler(project, dconfig)
+        path = Path(data["catalog"])
+    except KeyError:
+        raise heinleinIoException("No catalog path found in config!")
+
+    if path.is_dir():
+        return CsvCatalogHandler(path, dconfig)
+
+    elif path.suffix == ".db":
+        return SQLiteCatalogHandler(path, dconfig)
+    else:
+        raise heinleinIoException("Catalog path is not a directory or a .db file!")
 
 
 class CsvCatalogHandler(handler.Handler):
-    def __init__(self, project: GodataProject, config: dict, *args, **kwargs):
-        super().__init__(project, config, "catalog")
+    def __init__(self, path: Path, config: dict, *args, **kwargs):
+        super().__init__(path, config, "catalog")
+        self.known_files = [f for f in self._path.glob("*") if f.is_file()]
 
     def get_data(self, region_names: list, *args, **kwargs):
         """
@@ -32,14 +40,12 @@ class CsvCatalogHandler(handler.Handler):
         Loads a single catalog, assuming the region name can be found in the file name.
         """
         storage = {}
-        known_files = self._project.list("data/catalog")
         files = {}
         for name in region_names:
-            region_file = list(filter(lambda x: name in x, known_files["files"]))
+            region_file = list(filter(lambda x: name in x.name, self.known_files))
             if len(region_file) != 1:
                 raise heinleinIoException(f"Multiple files found for region {name}! ")
-            path = self._project.get("data/catalog/" + region_file[0], as_path=True)
-            files.update({name: path})
+            files.update({name: region_file[0]})
 
         for name, path in files.items():
             if not path.exists():
@@ -54,20 +60,17 @@ class CsvCatalogHandler(handler.Handler):
 
 
 class SQLiteCatalogHandler(handler.Handler):
-    def __init__(self, project, config: dict, *args, **kwargs):
-        super().__init__(project, config, "catalog")
-        try:
-            self.db_path = self._project.get("data/catalog")
-        except GodataProjectError:
-            raise heinleinIoException(
-                "SQLite catalog handler requires SQLite "
-                "database, but found a folder!"
-            )
+    def __init__(self, path: Path, config: dict, *args, **kwargs):
+        super().__init__(path, config, "catalog")
+        if not path.exists():
+            raise heinleinIoException(f"Path {path} does not exist!")
+        elif path.suffix != ".db":
+            raise heinleinIoException(f"Path {path} is not a .db file!")
 
         self._create_engine()
 
     def _create_engine(self, *args, **kwargs):
-        self._engine = create_engine(f"sqlite:///{self.db_path}")
+        self._engine = create_engine(f"sqlite:///{self._path}")
         self._con = self._engine.connect()
         sql = "SELECT * FROM sqlite_master where type='table'"
         cur = self.execute_query(sql)

@@ -1,26 +1,21 @@
 import json
 import logging
 import multiprocessing as mp
+from functools import cache
 from importlib import import_module
 from inspect import getmembers, isclass, isfunction
-from itertools import chain
 from pathlib import Path
 from types import ModuleType
 
+import appdirs
 from cacheout import LRUCache
-from godata import create_project, has_collection, has_project, load_project
-from godata.project import GodataProjectError
 
 from heinlein.config.config import globalConfig
-from heinlein.locations import BASE_DATASET_CONFIG_DIR
 from heinlein.region.base import BaseRegion
-from heinlein.utilities import warning_prompt, warning_prompt_tf
+from heinlein.utilities import warning_prompt
 
 logger = logging.getLogger("manager")
-
-
 known_datasets = ["des", "cfht", "hsc", "ms"]
-
 active_managers = {}
 
 
@@ -34,17 +29,28 @@ def get_manager(name):
         return mgr
 
 
+@cache
+def get_config_location():
+    return Path(appdirs.user_config_dir("heinlein"))
+
+
+def get_dataset_config_dir(dataset_name: str) -> Path:
+    return get_config_location() / dataset_name
+
+
 def initialize_dataset(name: str, *args, **kwargs):
     """
     Initializes a new dataset. Checks to see if a custom implementation exists for a
     given dataset. These have to be installed separately from the main package.
     """
+    print(f"Initializing dataset {name}...")
     ext = get_external_implementation(name)
     config_data = ext.load_config()
-
-    project = create_project(name, ".heinlein")
-    print(f"Initializing dataset {name} with config {config_data}")
-    project.store(config_data, "meta/config")
+    config_location = get_dataset_config_dir(name)
+    config_location.mkdir(parents=True, exist_ok=True)
+    config_data.update({"data": {}})
+    with open(config_location / "config.json", "w") as f:
+        json.dump(config_data, f)
 
 
 def get_external_implementation(name: str) -> ModuleType:
@@ -84,15 +90,21 @@ def check_overload(f):
     return wrapper
 
 
-def get_default_config() -> Path:
-    """
-    Returns the default config for a dataset
-    """
-    path = BASE_DATASET_CONFIG_DIR / "default.json"
-    with open(path, "rb") as f:
-        data = json.load(f)
+def get_dataset_config(dataset_name: str) -> dict:
+    config_location = get_dataset_config_dir(dataset_name)
+    if not config_location.exists():
+        raise FileNotFoundError(f"Dataset {dataset_name} has not been initialized!")
+    with open(config_location / "config.json", "r") as f:
+        config_data = json.load(f)
+    return config_data
 
-    return data
+
+def write_dataset_config(dataset_name: str, config_data: dict) -> None:
+    config_location = get_dataset_config_dir(dataset_name)
+    if not config_location.exists():
+        raise FileNotFoundError(f"Dataset {dataset_name} has not been initialized!")
+    with open(config_location / "config.json", "w") as f:
+        json.dump(config_data, f)
 
 
 logger = logging.getLogger("manager")
@@ -114,9 +126,6 @@ class DataManager:
         self._cache = {}
         self._cache_lock = mp.Lock()
 
-    def get_config(self):
-        return self.config.get("meta/config")
-
     def _setup(self, *args, **kwargs) -> None:
         """
         Performs basic setup of the manager
@@ -130,28 +139,7 @@ class DataManager:
             self.external = None
         self._initialize_external_implementation()
 
-        if not has_collection(".heinlein") or not has_project(
-            self.name, ".heinlein"
-        ):  # If this dataset does not exist
-            if self.globalConfig.interactive:
-                write_new = warning_prompt_tf(
-                    f"Survey {self.name} not found, would you like to initialize it? "
-                )
-                if write_new:
-                    if self.external is not None:
-                        config_data = self.external.get_config()
-                    else:
-                        config_data = get_default_config()
-                    self.config = create_project(self.name, ".heinlein")
-                    self.config.store(config_data, "config")
-
-                else:
-                    self.ready = False
-            else:
-                raise OSError(f"Dataset {self.name} does not exist!")
-
-        else:  # If it DOES exist, get the config data
-            self.config = load_project(self.name, ".heinlein")
+        self.config = get_dataset_config(self.name)
 
     def _initialize_external_implementation(self):
         if self.external is None:
@@ -183,16 +171,17 @@ class DataManager:
         return self._external_definitions.get(key, None)
 
     def get_path(self, dtype: str, *args, **kwargs):
-        return self.config.get(f"data/{dtype}", as_path=True)
+        data = self.config.get("data", {})
+        if dtype not in data:
+            raise KeyError(f"Datatype {dtype} not found for dataset {self.name}!")
+        return Path(data[dtype])
 
     def load_handlers(self, *args, **kwargs):
         from heinlein.dtypes import handlers
 
         if not hasattr(self, "_handlers"):
-            known_dtypes_ = self.config.list("data")
-            known_dtypes = []
-            for ff in known_dtypes_.values():
-                known_dtypes.extend(ff)
+            data = self.config.get("data", {})
+            known_dtypes = list(data.keys())
             self._handlers = handlers.get_file_handlers(
                 known_dtypes, self.config, self._external_definitions
             )
@@ -203,8 +192,9 @@ class DataManager:
         Checks if a datset exists
         """
         try:
-            return has_project(name, ".heinlein")
-        except GodataProjectError:  # Need to eport the GodataProjectError here
+            get_dataset_config(name)
+            return True
+        except FileNotFoundError:
             return False
 
     def add_data(self, dtype: str, path: Path, overwrite=False) -> bool:
@@ -223,16 +213,8 @@ class DataManager:
 
         bool: Whether or not the file was sucessfully added
         """
-        if not self.ready:
-            return False
-
-        has_dtype_already = False
-        has_any_data = "data" in self.config.list()["folders"]
-        if has_any_data:
-            known_dtypes = chain.from_iterable(self.config.list("data").values())
-            has_dtype_already = dtype in known_dtypes
-
-        if has_dtype_already and not overwrite:
+        data = self.config.get("data", {})
+        if dtype in data and not overwrite:
             msg = f"Datatype {dtype} already found for survey {self.name}."
             options = ["Overwrite", "Merge", "Abort"]
             choice = warning_prompt(msg, options)
@@ -240,13 +222,13 @@ class DataManager:
                 return False
             elif choice == "M":
                 raise NotImplementedError
+        if not path.exists():
+            print(f"Error: File {path} does not exist!")
+            return False
 
-        if path.is_dir():
-            print(
-                "Adding folder to the dataset recursively. This may take some"
-                " time if there are a lot of folders or sub-folders."
-            )
-        self.config.link(path, f"data/{dtype}", recursive=True)
+        data.update({dtype: str(path)})
+        self.config.update({"data": data})
+        write_dataset_config(self.name, self.config)
         return True
 
     def remove_data(self, dtype: str) -> bool:
@@ -262,9 +244,14 @@ class DataManager:
 
         bool: Whether or not the file was sucessfully removed
         """
-        if dtype not in self.config.list("data")["files"]:
-            print(f"Error: dataset {self.name} has no data of type {dtype}")
-        self.config.remove(f"data/{dtype}", recursive=True)
+        data = self.config.get("data", {})
+        if dtype not in data:
+            print(f"Error: Datatype {dtype} not found for survey {self.name}.")
+            return False
+        del data[dtype]
+        self.config.update({"data": data})
+        write_dataset_config(self.name, self.config)
+        return True
 
     @check_overload
     def get_from(self, dtypes: list, region_overlaps: list, *args, **kwargs):
@@ -276,13 +263,14 @@ class DataManager:
             regnames = region_overlaps
 
         self.load_handlers()
-
+        data = self.config.get("data", {})
         for dtype in dtypes:
             try:
-                path = self.config.has_path(f"data/{dtype}")
+                path = data[dtype]
                 return_types.append(dtype)
             except KeyError:
                 print(f"No data of type {dtype} found for dataset {self.name}!")
+
         cached = self.get_cached_values(dtypes, regnames)
         for dtype in return_types:
             if dtype in cached.keys():
@@ -403,4 +391,6 @@ class DataManager:
         pass
 
     def clear_all_data(self, *args, **kwargs) -> None:
-        self.config.remove("data", recursive=True)
+        self.config.data = {}
+        write_dataset_config(self.name, self.config)
+        return

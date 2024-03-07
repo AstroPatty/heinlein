@@ -4,10 +4,6 @@ ENV PATH="~/.local/bin:${PATH}"
 # get poetry
 RUN curl -sSL https://install.python-poetry.org | python3 -
 
-RUN pip install godata
-RUN godata server install
-RUN godata server stop
-
 # copy library into container
 COPY pyproject.toml /app/pyproject.toml
 COPY poetry.lock /app/poetry.lock

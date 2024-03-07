@@ -46,7 +46,6 @@ class Dataset:
 
     def __init__(self, manager: DataManager, *args, **kwargs):
         self.manager = manager
-        self.config = manager.get_config()
         self._extensions = {}
         self._parameters = {}
         self._setup()
@@ -79,7 +78,7 @@ class Dataset:
         Searches for an external implementation of the datset
         This is used for datasets with specific needs (i.e. specific surveys)
         """
-        external = self.config["implementation"]
+        external = self.manager.external
 
         if external and self.manager.external is None:
             raise NotImplementedError(
