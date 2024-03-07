@@ -20,7 +20,6 @@ dynaconf = "^3.2.4"
 cacheout = "^0.16.0"
 regions = "^0.8"
 sqlalchemy = "^2.0.25"
-godata = "^0.8.0"
 click = "^8.1.7"
 
 
