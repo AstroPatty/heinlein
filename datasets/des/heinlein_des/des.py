@@ -94,7 +94,7 @@ class MaskHandler(Handler):
 
             if mangle_files:
                 mangle_path = mangle_file[0]
-                mangle_msk = pymangle.Mangle(mangle_path)
+                mangle_msk = pymangle.Mangle(str(mangle_path))
                 masks.append(mangle_msk)
 
             output.update({region: Mask(masks, pixarray=True, **self._config)})

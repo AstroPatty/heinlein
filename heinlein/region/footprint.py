@@ -1,3 +1,5 @@
+from functools import singledispatchmethod
+
 import astropy.units as u
 from shapely import GeometryCollection, STRtree, union_all
 
@@ -36,6 +38,7 @@ class Footprint:
         self._footprint = build_footprint(self._regions)
         self._sampler = Sampler(self._footprint)
 
+    @singledispatchmethod
     def get_overlapping_regions(self, region: BaseRegion):
         """
         Returns a list of regions that overlap with the given region
@@ -45,11 +48,26 @@ class Footprint:
         overlaps = filter(lambda x: x.intersects(region), overlaps)
         return list(overlaps)
 
-    def get_overlapping_region_names(self, region: BaseRegion):
+    @get_overlapping_regions.register
+    def _(self, region: list):
+        region_overlaps = [self._tree.query(other.geometry) for other in region]
+        overlaps = [
+            [self._regions[i] for i in overlaps] for overlaps in region_overlaps
+        ]
+        overlaps = [
+            [o for o in overlap if o.intersects(region[i])]
+            for i, overlap in enumerate(overlaps)
+        ]
+        return overlaps
+
+    def get_overlapping_region_names(self, region: BaseRegion | list[BaseRegion]):
         """
         Returns a list of region names that overlap with the given region
         """
-        return [r.name for r in self.get_overlapping_regions(region)]
+        overlaps = self.get_overlapping_regions(region)
+        if isinstance(region, list):
+            return [[r.name for r in o] for o in overlaps]
+        return [r.name for r in overlaps]
 
     def sample(self, n: int = 1, tolerance: u.Quantity = None, *args, **kwargs):
         """
