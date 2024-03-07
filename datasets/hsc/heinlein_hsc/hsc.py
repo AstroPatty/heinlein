@@ -4,6 +4,7 @@ import operator
 import pickle
 import re
 from importlib.resources import read_binary, read_text
+from pathlib import Path
 
 import numpy as np
 import regions as reg
@@ -159,32 +160,28 @@ def _patch_int_to_tuple(patch_int):
 
 
 class MaskHandler(Handler):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, path: Path, *args, **kwargs):
         kwargs.update({"type": "mask"})
-        super().__init__(*args, **kwargs)
+        super().__init__(path, *args, **kwargs)
+        self.known_patches = [f.stem for f in self._path.glob("*") if f.is_dir()]
 
     def get_data(self, regions, *args, **kwargs):
         vals = {}
 
-        for index, name in enumerate(regions):
+        for name in regions:
             split = name.split(".")
-            basename = "BrightStarMask-{}-{},{}-HSC-I"
+            basename = "BrightStarMask-{}-{},{}-HSC-I.reg"
             patch_tuple = _patch_int_to_tuple(int(split[1]))
+            tract_name = split[0]
+            if tract_name not in self.known_patches:
+                raise ValueError(f"Could not find masks for HSC tract {tract_name}")
 
             fname = basename.format(split[0], patch_tuple[0], patch_tuple[1])
-            project_path = "/".join(["data", "mask", split[0]])
-
-            files = self._project.list(project_path)["files"]
-            file = list(filter(lambda x: fname in x, files))
-            if not file:
+            patch_path = self._path / tract_name / fname
+            if not patch_path.exists():
                 raise ValueError(f"Could not find mask for region {name}")
-            elif len(file) > 1:
-                raise ValueError(f"Found more than one mask for region {name}")
 
-            project_path = "/".join([project_path, file[0]])
-
-            file_path = self._project.get(project_path)
-            mask = reg.Regions.read(str(file_path))
+            mask = reg.Regions.read(str(patch_path))
             new_masks = np.empty(len(mask), dtype=object)
 
             for i, r in enumerate(mask):

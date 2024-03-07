@@ -27,9 +27,9 @@ def load_config():
 class MaskHandler(Handler):
     def __init__(self, path: Path, config: dict, *args, **kwargs):
         super().__init__(path, config, "mask")
+        self.known_files = [f for f in self._path.glob("*") if f.is_file()]
 
     def get_data(self, regions, *args, **kwargs):
-        known_masks = self._project.list("data/mask")["files"]
         output = {}
         super_region_names = list(set([n.split("_")[0] for n in regions]))
         regions_ = {
@@ -37,7 +37,7 @@ class MaskHandler(Handler):
             for n in super_region_names
         }
         for name in super_region_names:
-            matches = list(filter(lambda x: name in x, known_masks))
+            matches = list(filter(lambda x: name in x.name, self.known_files))
             if len(matches) > 1:
                 logging.error(f"Error: Found more than one mask for region {name}")
                 continue
@@ -45,7 +45,7 @@ class MaskHandler(Handler):
                 logging.error(f"Found no masks for region {name}")
                 continue
 
-            path = self._project.get(f"data/mask/{matches[0]}")
+            path = matches[0]
             data = fits.open(path)
             out = np.empty(1, dtype="object")
             out[0] = data
