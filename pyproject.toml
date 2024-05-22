@@ -1,7 +1,7 @@
 
 [tool.poetry]
 name = "heinlein"
-version = "0.9.0"
+version = "0.9.1"
 description = ""
 authors = ["Patrick Wells <pwells@ucdavis.edu>"]
 readme = "README.md"
