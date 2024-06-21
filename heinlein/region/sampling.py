@@ -10,7 +10,7 @@ class Sampler:
         """
         self.setup(footprint)
 
-    def setup(self, footprint: GeometryCollection, *args, **kwargs):
+    def setup(self, footprint: GeometryCollection, *args, **kwargs) -> None:
         self._footprint = footprint
         bounds = self._footprint.bounds
         ra1, ra2 = bounds[0], bounds[2]
@@ -29,7 +29,7 @@ class Sampler:
         self._high_sampler_range = [phi_range[1], costheta_range[1]]
         self._sampler = np.random.default_rng()
 
-    def sample(self, n=1, tolerance: u.Quantity = None, *args, **kwargs):
+    def sample(self, n=1, tolerance: u.Quantity = None, *args, **kwargs) -> tuple:
         vals = self._sampler.uniform(self._low_sampler_range, self._high_sampler_range)
         ra = np.degrees(vals[0])
         theta = np.degrees(np.arccos(vals[1]))

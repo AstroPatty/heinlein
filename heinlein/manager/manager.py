@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 import multiprocessing as mp
@@ -6,6 +8,7 @@ from importlib import import_module
 from inspect import getmembers, isclass, isfunction
 from pathlib import Path
 from types import ModuleType
+from typing import Any, Callable, Optional
 
 import appdirs
 from cacheout import LRUCache
@@ -19,7 +22,7 @@ known_datasets = ["des", "cfht", "hsc", "ms"]
 active_managers = {}
 
 
-def get_manager(name):
+def get_manager(name: str) -> DataManager:
     try:
         am = active_managers[name]
         return am
@@ -30,7 +33,7 @@ def get_manager(name):
 
 
 @cache
-def get_config_location():
+def get_config_location() -> Path:
     return Path(appdirs.user_config_dir("heinlein"))
 
 
@@ -53,7 +56,7 @@ def initialize_dataset(name: str, *args, **kwargs):
         json.dump(config_data, f)
 
 
-def get_external_implementation(name: str) -> ModuleType:
+def get_external_implementation(name: str) -> Optional[ModuleType]:
     """
     Checks to see if a custom implementation exists for a given dataset. These have
     to be installed separately from the main package. Prompts the user to install
@@ -71,7 +74,7 @@ def get_external_implementation(name: str) -> ModuleType:
                 f"Dataset `{name}` is a known dataset, but needs to be installed"
                 f" separately. You can install it with `pip install heinlein[{name}]`."
             )
-            exit()
+            return None
         return getattr(module, name)
 
 
@@ -111,7 +114,7 @@ logger = logging.getLogger("manager")
 
 
 class DataManager:
-    def __init__(self, name, *args, **kwargs):
+    def __init__(self, name: str, *args, **kwargs):
         """
         The datamanger just tracks where data and configuration are for
         a given dataset.
@@ -142,6 +145,9 @@ class DataManager:
         self.config = get_dataset_config(self.name)
 
     def _initialize_external_implementation(self):
+        """
+        Should be something like "load plugins"
+        """
         if self.external is None:
             self._external_definitions = {}
             return
@@ -167,7 +173,7 @@ class DataManager:
             exit()
         self._external_definitions = {**external_classes, **external_functions}
 
-    def get_external(self, key, *args, **kwargs):
+    def get_external(self, key: str, *args, **kwargs) -> Optional[Callable]:
         return self._external_definitions.get(key, None)
 
     def get_path(self, dtype: str, *args, **kwargs):
@@ -254,7 +260,9 @@ class DataManager:
         return True
 
     @check_overload
-    def get_from(self, dtypes: list, region_overlaps: list, *args, **kwargs):
+    def get_from(
+        self, dtypes: list, region_overlaps: list, *args, **kwargs
+    ) -> dict[str, Any]:
         return_types = []
         new_data = {}
         if not isinstance(region_overlaps[0], str):
@@ -309,7 +317,7 @@ class DataManager:
         region_overlaps: list,
         *args,
         **kwargs,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Get data of a specificed type
         The manager is responsible for finding the path, and the giving
@@ -320,13 +328,13 @@ class DataManager:
         storage = self.parse_data(storage, *args, **kwargs)
         return storage
 
-    def load(self, regions: list, dtypes: list, *args, **kwargs):
+    def load(self, regions: list, dtypes: list, *args, **kwargs) -> None:
         """
         Loads data for particular named regions into the cache
         """
         self.get_from(dtypes, regions)
 
-    def dump(self, regions: list, *args, **kwargs):
+    def dump(self, regions: list, *args, **kwargs) -> None:
         """
         Dumps data for some particular named regions from the cache
         """
@@ -334,12 +342,12 @@ class DataManager:
             nd = data.delete_many(regions)
             logging.info(f"Delete {nd} items from the {dtype} cache")
 
-    def dump_all(self):
+    def dump_all(self) -> None:
         for dtype, data in self._cache.items():
             nd = data.clear()
             logging.info(f"Delete {nd} items from the {dtype} cache")
 
-    def parse_data(self, data, *args, **kwargs):
+    def parse_data(self, data, *args, **kwargs) -> dict[str, Any]:
         return_data = {}
         for dtype, values in data.items():
             # Now, we process into useful objects and filter further
@@ -367,7 +375,7 @@ class DataManager:
                 cached_values.update({dtype: cached})
         return cached_values
 
-    def cache(self, data_storage: dict):
+    def cache(self, data_storage: dict) -> None:
         """
         Top-level modules think in terms of datatypes, but the cache thinks in terms
         of regions so we have to do a translation
@@ -386,9 +394,6 @@ class DataManager:
                     {reg_name: d_obj for reg_name, d_obj in data.items()}
                 )
                 self._cache.update({dtype: dtype_cache})
-
-    def get_handler(self, dtype: str, *args, **kwargs):
-        pass
 
     def clear_all_data(self, *args, **kwargs) -> None:
         self.config.data = {}
