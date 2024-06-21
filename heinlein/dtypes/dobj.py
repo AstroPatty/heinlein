@@ -21,3 +21,9 @@ class HeinleinDataObject(ABC):
     @abstractclassmethod
     def combine(cls, objects: list[HeinleinDataObject]):
         pass
+
+    @abstractmethod
+    def estimate_size(self) -> int:
+        """
+        estimate the size of the object in bytes
+        """
