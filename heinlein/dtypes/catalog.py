@@ -122,8 +122,7 @@ class CatalogObject(dobj.HeinleinDataObject):
         points = np.concatenate([o._points for o in objects])
         return cls(data, points)
 
-    def estimate_size(self):
-        row_size = reduce(add, [c.itemsize for c in self._data.columns])
-        total_size = len(self._data) * row_size
-        coord_size = self._points.itemsize * self._points.size
-        return total_size + coord_size
+    def estimate_size(self) -> int:
+        data_size = reduce(add, [c.nbytes for c in self._data.columns])
+        coord_size = self._points.nbytes
+        return data_size + coord_size
