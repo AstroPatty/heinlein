@@ -7,7 +7,7 @@ from .region import BaseRegion
 from .sampling import Sampler
 
 
-def build_tree(regions: list[BaseRegion]):
+def build_tree(regions: list[BaseRegion]) -> STRtree:
     """
     Builds an STRtree from a list of regions
     """
@@ -39,7 +39,7 @@ class Footprint:
         self._sampler = Sampler(self._footprint)
 
     @singledispatchmethod
-    def get_overlapping_regions(self, region: BaseRegion):
+    def get_overlapping_regions(self, region: BaseRegion) -> list[BaseRegion]:
         """
         Returns a list of regions that overlap with the given region
         """
@@ -49,7 +49,7 @@ class Footprint:
         return list(overlaps)
 
     @get_overlapping_regions.register
-    def _(self, region: list):
+    def _(self, region: list) -> list[list[BaseRegion]]:
         region_overlaps = [self._tree.query(other.geometry) for other in region]
         overlaps = [
             [self._regions[i] for i in overlaps] for overlaps in region_overlaps
@@ -60,7 +60,9 @@ class Footprint:
         ]
         return overlaps
 
-    def get_overlapping_region_names(self, region: BaseRegion | list[BaseRegion]):
+    def get_overlapping_region_names(
+        self, region: BaseRegion | list[BaseRegion]
+    ) -> list[str]:
         """
         Returns a list of region names that overlap with the given region
         """
@@ -69,7 +71,7 @@ class Footprint:
             return [[r.name for r in o] for o in overlaps]
         return [r.name for r in overlaps]
 
-    def sample(self, n: int = 1, tolerance: u.Quantity = None, *args, **kwargs):
+    def sample(self, n: int = 1, tolerance: u.Quantity = None, *args, **kwargs) -> list:
         """
         Return n random points from the footprint
         """

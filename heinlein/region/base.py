@@ -8,6 +8,7 @@ from typing import Any
 
 from astropy.coordinates import SkyCoord
 from shapely.geometry import Polygon
+from spherical_geometry.polygon import SingleSphericalPolygon
 from spherical_geometry.vector import lonlat_to_vector, vector_to_lonlat
 
 from heinlein.locations import MAIN_CONFIG_DIR
@@ -31,7 +32,9 @@ current_config = load_config()
 class BaseRegion(ABC):
     _config = current_config
 
-    def __init__(self, geometry, type, name=None, *args, **kwargs):
+    def __init__(
+        self, geometry: SingleSphericalPolygon, type: str, name=None, *args, **kwargs
+    ):
         """
         Base region object.
         Regions should always be initialized with heinlein.Region
