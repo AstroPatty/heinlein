@@ -37,7 +37,7 @@ def split(path: Path, key: str, threads=1) -> None:
         p.map(func, files)
 
 
-def _split(file_path: Path, key: str):
+def _split(file_path: Path, key: str) -> None:
     print(f"Working on file {file_path}")
     df = pd.read_csv(file_path)
     try:
