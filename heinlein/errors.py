@@ -1,0 +1,2 @@
+class HeinleinError(Exception):
+    pass
