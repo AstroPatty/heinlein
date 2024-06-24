@@ -1,6 +1,5 @@
 from collections import OrderedDict
-
-from heinlein.dtypes.dobj import HeinleinDataObject
+from functools import singledispatchmethod
 
 
 class Cache:
@@ -26,23 +25,25 @@ class Cache:
         self.sizes = {}
         self.size = 0
 
-    def add(self, region_name: str, data: dict[str, HeinleinDataObject]):
+    def add(self, data):
         """
         Add objects to the cache. If the cache is full, evict objects until the
         object can be added.
         """
-        if region_name in self.cache:
-            dtypes_to_add = set(data.keys()) - set(self.cache[region_name].keys())
-            if not dtypes_to_add:
-                raise ValueError("These objects are already in the cache")
-        else:
-            dtypes_to_add = data.keys()
+        data_to_cache = switch_major_key(data)
+        for region_name, data in data_to_cache.items():
+            if region_name in self.cache:
+                dtypes_to_add = set(data.keys()) - set(self.cache[region_name].keys())
+                if not dtypes_to_add:
+                    raise ValueError("These objects are already in the cache")
+            else:
+                dtypes_to_add = data.keys()
 
-        total_size = sum([data[dt].estimate_size() for dt in dtypes_to_add])
-        self.make_space(total_size)
-        self.size += total_size
-        self.cache[region_name] = data
-        self.sizes[region_name] = total_size
+            total_size = sum([data[dt].estimate_size() for dt in dtypes_to_add])
+            self.make_space(total_size)
+            self.size += total_size
+            self.cache[region_name] = data
+            self.sizes[region_name] = total_size
 
     def make_space(self, needed_space: int):
         if needed_space > self.max_size:
@@ -69,16 +70,55 @@ class Cache:
         self.sizes = {}
         self.size = 0
 
-    def get(self, region_name, dtypes):
+    def drop(self, region_names):
+        for region_name in region_names:
+            if region_name in self.cache:
+                region_space = self.sizes.pop(region_name)
+                self.size -= region_space
+                del self.cache[region_name]
+
+    @singledispatchmethod
+    def get(self, region_name: str, dtypes):
         if region_name not in self.cache:
             raise ValueError("Region not in cache")
         if not isinstance(dtypes, list):
             dtypes = [dtypes]
-        if not all([dtype in self.cache[region_name] for dtype in dtypes]):
-            raise ValueError("Not all data types are in the cache")
+
+        dtypes_in_cache = set(self.cache[region_name].keys())
+        dtypes_to_get = set(dtypes).intersection(dtypes_in_cache)
+        if not dtypes_to_get:
+            raise ValueError("None of the requested objects are in the cache")
 
         self.cache.move_to_end(region_name, last=False)
-        return {dtype: self.cache[region_name][dtype] for dtype in dtypes}
+        return {dtype: self.cache[region_name][dtype] for dtype in dtypes_to_get}
+
+    @get.register
+    def _(self, regions: set, dtypes):
+        if not isinstance(dtypes, list):
+            dtypes = [dtypes]
+        output = {}
+        for region in regions:
+            try:
+                output[region] = self.get(region, dtypes)
+            except ValueError:
+                continue
+        return switch_major_key(output)
 
     def has_data(self, region_name, dtype):
         return region_name in self.cache and dtype in self.cache[region_name]
+
+
+def switch_major_key(data: dict):
+    """
+    The godata cache thinks in terms of regions, while the rest of the codebase
+    thinks in terms of data types. This function switch the major key from one to
+    the other.
+    """
+
+    output = {}
+    for major_key, minor_data in data.items():
+        for minor_key, data in minor_data.items():
+            if minor_key not in output:
+                output[minor_key] = {}
+            output[minor_key][major_key] = data
+    return output

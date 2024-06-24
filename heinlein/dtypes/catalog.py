@@ -123,6 +123,14 @@ class CatalogObject(dobj.HeinleinDataObject):
         return cls(data, points)
 
     def estimate_size(self) -> int:
-        data_size = reduce(add, [c.nbytes for c in self._data.columns])
+        data_size = reduce(
+            add, [estimate_column_size(self._data[col]) for col in self._data.colnames]
+        )
         coord_size = self._points.nbytes
         return data_size + coord_size
+
+
+def estimate_column_size(column: np.ndarray) -> int:
+    if isinstance(column, SkyCoord):
+        return column.size * 16
+    return column.nbytes
