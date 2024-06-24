@@ -11,11 +11,17 @@ from types import ModuleType
 from typing import Any, Callable, Optional
 
 import appdirs
-from cacheout import LRUCache
 
 from heinlein.config.config import globalConfig
+from heinlein.errors import HeinleinError
+from heinlein.manager.cache import Cache
 from heinlein.region.base import BaseRegion
 from heinlein.utilities import warning_prompt
+
+
+class MissingDataError(HeinleinError):
+    pass
+
 
 logger = logging.getLogger("manager")
 known_datasets = ["des", "cfht", "hsc", "ms"]
@@ -126,7 +132,7 @@ class DataManager:
         self.name = name
         self.globalConfig = globalConfig
         self._setup()
-        self._cache = {}
+        self._cache = Cache()
         self._cache_lock = mp.Lock()
 
     def _setup(self, *args, **kwargs) -> None:
@@ -266,47 +272,51 @@ class DataManager:
         return_types = []
         new_data = {}
         if not isinstance(region_overlaps[0], str):
-            regnames = [r.name for r in region_overlaps]
+            regnames = set([r.name for r in region_overlaps])
         else:
-            regnames = region_overlaps
+            regnames = set(region_overlaps)
 
         self.load_handlers()
         data = self.config.get("data", {})
         for dtype in dtypes:
             try:
-                path = data[dtype]
+                _ = data[dtype]
                 return_types.append(dtype)
             except KeyError:
-                print(f"No data of type {dtype} found for dataset {self.name}!")
+                raise MissingDataError(
+                    f"Data of type {dtype} not found for dataset {self.name}!"
+                )
 
-        cached = self.get_cached_values(dtypes, regnames)
+        cached_data = self._cache.get(regnames, dtypes)
+
         for dtype in return_types:
-            if dtype in cached.keys():
-                dtype_cache = cached[dtype]
-                regions_to_get = [r for r in regnames if r not in dtype_cache.keys()]
+            if dtype in cached_data:
+                regions_to_get = [r for r in regnames if r not in cached_data[dtype]]
             else:
                 regions_to_get = regnames
+
             if len(regions_to_get) != 0:
                 data_ = self._handlers[dtype].get_data(regions_to_get, *args, **kwargs)
                 new_data.update({dtype: data_})
 
         if len(new_data) != 0:
-            self.cache(new_data)
-
+            self._cache.add(new_data)
         storage = {}
-        keys = set(new_data.keys()).union(set(cached.keys()))
+        for dtype in return_types:
+            cached_data_of_dtype = cached_data.get(dtype, {})
+            new_data_of_dtype = new_data.get(dtype, {})
+            found_regions = set(cached_data_of_dtype.keys()) | set(
+                new_data_of_dtype.keys()
+            )
+            missing_regions = regnames - found_regions
+            if len(missing_regions) != 0:
+                raise MissingDataError(
+                    f"Could not find data for regions {missing_regions} of"
+                    f" type {dtype}"
+                )
 
-        for k in keys:
-            data = cached.get(k, {})
-            new_d = new_data.get(k, {})
-            if new_d is None and data is None:
-                path = self.get_path(k)
-                storage.update({k: path})
-            elif not isinstance(new_d, dict):
-                storage.update({k: new_d})
-            else:
-                data.update(new_d)
-                storage.update({k: data})
+            storage.update({dtype: {**cached_data_of_dtype, **new_data_of_dtype}})
+
         return storage
 
     @check_overload
@@ -338,14 +348,10 @@ class DataManager:
         """
         Dumps data for some particular named regions from the cache
         """
-        for dtype, data in self._cache.items():
-            nd = data.delete_many(regions)
-            logging.info(f"Delete {nd} items from the {dtype} cache")
+        self._cache.drop(regions)
 
     def dump_all(self) -> None:
-        for dtype, data in self._cache.items():
-            nd = data.clear()
-            logging.info(f"Delete {nd} items from the {dtype} cache")
+        self._cache.empty()
 
     def parse_data(self, data, *args, **kwargs) -> dict[str, Any]:
         return_data = {}
@@ -361,39 +367,6 @@ class DataManager:
             except IndexError:
                 return_data.update({dtype: None})
         return return_data
-
-    def get_cached_values(self, dtypes: list, region_overlaps: list):
-        cached_values = {}
-        with self._cache_lock:
-            for dtype in dtypes:
-                try:
-                    dtype_cache = self._cache[dtype]
-                except KeyError:
-                    # No cache for this datatype, continue
-                    continue
-                cached = dtype_cache.get_many(region_overlaps)
-                cached_values.update({dtype: cached})
-        return cached_values
-
-    def cache(self, data_storage: dict) -> None:
-        """
-        Top-level modules think in terms of datatypes, but the cache thinks in terms
-        of regions so we have to do a translation
-
-        """
-        with self._cache_lock:
-            for dtype, data in data_storage.items():
-                if (data is None) or not isinstance(data, dict):
-                    continue
-                try:
-                    dtype_cache = self._cache[dtype]
-                except KeyError:
-                    dtype_cache = LRUCache(maxsize=0)
-                    self._cache.update({dtype: dtype_cache})
-                dtype_cache.add_many(
-                    {reg_name: d_obj for reg_name, d_obj in data.items()}
-                )
-                self._cache.update({dtype: dtype_cache})
 
     def clear_all_data(self, *args, **kwargs) -> None:
         self.config.data = {}
