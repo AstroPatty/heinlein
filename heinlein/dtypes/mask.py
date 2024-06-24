@@ -299,6 +299,9 @@ class _regionMask(_mask):
         cmask = self.generate_mask(coords)
         return coords[cmask]
 
+    def estimate_size(self) -> int:
+        return self._geo_list.nbytes
+
     def generate_mask(self, coords: SkyCoord):
         ra = coords.ra.to_value("deg")
         dec = coords.dec.to_value("deg")
