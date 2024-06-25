@@ -14,7 +14,7 @@ import appdirs
 
 from heinlein.config.config import globalConfig
 from heinlein.errors import HeinleinError
-from heinlein.manager.cache import Cache
+from heinlein.manager.cache import get_cache
 from heinlein.region.base import BaseRegion
 from heinlein.utilities import warning_prompt
 
@@ -132,7 +132,7 @@ class DataManager:
         self.name = name
         self.globalConfig = globalConfig
         self._setup()
-        self._cache = Cache()
+        self._cache = get_cache()
         self._cache_lock = mp.Lock()
 
     def _setup(self, *args, **kwargs) -> None:
