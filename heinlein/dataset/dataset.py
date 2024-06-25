@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from functools import partial
 from inspect import getmembers
@@ -36,6 +38,44 @@ class dataset_extension:
         return self.function(*args, **kwargs)
 
 
+def setup_dataset(dataset: Dataset):
+    """
+    Searches for an external implementation of the datset
+    This is used for datasets with specific needs (i.e. specific surveys)
+    """
+    external = dataset.manager.external
+
+    if external and dataset.manager.external is None:
+        raise NotImplementedError(
+            f"No implementation code found for datset {dataset.name}"
+        )
+
+    try:
+        get_regions = dataset.manager.get_external("load_regions")
+    except KeyError:
+        raise NotImplementedError(
+            f"Dataset {dataset.name} does not have a setup method!"
+        )
+
+    regions = get_regions()
+    dataset.footprint = Footprint(regions)
+    load_extensions(dataset)
+    return dataset
+
+
+def load_extensions(dataset: Dataset, *args, **kwargs):
+    """
+    Loads extensions for the particular dataset. These are defined externally
+    """
+    ext_objs = list(
+        filter(
+            lambda f: type(f[1]) == dataset_extension,
+            getmembers(dataset.manager.external),
+        )
+    )
+    dataset._extensions.update({f[0]: f[1] for f in ext_objs})
+
+
 class Dataset:
     """
     The Dataset class is the core of heinlein's user interface. It contains routines
@@ -49,7 +89,10 @@ class Dataset:
         self.manager = manager
         self._extensions = {}
         self._parameters = {}
-        self._setup()
+
+    @property
+    def name(self):
+        return self.manager.name
 
     def __getattr__(self, key__):
         """
@@ -70,33 +113,6 @@ class Dataset:
                 f"{type(self).__name__} object has no attribute '{key__}'"
             )
 
-    @property
-    def name(self):
-        return self.manager.name
-
-    def _setup(self, *args, **kwargs) -> None:
-        """
-        Searches for an external implementation of the datset
-        This is used for datasets with specific needs (i.e. specific surveys)
-        """
-        external = self.manager.external
-
-        if external and self.manager.external is None:
-            raise NotImplementedError(
-                f"No implementation code found for datset {self.name}"
-            )
-
-        try:
-            get_regions = self.manager.get_external("load_regions")
-        except KeyError:
-            raise NotImplementedError(
-                f"Dataset {self.name} does not have a setup method!"
-            )
-
-        regions = get_regions()
-        self.footprint = Footprint(regions)
-        self._load_extensions()
-
     def set_parameter(self, name, value):
         """
         Parameters are used to store metadata that may be useful to plugins etc.
@@ -105,18 +121,6 @@ class Dataset:
 
     def get_parameter(self, name):
         return self._parameters.get(name, None)
-
-    def _load_extensions(self, *args, **kwargs):
-        """
-        Loads extensions for the particular dataset. These are defined externally
-        """
-        ext_objs = list(
-            filter(
-                lambda f: type(f[1]) == dataset_extension,
-                getmembers(self.manager.external),
-            )
-        )
-        self._extensions.update({f[0]: f[1] for f in ext_objs})
 
     def get_path(self, dtype: str, *args, **kwargs):
         """
@@ -273,6 +277,7 @@ class Dataset:
 def load_dataset(name: str) -> Dataset:
     manager = get_manager(name)
     ds = Dataset(manager)
+    ds = setup_dataset(ds)
     return ds
 
 

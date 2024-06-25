@@ -132,7 +132,7 @@ class DataManager:
         self.name = name
         self.globalConfig = globalConfig
         self._setup()
-        self._cache = get_cache()
+        self._cache = get_cache(self.name)
         self._cache_lock = mp.Lock()
 
     def _setup(self, *args, **kwargs) -> None:
