@@ -47,7 +47,7 @@ jobs:
               run: |
                 cd datasets/${{ matrix.dataset }}
                 poetry build
-                poetry publish
+                poetry publish --skip-existing
               env:
                   POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
                 
