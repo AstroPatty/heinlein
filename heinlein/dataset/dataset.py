@@ -6,6 +6,7 @@ from typing import Union
 import astropy.units as u
 
 from heinlein.manager import get_manager
+from heinlein.manager.cache import clear_cache
 from heinlein.manager.manager import DataManager
 from heinlein.region import BaseRegion, Region
 from heinlein.region.footprint import Footprint
@@ -183,7 +184,7 @@ class Dataset:
                 for s_ in samples_in_reg:
                     yield (s_, self.get_data_from_region(s_, dtypes))
             # Now, we dump the data from those regions
-            self.dump_all()
+            clear_cache(self.name)
         # Now we go through all the samples that fall in a single survey region
         # that were NOT covered before
         for i, (reg, s) in enumerate(samples.items()):
@@ -192,7 +193,7 @@ class Dataset:
             else:
                 for s_ in s:
                     yield (s_, self.get_data_from_region(s_, dtypes))
-                self.dump_all()
+                clear_cache(self.name)
 
     @check_overload
     def get_data_from_named_region(
@@ -207,28 +208,6 @@ class Dataset:
 
         regs_ = self._regions[self._region_names == name]
         return self.manager.get_from(dtypes, regs_)
-
-    def load(self, regions, dtypes, *args, **kwargs):
-        """
-        Pre-loads some regions into the cache.
-        """
-        if isinstance(regions, str):
-            regions = [regions]
-        if not all([r in self._region_names for r in regions]):
-            logging.error("Regions not found!")
-            return
-        self.manager.load(regions, dtypes)
-
-    def dump(self, regions, *args, **kwargs):
-        """
-        Dumps some regions from the cache.
-        """
-        if isinstance(regions, str):
-            regions = [regions]
-        self.manager.dump(regions)
-
-    def dump_all(self):
-        self.manager.dump_all()
 
     def get_data_from_region(
         self,
