@@ -3,6 +3,7 @@ import subprocess
 from pathlib import Path
 
 import astropy.units as u
+from astropy.coordinates import SkyCoord
 
 from heinlein import Region, load_dataset
 from heinlein.api import add
@@ -55,10 +56,18 @@ def test_hsc():
     regions = {r.name: r for r in regions}
     f = Footprint(regions)
     center = f._footprint.centroid
-    center = (center.x, center.y)
+    center = SkyCoord(center.x, center.y, unit="deg")
+    second_center = center.directional_offset_by(0, 4 * u.arcmin)
     d = load_dataset("hsc")
 
     data = d.cone_search(center, radius, dtypes=["catalog", "mask"])
+    cat = data["catalog"]
+    mask = data["mask"]
+    masked_cat = mask.mask(cat)
+    assert len(cat) >= len(masked_cat)
+    assert len(cat) > 0
+
+    data = d.cone_search(second_center, radius, dtypes=["catalog", "mask"])
     cat = data["catalog"]
     mask = data["mask"]
     masked_cat = mask.mask(cat)
@@ -74,9 +83,16 @@ def test_cfht():
     f = Footprint(regions)
     d = load_dataset("cfht")
     center = f._footprint.centroid
-    center = (center.x, center.y)
-
+    center = SkyCoord(center.x, center.y, unit="deg")
+    second_center = center.directional_offset_by(0, 4 * u.arcmin)
     a = d.cone_search(center, radius, dtypes=["catalog", "mask"])
+    cat = a["catalog"]
+    mask = a["mask"]
+    masked_cat = mask.mask(cat)
+    assert len(cat) >= len(masked_cat)
+    assert len(cat) > 0
+
+    a = d.cone_search(second_center, radius, dtypes=["catalog", "mask"])
     cat = a["catalog"]
     mask = a["mask"]
     masked_cat = mask.mask(cat)
@@ -85,8 +101,15 @@ def test_cfht():
 
 
 def test_des():
-    des_center = (7.8, -33.9)
+    des_center = SkyCoord(7.8, -33.9, unit="deg")
     d = load_dataset("des")
+    a = d.cone_search(des_center, radius, dtypes=["catalog", "mask"])
+    cat = a["catalog"]
+    mask = a["mask"]
+    masked_cat = mask.mask(cat)
+    assert len(cat) >= len(masked_cat)
+
+    des_center = des_center.directional_offset_by(0, 4 * u.arcmin)
     a = d.cone_search(des_center, radius, dtypes=["catalog", "mask"])
     cat = a["catalog"]
     mask = a["mask"]
