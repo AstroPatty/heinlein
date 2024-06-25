@@ -20,7 +20,7 @@ class Region:
         center: Union[SkyCoord, tuple],
         radius: Union[u.Quantity, float],
         *args,
-        **kwargs
+        **kwargs,
     ):
         """
         Return a circular region. Centered on center, radius of `radius`
@@ -144,7 +144,7 @@ class CircularRegion(BaseRegion):
             center.dec.to(u.deg).value,
             self._radius.to(u.deg).value,
             *args,
-            **kwargs
+            **kwargs,
         )
         super().__init__(geometry, "CircularRegion", name, *args, **kwargs)
 

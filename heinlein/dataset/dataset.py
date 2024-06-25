@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import logging
 from functools import partial
-from inspect import getmembers
 from typing import Union
 
 import astropy.units as u
 
+from heinlein.dataset.extension import get_extension, load_extensions
 from heinlein.manager import get_manager
 from heinlein.manager.cache import clear_cache
 from heinlein.manager.manager import DataManager
@@ -26,16 +26,6 @@ def check_overload(f):
             return overload(self, *args, **kwargs)
 
     return wrapper
-
-
-class dataset_extension:
-    def __init__(self, function):
-        self.function = function
-        self.extension = True
-        self.name = function.__name__
-
-    def __call__(self, *args, **kwargs):
-        return self.function(*args, **kwargs)
 
 
 def setup_dataset(dataset: Dataset):
@@ -61,19 +51,6 @@ def setup_dataset(dataset: Dataset):
     dataset.footprint = Footprint(regions)
     load_extensions(dataset)
     return dataset
-
-
-def load_extensions(dataset: Dataset, *args, **kwargs):
-    """
-    Loads extensions for the particular dataset. These are defined externally
-    """
-    ext_objs = list(
-        filter(
-            lambda f: type(f[1]) == dataset_extension,
-            getmembers(dataset.manager.external),
-        )
-    )
-    dataset._extensions.update({f[0]: f[1] for f in ext_objs})
 
 
 class Dataset:
@@ -106,7 +83,7 @@ class Dataset:
         """
 
         try:
-            f = self._extensions[key__]
+            f = get_extension(self.name, key__)
             return partial(f, self)
         except KeyError:
             raise AttributeError(
