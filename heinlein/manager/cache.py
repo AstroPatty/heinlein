@@ -1,6 +1,23 @@
 from collections import OrderedDict
 from functools import singledispatchmethod
 
+CURRENT_CACHES = {}
+
+
+def get_cache(dataset: str, max_size: float = 4e9):
+    if dataset not in CURRENT_CACHES:
+        CURRENT_CACHES[dataset] = Cache(max_size)
+    else:
+        CURRENT_CACHES[dataset].change_max_size(max_size)
+    return CURRENT_CACHES[dataset]
+
+
+def clear_cache(dataset: str):
+    if dataset in CURRENT_CACHES:
+        CURRENT_CACHES[dataset].empty()
+    else:
+        raise ValueError(f"No cache for dataset {dataset} found in memory")
+
 
 class Cache:
     """
@@ -44,6 +61,15 @@ class Cache:
             self.size += total_size
             self.cache[region_name] = data
             self.sizes[region_name] = total_size
+
+    def change_max_size(self, new_size: float):
+        if new_size > self.size:
+            self.max_size = new_size
+            return True
+        else:
+            raise ValueError(
+                "Cannot change the cache size to a value smaller than the current size"
+            )
 
     def make_space(self, needed_space: int):
         if needed_space > self.max_size:
