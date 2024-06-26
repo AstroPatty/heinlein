@@ -1,6 +1,6 @@
 import warnings
 from abc import ABC, abstractmethod
-from functools import singledispatchmethod
+from functools import cache, singledispatchmethod
 from gettext import Catalog
 
 import numpy as np
@@ -62,6 +62,7 @@ class Mask(HeinleinDataObject):
         m._masks = masks
         return m
 
+    @cache
     def estimate_size(self) -> int:
         return sum([mask.estimate_size() for mask in self._masks])
 
