@@ -30,7 +30,7 @@ def remove(dataset_name, data_type):
 @click.command()
 @click.argument("dataset_name")
 @click.argument("data_type")
-def get(dataset_name, data_type) -> bool:
+def get(dataset_name, data_type) -> str:
     """
     Get the path to a specific data type in a specific datset
     """
