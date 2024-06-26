@@ -90,15 +90,6 @@ class Dataset:
                 f"{type(self).__name__} object has no attribute '{key__}'"
             )
 
-    def set_parameter(self, name, value):
-        """
-        Parameters are used to store metadata that may be useful to plugins etc.
-        """
-        self._parameters.update({name: value})
-
-    def get_parameter(self, name):
-        return self._parameters.get(name, None)
-
     def get_path(self, dtype: str, *args, **kwargs):
         """
         Gets the path to where a particular item in a dataset is stored on disk
