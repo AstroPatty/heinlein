@@ -21,6 +21,8 @@ cacheout = "^0.16.0"
 regions = "^0.8"
 sqlalchemy = "^2.0.25"
 click = "^8.1.7"
+pydantic = "^2.7.4"
+pydantic-settings = "^2.3.4"
 
 
 [tool.poetry.group.develop.dependencies]
