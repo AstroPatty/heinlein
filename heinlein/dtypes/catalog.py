@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from functools import reduce
+from functools import cache, reduce
 from operator import add
 
 import astropy.units as u
@@ -122,6 +122,7 @@ class CatalogObject(dobj.HeinleinDataObject):
         points = np.concatenate([o._points for o in objects])
         return cls(data, points)
 
+    @cache
     def estimate_size(self) -> int:
         data_size = reduce(
             add, [estimate_column_size(self._data[col]) for col in self._data.colnames]
