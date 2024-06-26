@@ -10,6 +10,7 @@ from shapely import geometry
 from heinlein import Region
 from heinlein.dataset import dataset_extension
 from heinlein.dataset.dataset import Dataset
+from heinlein.errors import HeinleinError
 from heinlein.manager.cache import clear_cache
 
 
@@ -44,14 +45,8 @@ def load_regions():
 
 
 def get_overlapping_regions(dataset: Dataset, query_region, *args, **kwargs):
-    field = dataset.get_parameter("ms_field")
-    if not field:
-        print(
-            "Critical Error: Getting data with the millennium simulation "
-            "requires a field to be set"
-        )
-        print("Call ms.set_field(field) to set")
-        return []
+    field = dataset.get_field()
+
     # move the query region to the correct field
     overlap_region = query_region.translate(
         field[0] * 4 * u.degree, field[1] * 4 * u.degree
@@ -62,7 +57,7 @@ def get_overlapping_regions(dataset: Dataset, query_region, *args, **kwargs):
 
 
 def _get_many_region_overlaps(dataset: Dataset, others: list, *args, **kwargs):
-    field = dataset.get_parameter("ms_field")
+    field = dataset.get_field()
     field_key = f"{field[0]}_{field[1]}"
 
     region_overlaps = [dataset._geo_tree.query(other.geometry) for other in others]
@@ -79,20 +74,33 @@ def _get_many_region_overlaps(dataset: Dataset, others: list, *args, **kwargs):
 
 @dataset_extension
 def set_plane(dataset: Dataset, plane_number, *args, **kwargs):
-    dataset.set_parameter("ms_plane", plane_number)
+    dataset.ms_plane = plane_number
 
 
 @dataset_extension
 def set_field(dataset: Dataset, field: tuple, *args, **kwargs):
     if (
-        type(field) != tuple
+        not isinstance(field, tuple)
         or len(field) != 2
         or not all([isinstance(a, int) for a in field])
     ):
-        print("Error: Millennium simulation fields must be a tuple with two ints")
+        raise TypeError(
+            "Error: Millennium simulation fields must be a tuple with two ints"
+        )
         return
-    dataset.set_parameter("ms_field", field)
+    dataset.ms_field = field
     clear_cache("ms")
+
+
+@dataset_extension
+def get_field(dataset: Dataset, *args, **kwargs):
+    try:
+        return dataset.ms_field
+    except AttributeError:
+        raise HeinleinError(
+            "No field set for Millennium simulation. Use set_field() to set "
+            "the field."
+        )
 
 
 def get_position_from_index(x, y):
