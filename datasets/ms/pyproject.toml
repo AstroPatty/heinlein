@@ -1,10 +1,6 @@
 [project]
 name = "heinlein-ms"
-<<<<<<< HEAD
-version = "0.2.1"
-=======
 version = "0.3.0"
->>>>>>> bfcf2f8 (Move some extension logic)
 description = ""
 authors = [{name="Patrick Wells", email="pwells@ucdavis.edu>"}]
 readme = "README.md"

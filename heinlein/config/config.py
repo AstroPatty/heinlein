@@ -1,11 +1,8 @@
-from dynaconf import Dynaconf
+from pydantic import ByteSize, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from heinlein.locations import MAIN_CONFIG_DIR
 
-globalConfig = Dynaconf(
-    envvar_prefix="DYNACONF",
-    settings_files=[MAIN_CONFIG_DIR / "config.json", ".secrets.json"],
-)
-
-# `envvar_prefix` = export envvars with `export DYNACONF_FOO=bar`.
-# `settings_files` = Load these files in the order.
+class HeinleinConfig(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="HEINLEIN_", validate_assignment=True)
+    CACHE_ENABLED: bool = Field(False)
+    CACHE_SIZE: ByteSize = Field(4e9, ge=1e9)
