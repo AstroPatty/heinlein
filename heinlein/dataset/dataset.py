@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 import logging
 from functools import partial
-from inspect import getmembers
 from typing import Union
 
 import astropy.units as u
 
+from heinlein.dataset.extension import get_extension, load_extensions
 from heinlein.manager import get_manager
+from heinlein.manager.cache import clear_cache
 from heinlein.manager.manager import DataManager
 from heinlein.region import BaseRegion, Region
 from heinlein.region.footprint import Footprint
@@ -25,14 +28,29 @@ def check_overload(f):
     return wrapper
 
 
-class dataset_extension:
-    def __init__(self, function):
-        self.function = function
-        self.extension = True
-        self.name = function.__name__
+def setup_dataset(dataset: Dataset):
+    """
+    Searches for an external implementation of the datset
+    This is used for datasets with specific needs (i.e. specific surveys)
+    """
+    external = dataset.manager.external
 
-    def __call__(self, *args, **kwargs):
-        return self.function(*args, **kwargs)
+    if external and dataset.manager.external is None:
+        raise NotImplementedError(
+            f"No implementation code found for datset {dataset.name}"
+        )
+
+    try:
+        get_regions = dataset.manager.get_external("load_regions")
+    except KeyError:
+        raise NotImplementedError(
+            f"Dataset {dataset.name} does not have a setup method!"
+        )
+
+    regions = get_regions()
+    dataset.footprint = Footprint(regions)
+    load_extensions(dataset)
+    return dataset
 
 
 class Dataset:
@@ -48,7 +66,10 @@ class Dataset:
         self.manager = manager
         self._extensions = {}
         self._parameters = {}
-        self._setup()
+
+    @property
+    def name(self):
+        return self.manager.name
 
     def __getattr__(self, key__):
         """
@@ -62,39 +83,12 @@ class Dataset:
         """
 
         try:
-            f = self._extensions[key__]
+            f = get_extension(self.name, key__)
             return partial(f, self)
         except KeyError:
             raise AttributeError(
                 f"{type(self).__name__} object has no attribute '{key__}'"
             )
-
-    @property
-    def name(self):
-        return self.manager.name
-
-    def _setup(self, *args, **kwargs) -> None:
-        """
-        Searches for an external implementation of the datset
-        This is used for datasets with specific needs (i.e. specific surveys)
-        """
-        external = self.manager.external
-
-        if external and self.manager.external is None:
-            raise NotImplementedError(
-                f"No implementation code found for datset {self.name}"
-            )
-
-        try:
-            get_regions = self.manager.get_external("load_regions")
-        except KeyError:
-            raise NotImplementedError(
-                f"Dataset {self.name} does not have a setup method!"
-            )
-
-        regions = get_regions()
-        self.footprint = Footprint(regions)
-        self._load_extensions()
 
     def set_parameter(self, name, value):
         """
@@ -104,18 +98,6 @@ class Dataset:
 
     def get_parameter(self, name):
         return self._parameters.get(name, None)
-
-    def _load_extensions(self, *args, **kwargs):
-        """
-        Loads extensions for the particular dataset. These are defined externally
-        """
-        ext_objs = list(
-            filter(
-                lambda f: type(f[1]) == dataset_extension,
-                getmembers(self.manager.external),
-            )
-        )
-        self._extensions.update({f[0]: f[1] for f in ext_objs})
 
     def get_path(self, dtype: str, *args, **kwargs):
         """
@@ -183,7 +165,7 @@ class Dataset:
                 for s_ in samples_in_reg:
                     yield (s_, self.get_data_from_region(s_, dtypes))
             # Now, we dump the data from those regions
-            self.dump_all()
+            clear_cache(self.name)
         # Now we go through all the samples that fall in a single survey region
         # that were NOT covered before
         for i, (reg, s) in enumerate(samples.items()):
@@ -192,7 +174,7 @@ class Dataset:
             else:
                 for s_ in s:
                     yield (s_, self.get_data_from_region(s_, dtypes))
-                self.dump_all()
+                clear_cache(self.name)
 
     @check_overload
     def get_data_from_named_region(
@@ -207,28 +189,6 @@ class Dataset:
 
         regs_ = self._regions[self._region_names == name]
         return self.manager.get_from(dtypes, regs_)
-
-    def load(self, regions, dtypes, *args, **kwargs):
-        """
-        Pre-loads some regions into the cache.
-        """
-        if isinstance(regions, str):
-            regions = [regions]
-        if not all([r in self._region_names for r in regions]):
-            logging.error("Regions not found!")
-            return
-        self.manager.load(regions, dtypes)
-
-    def dump(self, regions, *args, **kwargs):
-        """
-        Dumps some regions from the cache.
-        """
-        if isinstance(regions, str):
-            regions = [regions]
-        self.manager.dump(regions)
-
-    def dump_all(self):
-        self.manager.dump_all()
 
     def get_data_from_region(
         self,
@@ -294,6 +254,7 @@ class Dataset:
 def load_dataset(name: str) -> Dataset:
     manager = get_manager(name)
     ds = Dataset(manager)
+    ds = setup_dataset(ds)
     return ds
 
 

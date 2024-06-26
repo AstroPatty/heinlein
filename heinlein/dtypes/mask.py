@@ -1,6 +1,6 @@
 import warnings
 from abc import ABC, abstractmethod
-from functools import singledispatchmethod
+from functools import cache, singledispatchmethod
 from gettext import Catalog
 
 import numpy as np
@@ -62,6 +62,10 @@ class Mask(HeinleinDataObject):
         m._masks = masks
         return m
 
+    @cache
+    def estimate_size(self) -> int:
+        return sum([mask.estimate_size() for mask in self._masks])
+
     def mask(self, catalog: Catalog, *args, **kwargs):
         for mask in self._masks:
             catalog = mask.mask(catalog)
@@ -113,6 +117,13 @@ class _mask(ABC):
         """
         pass
 
+    @abstractmethod
+    def estimate_size(self) -> int:
+        """
+        Estimate the size of the mask in bytes.
+        """
+        pass
+
 
 class _mangleMask(_mask):
     def __init__(self, mask, *args, **kwargs):
@@ -137,6 +148,9 @@ class _mangleMask(_mask):
         dec = coords.dec.to("deg").value
         contains = self._mask.contains(ra, dec)
         return contains
+
+    def estimate_size(self) -> int:
+        return 0
 
 
 class _pixelArrayMask(_mask):
@@ -170,6 +184,9 @@ class _pixelArrayMask(_mask):
         unmasked_objects[~m_] = self._mask[x[~m_], y[~m_]]
 
         return unmasked_objects
+
+    def estimate_size(self) -> int:
+        return self._mask.nbytes
 
     @singledispatchmethod
     def mask(self, catalog: Catalog, *args, **kwargs):
@@ -208,6 +225,9 @@ class _fitsMask(_mask):
         wcs = cutout.wcs
         data = cutout.data
         return cls(cutout, wcs, data)
+
+    def estimate_size(self) -> int:
+        return self._mask_plane.nbytes
 
     def _check(self, coords):
         y, x = utils.skycoord_to_pixel(coords, self._wcs)
@@ -279,6 +299,9 @@ class _regionMask(_mask):
     def _(self, coords: SkyCoord):
         cmask = self.generate_mask(coords)
         return coords[cmask]
+
+    def estimate_size(self) -> int:
+        return self._geo_list.nbytes
 
     def generate_mask(self, coords: SkyCoord):
         ra = coords.ra.to_value("deg")

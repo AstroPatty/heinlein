@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+from functools import cache, reduce
+from operator import add
 
 import astropy.units as u
 import numpy as np
@@ -119,3 +121,17 @@ class CatalogObject(dobj.HeinleinDataObject):
         data = vstack([o._data for o in objects if len(o._data) > 0])
         points = np.concatenate([o._points for o in objects])
         return cls(data, points)
+
+    @cache
+    def estimate_size(self) -> int:
+        data_size = reduce(
+            add, [estimate_column_size(self._data[col]) for col in self._data.colnames]
+        )
+        coord_size = self._points.nbytes
+        return data_size + coord_size
+
+
+def estimate_column_size(column: np.ndarray) -> int:
+    if isinstance(column, SkyCoord):
+        return column.size * 16
+    return column.nbytes

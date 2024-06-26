@@ -8,7 +8,9 @@ from astropy.coordinates import SkyCoord
 from shapely import geometry
 
 from heinlein import Region
-from heinlein.dataset.dataset import Dataset, dataset_extension
+from heinlein.dataset import dataset_extension
+from heinlein.dataset.dataset import Dataset
+from heinlein.manager.cache import clear_cache
 
 
 def load_config():
@@ -90,7 +92,7 @@ def set_field(dataset: Dataset, field: tuple, *args, **kwargs):
         print("Error: Millennium simulation fields must be a tuple with two ints")
         return
     dataset.set_parameter("ms_field", field)
-    dataset.dump_all()
+    clear_cache("ms")
 
 
 def get_position_from_index(x, y):

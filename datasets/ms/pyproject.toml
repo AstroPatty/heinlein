@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "heinlein-ms"
-version = "0.2.0"
+version = "0.3.0"
 description = ""
 authors = ["Patrick Wells <pwells@ucdavis.edu>"]
 readme = "README.md"
@@ -11,7 +11,7 @@ python = "^3.10"
 
 
 [tool.poetry.group.heinlein.dependencies]
-heinlein = "^0.7.0"
+heinlein = "^0.10.0"
 
 [build-system]
 requires = ["poetry-core"]
