@@ -1,14 +1,23 @@
 from typing import Any
 
+from heinlein.errors import HeinleinConfigError
+
 from .config import HeinleinConfig
 
 _HEINLEIN_CONFIG = HeinleinConfig()
 
 
 def get_option(option: str) -> Any:
-    return getattr(_HEINLEIN_CONFIG, option)
+    canonical_name = option.upper()
+    try:
+        return getattr(_HEINLEIN_CONFIG, canonical_name)
+    except AttributeError:
+        raise HeinleinConfigError.doesnt_exist(option)
 
 
 def set_option(option: str, value: Any) -> bool:
-    setattr(_HEINLEIN_CONFIG, option, value)
+    canonical_name = option.upper()
+    if not hasattr(_HEINLEIN_CONFIG, canonical_name):
+        raise HeinleinConfigError.doesnt_exist(option)
+    setattr(_HEINLEIN_CONFIG, canonical_name, value)
     return True
