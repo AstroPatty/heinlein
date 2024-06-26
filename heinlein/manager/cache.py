@@ -1,10 +1,13 @@
 from collections import OrderedDict
 from functools import singledispatchmethod
 
+import heinlein
+
 CURRENT_CACHES = {}
 
 
-def get_cache(dataset: str, max_size: float = 4e9):
+def get_cache(dataset: str):
+    max_size = heinlein.get_option("CACHE_SIZE")
     if dataset not in CURRENT_CACHES:
         CURRENT_CACHES[dataset] = Cache(max_size)
     else:
