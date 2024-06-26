@@ -12,7 +12,6 @@ exclude = ["surveys"]
 python = "^3.10"
 numpy = "^1.26.3"
 shapely = "^2.0.2"
-pandas = "^2.2.0"
 appdirs = "^1.4.4"
 portalocker = "^2.8.2"
 spherical-geometry = "^1.3.0"

@@ -4,12 +4,8 @@ import re
 from importlib.resources import read_binary, read_text
 from pathlib import Path
 
-import numpy as np
-import pandas as pd
 from astropy.io import fits
-from spherical_geometry.polygon import SingleSphericalPolygon
 
-from heinlein import Region
 from heinlein.dtypes.handlers.handler import Handler
 from heinlein.dtypes.mask import Mask
 
@@ -32,28 +28,6 @@ def load_config():
     data = read_text("heinlein_des", "config.json")
     config = json.loads(data)
     return config
-
-
-def load_regions_from_pandas(support_location):
-    tile_file = support_location / "des_tiles.csv"
-    tile_data = pd.read_csv(tile_file)
-    tiles = {}
-    for index, row in tile_data.iterrows():
-        ra_par = "RAC"
-        dec_par = "DECC"
-        ras = np.zeros(4)
-        decs = np.zeros(4)
-        for c in range(1, 5):
-            ra = row[f"{ra_par}{c}"]
-            dec = row[f"{dec_par}{c}"]
-            ras[c - 1] = ra
-            decs[c - 1] = dec
-
-        center_point = (row["RA_CENT"], row["DEC_CENT"])
-        geo = SingleSphericalPolygon.from_radec(ras, decs, center=center_point)
-        reg = Region(geo, name=row["TILENAME"])
-        tiles.update({row["TILENAME"]: reg})
-    return tiles
 
 
 class MaskHandler(Handler):
