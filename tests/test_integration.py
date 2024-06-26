@@ -5,6 +5,7 @@ from pathlib import Path
 import astropy.units as u
 from astropy.coordinates import SkyCoord
 
+import heinlein
 from heinlein import Region, load_dataset
 from heinlein.api import add
 from heinlein.region.footprint import Footprint
@@ -21,6 +22,7 @@ def setup_module():
     add_ms()
     add_cfht()
     add_hsc()
+    heinlein.set_option("CACHE_SIZE", "8G")
 
 
 def add_cfht():
