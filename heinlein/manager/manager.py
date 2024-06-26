@@ -339,21 +339,6 @@ class DataManager:
         storage = self.parse_data(storage, *args, **kwargs)
         return storage
 
-    def load(self, regions: list, dtypes: list, *args, **kwargs) -> None:
-        """
-        Loads data for particular named regions into the cache
-        """
-        self.get_from(dtypes, regions)
-
-    def dump(self, regions: list, *args, **kwargs) -> None:
-        """
-        Dumps data for some particular named regions from the cache
-        """
-        self._cache.drop(regions)
-
-    def dump_all(self) -> None:
-        self._cache.empty()
-
     def parse_data(self, data, *args, **kwargs) -> dict[str, Any]:
         return_data = {}
         for dtype, values in data.items():
@@ -368,8 +353,3 @@ class DataManager:
             except IndexError:
                 return_data.update({dtype: None})
         return return_data
-
-    def clear_all_data(self, *args, **kwargs) -> None:
-        self.config.data = {}
-        write_dataset_config(self.name, self.config)
-        return
