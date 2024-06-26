@@ -48,19 +48,28 @@ class Cache:
         object can be added.
         """
         data_to_cache = switch_major_key(data)
-        for region_name, data in data_to_cache.items():
-            if region_name in self.cache:
-                dtypes_to_add = set(data.keys()) - set(self.cache[region_name].keys())
-                if not dtypes_to_add:
-                    raise ValueError("These objects are already in the cache")
-            else:
-                dtypes_to_add = data.keys()
+        total_size = 0
+        to_update = {}
+        for region_name, region_data in data_to_cache.items():
+            to_update[region_name] = {}
+            for dtype, data in region_data.items():
+                if self.has_data(region_name, dtype):
+                    raise ValueError(
+                        "Cannot add data to the cache that is already in the cache"
+                    )
+                total_size += data.estimate_size()
+                to_update[region_name][dtype] = data
+        self.make_space(total_size)
 
-            total_size = sum([data[dt].estimate_size() for dt in dtypes_to_add])
-            self.make_space(total_size)
-            self.size += total_size
-            self.cache[region_name] = data
-            self.sizes[region_name] = total_size
+        for region_name, region_data in to_update.items():
+            try:
+                self.cache[region_name].update(region_data)
+            except KeyError:
+                self.cache[region_name] = region_data
+            self.sizes[region_name] = sum(
+                [data.estimate_size() for data in region_data.values()]
+            )
+            self.size += self.sizes[region_name]
 
     def change_max_size(self, new_size: float):
         if new_size > self.size:
@@ -73,7 +82,7 @@ class Cache:
 
     def make_space(self, needed_space: int):
         if needed_space > self.max_size:
-            raise ValueError(
+            raise MemoryError(
                 "Cannot make space for an object larger than the cache itself"
             )
 
@@ -106,7 +115,7 @@ class Cache:
     @singledispatchmethod
     def get(self, region_name: str, dtypes):
         if region_name not in self.cache:
-            raise ValueError("Region not in cache")
+            raise KeyError("Region not in cache")
         if not isinstance(dtypes, list):
             dtypes = [dtypes]
 
@@ -126,7 +135,7 @@ class Cache:
         for region in regions:
             try:
                 output[region] = self.get(region, dtypes)
-            except ValueError:
+            except KeyError:
                 continue
         return switch_major_key(output)
 
