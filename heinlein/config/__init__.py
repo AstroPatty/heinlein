@@ -1,10 +1,26 @@
+import os
+import warnings
 from typing import Any
+
+from pydantic import ValidationError
 
 from heinlein.errors import HeinleinConfigError
 
 from .config import HeinleinConfig
 
-_HEINLEIN_CONFIG = HeinleinConfig()
+try:
+    _HEINLEIN_CONFIG = HeinleinConfig()
+except ValidationError as e:
+    bad_values = {e["loc"][0]: e["msg"] for e in e.errors()}
+    msg = (
+        "heinlein recieved invalid configuration values from the "
+        "environment and will use defaults instead. Invalid values:\n"
+    )
+    msg += "\n".join(f"{k}: {v}" for k, v in bad_values.items())
+    warnings.warn(msg)
+    for k in bad_values.keys():
+        os.environ.pop(f"HEINLEIN_{k}", None)
+    _HEINLEIN_CONFIG = HeinleinConfig()
 
 
 def get_option(option: str) -> Any:
