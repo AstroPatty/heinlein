@@ -12,7 +12,6 @@ from typing import Any, Callable, Optional
 
 import appdirs
 
-from heinlein.config.config import globalConfig
 from heinlein.errors import HeinleinError
 from heinlein.manager.cache import get_cache
 from heinlein.region.base import BaseRegion
@@ -133,7 +132,6 @@ class DataManager:
         name: <str> The name of the dataset
         """
         self.name = name
-        self.globalConfig = globalConfig
         self._setup()
         self._cache = get_cache(self.name)
         self._cache_lock = mp.Lock()
