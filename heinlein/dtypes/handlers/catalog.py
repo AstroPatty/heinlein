@@ -1,12 +1,12 @@
 from pathlib import Path
 
 import numpy as np
-from astropy.io import ascii
 from astropy.table import Table
 from sqlalchemy import create_engine, text
 
 from heinlein.dtypes.catalog import Catalog
 from heinlein.dtypes.handlers import handler
+from heinlein.region import BaseRegion
 
 
 class heinleinIoException(Exception):
@@ -20,43 +20,10 @@ def get_catalog_handler(config: dict, dconfig: dict):
     except KeyError:
         raise heinleinIoException("No catalog path found in config!")
 
-    if path.is_dir():
-        return CsvCatalogHandler(path, dconfig)
-
-    elif path.suffix == ".db":
+    if path.suffix == ".db":
         return SQLiteCatalogHandler(path, dconfig)
     else:
-        raise heinleinIoException("Catalog path is not a directory or a .db file!")
-
-
-class CsvCatalogHandler(handler.Handler):
-    def __init__(self, path: Path, config: dict, *args, **kwargs):
-        super().__init__(path, config, "catalog")
-        self.known_files = [f for f in self._path.glob("*") if f.is_file()]
-
-    def get_data(self, region_names: list, *args, **kwargs):
-        """
-        Default handler for a catalog.
-        Loads a single catalog, assuming the region name can be found in the file name.
-        """
-        storage = {}
-        files = {}
-        for name in region_names:
-            region_file = list(filter(lambda x: name in x.name, self.known_files))
-            if len(region_file) != 1:
-                raise heinleinIoException(f"Multiple files found for region {name}! ")
-            files.update({name: region_file[0]})
-
-        for name, path in files.items():
-            if not path.exists():
-                print(
-                    f"Path {self._path} does not exist! Perhaps it is in an external"
-                    " storage device that isn't attached."
-                )
-                return None
-            data = ascii.read(path)
-            storage.update({name: Catalog(data, self._config)})
-        return storage
+        raise heinleinIoException("Catalog path is not a .db file!")
 
 
 class SQLiteCatalogHandler(handler.Handler):
@@ -76,7 +43,7 @@ class SQLiteCatalogHandler(handler.Handler):
         cur = self.execute_query(sql)
         self._tnames = [t[1] for t in cur.fetchall()]
 
-    def get_data(self, region_names: list, *args, **kwargs):
+    def get_data_from_named_regions(self, region_names: list, *args, **kwargs):
         subregion_key = self._config.get("subregion", None)
         if subregion_key is not None:
             splits = [rname.split(".") for rname in region_names]
@@ -95,6 +62,11 @@ class SQLiteCatalogHandler(handler.Handler):
             storage = self._get(region_names)
 
         return {k: Catalog(table) for k, table in storage.items()}
+
+    def get_data_from_region(
+        self, region: BaseRegion, overlapping_regions: list[str], *args, **kwargs
+    ):
+        raise NotImplementedError("This method is not implemented yet!")
 
     def get_with_subregions(self, regions: dict):
         subregion_key = self._config.get("subregion", None)
