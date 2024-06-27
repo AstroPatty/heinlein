@@ -4,20 +4,21 @@ ENV PATH="~/.local/bin:${PATH}"
 # get poetry
 RUN curl -sSL https://install.python-poetry.org | python3 -
 
-# copy library into container
-COPY pyproject.toml /app/pyproject.toml
-COPY poetry.lock /app/poetry.lock
-COPY README.md /app/README.md
+WORKDIR /app
+
+COPY pyproject.toml pyproject.toml
+COPY poetry.lock poetry.lock
+COPY README.md README.md
+
+# install dependencies
+RUN ~/.local/bin/poetry install --no-root --with develop --without datasets
+
 COPY heinlein /app/heinlein
 COPY datasets /app/datasets
-
-WORKDIR /app
-# install dependencies
-RUN ~/.local/bin/poetry install --with develop
-
 # Install the datasets
 # loop through the datasets and install them
 
+RUN ~/.local/bin/poetry install --with datasets
 
 COPY ./tests /app/tests
 
