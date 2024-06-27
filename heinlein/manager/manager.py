@@ -278,7 +278,6 @@ class DataManager:
         else:
             regnames = set(region_overlaps)
 
-        self.load_handlers()
         data = self.config.get("data", {})
         for dtype in dtypes:
             try:
@@ -304,8 +303,7 @@ class DataManager:
                 data_ = self._handlers[dtype].get_data(regions_to_get, *args, **kwargs)
                 new_data.update({dtype: data_})
 
-        if len(new_data) != 0 and get_option("cache_enabled"):
-            self._cache.add(new_data)
+        self._cache.add(new_data)
         storage = {}
         for dtype in return_types:
             cached_data_of_dtype = cached_data.get(dtype, {})
@@ -338,10 +336,25 @@ class DataManager:
         The manager is responsible for finding the path, and the giving
         it to the handlers
         """
+        self.load_handlers()
+        return_data = {}
+        if get_option("cache_enabled"):
+            storage = self.get_from(dtypes, region_overlaps, *args, **kwargs)
+            storage = self.parse_data(storage, *args, **kwargs)
+            for dtype, obj_ in storage.items():
+                try:
+                    return_data.update({dtype: obj_.get_data_from_region(query_region)})
+                except AttributeError:
+                    return_data.update({dtype: obj_})
+        else:
+            for dtype in dtypes:
+                handler = self._handlers[dtype]
+                data = handler.get_data_from_region(
+                    query_region, region_overlaps, *args, **kwargs
+                )
+                return_data.update({dtype: data})
 
-        storage = self.get_from(dtypes, region_overlaps, *args, **kwargs)
-        storage = self.parse_data(storage, *args, **kwargs)
-        return storage
+        return return_data
 
     def parse_data(self, data, *args, **kwargs) -> dict[str, Any]:
         return_data = {}
