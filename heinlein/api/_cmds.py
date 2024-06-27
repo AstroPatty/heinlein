@@ -51,3 +51,18 @@ def remove(name: str, dtype: str):
 
     manager.remove_data(dtype)
     return True
+
+
+def get(name: str, dtype: str) -> Path:
+    """
+    Get the path to a specific data type in a specific datset
+    """
+    try:
+        manager = DataManager(name)
+    except FileNotFoundError:
+        print(f"Error: dataset {name} does not exist!")
+        return
+
+    path = manager.get_path(dtype)
+
+    return path

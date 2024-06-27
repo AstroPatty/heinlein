@@ -79,3 +79,28 @@ class Footprint:
             return self._sampler.sample(tolerance=tolerance)
         else:
             return [self._sampler.sample(tolerance=tolerance) for _ in range(n)]
+
+    def partition_by_region(
+        self, samples: list[BaseRegion]
+    ) -> dict[str, list[BaseRegion]]:
+        """
+        Given a list of regions, partition based on the regions they overlap
+        with in this footprint. Returns a dictionary by region name. Samples
+        that overlap with multiple regions are placed in a key that is a
+        concatenation of the regions they overlap with.
+        """
+        overlaps = self.get_overlapping_region_names(samples)
+        partitions = {}
+
+        for i, sample in enumerate(samples):
+            overlap = overlaps[i]
+            if len(overlap) == 1:
+                okey = overlap[0]
+            else:
+                overlap.sort()
+                okey = "/".join(overlap)
+            try:
+                partitions[okey].append(sample)
+            except KeyError:
+                partitions[okey] = [sample]
+        return partitions

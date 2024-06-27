@@ -1,3 +1,3 @@
-from ._cmds import add, remove
+from ._cmds import add, get, remove
 
-__all__ = ["add", "remove"]
+__all__ = ["add", "remove", "get"]
