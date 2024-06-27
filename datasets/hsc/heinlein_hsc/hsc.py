@@ -165,7 +165,7 @@ class MaskHandler(Handler):
         super().__init__(path, *args, **kwargs)
         self.known_patches = [f.stem for f in self._path.glob("*") if f.is_dir()]
 
-    def get_data(self, regions, *args, **kwargs):
+    def get_data_from_named_regions(self, regions, *args, **kwargs):
         vals = {}
 
         for name in regions:
@@ -212,6 +212,9 @@ class MaskHandler(Handler):
             vals.update({name: Mask(obj)})
 
         return vals
+
+    def get_data_from_region(self, region, major_regions):
+        raise NotImplementedError
 
     def get_data_object(self, objs):
         objs_ = list(objs.values())

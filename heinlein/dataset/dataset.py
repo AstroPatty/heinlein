@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import logging
 from functools import partial
-from typing import Any, Union
+from typing import Union
 
 import astropy.units as u
-from astropy.coordinates import SkyCoord
 
 from heinlein.dataset.extension import get_extension, load_extensions
 from heinlein.manager import get_manager
@@ -17,20 +16,16 @@ from heinlein.region.footprint import Footprint
 logger = logging.getLogger("Dataset")
 
 
-def load_dataset(name: str) -> Dataset:
-    """
-    Load a dataset by name. This method shold always be used. Do
-    not instantiate the dataset class directly.
-    """
-    manager = get_manager(name)
-    ds = Dataset(manager)
-    ds = setup_dataset(ds)
-    return ds
+def check_overload(f):
+    def wrapper(self, *args, **kwargs):
+        overload = self.manager.get_external(f.__name__)
+        bypass = kwargs.get("bypass", False)
+        if bypass or overload is None:
+            return f(self, *args, **kwargs)
+        else:
+            return overload(self, *args, **kwargs)
 
-
-def load_current_config(name: str):
-    manager = get_manager(name)
-    return manager.config
+    return wrapper
 
 
 def setup_dataset(dataset: Dataset):
@@ -95,61 +90,22 @@ class Dataset:
                 f"{type(self).__name__} object has no attribute '{key__}'"
             )
 
-    def cone_search(
-        self, center: tuple | SkyCoord, radius: u.Quantity, *args, **kwargs
-    ) -> dict[str, Any]:
+    def set_parameter(self, name, value):
         """
-        Perform a cone search on the dataset. Will return a dictionary of format:
-        {"datta_type": data}
-
-        The center can be passed in as a sky coordinate or a tuple of (ra, dec). If
-        a tuple, it is assumed to be in degrees.
+        Parameters are used to store metadata that may be useful to plugins etc.
         """
-        reg = Region.circle(center=center, radius=radius)
-        return self.get_data_from_region(reg, *args, **kwargs)
+        self._parameters.update({name: value})
 
-    def get_data_from_region(
-        self,
-        query_region: BaseRegion,
-        dtypes: Union[str, list] = "catalog",
-        *args,
-        **kwargs,
-    ) -> dict[str, Any]:
+    def get_parameter(self, name):
+        return self._parameters.get(name, None)
+
+    def get_path(self, dtype: str, *args, **kwargs):
         """
-        Get data of of the given types from a provided region. In general,
-        it is better to use cone_search or box_search so you don't have to
-        worry about constructing the region yourself.
-
-        Paramaters:
-
-        region <BaseRegion> heinlein Region object
-        dtypes <str> or <list>: list of data types to return
-
+        Gets the path to where a particular item in a dataset is stored on disk
         """
-        get_overlaps = self.manager.get_external("get_overlapping_regions")
-        if get_overlaps is not None:
-            overlaps = get_overlaps(self, query_region)
-        else:
-            overlaps = self.footprint.get_overlapping_regions(query_region)
-        if len(overlaps) == 0:
-            print("Error: No objects found in this region!")
-            return
+        return self.manager.get_path(dtype)
 
-        data = {}
-        if isinstance(dtypes, str):
-            dtypes = [dtypes]
-
-        data = self.manager.get_data(dtypes, query_region, overlaps, *args, **kwargs)
-        return_data = {}
-        for dtype, obj_ in data.items():
-            try:
-                return_data.update({dtype: obj_.get_data_from_region(query_region)})
-            except AttributeError:
-                return_data.update({dtype: obj_})
-
-        return return_data
-
-    def get_data_from_samples(
+    def sample_generator(
         self,
         samples,
         sample_type="cone",
@@ -159,7 +115,7 @@ class Dataset:
         **kwargs,
     ):
         """
-        Often, we want to get many many samples in a row.
+        Often, we want to get many many samples in a row. The problem here
         is that the cache will very quickly blow up if the samples cover may
         of the survey's subregions. This methord returns a generator that
         yields samples from the survey. It orders them such that it can
@@ -171,8 +127,24 @@ class Dataset:
 
         samples = [Region.circle(center=s, radius=sample_dimensions) for s in samples]
 
-        partitions = self.footprint.partition_by_region(samples)
-        counts = [p.count("/") + 1 for p in partitions.keys()]
+        overlaps = self.footprint.get_overlapping_region_names(samples)
+        partitions = {}
+
+        for i, sample in enumerate(samples):
+            overlap = overlaps[i]
+            if len(overlap) == 1:
+                okey = overlap[0]
+            else:
+                overlap.sort()
+                okey = "/".join(overlap)
+
+            if okey in partitions.keys():
+                partitions[okey].append(sample)
+            else:
+                partitions[okey] = [sample]
+
+        samples = partitions
+        counts = [p.count("/") + 1 for p in samples.keys()]
         singles = []
 
         for i, (regs, s) in enumerate(samples.items()):
@@ -203,3 +175,66 @@ class Dataset:
                 for s_ in s:
                     yield (s_, self.get_data_from_region(s_, dtypes))
                 clear_cache(self.name)
+
+    @check_overload
+    def get_data_from_named_region(
+        self, name: str, dtypes: Union[str, list] = "catalog"
+    ):
+        """
+        Given a region name, returns the data of type dtypes in that region.
+        """
+        if name not in self._region_names:
+            print(f"Unable to find region named {name} in dataset {self.name}")
+            return
+
+        regs_ = self._regions[self._region_names == name]
+        return self.manager.get_from(dtypes, regs_)
+
+    def get_data_from_region(
+        self,
+        query_region: BaseRegion,
+        dtypes: Union[str, list] = "catalog",
+        *args,
+        **kwargs,
+    ) -> dict:
+        """
+        Get data of type dtypes from a particular region
+
+        Paramaters:
+
+        region <BaseRegion> heinlein Region object
+        dtypes <str> or <list>: list of data types to return
+
+        """
+        method = self.manager.get_external("get_overlapping_regions")
+        if method is not None:
+            overlaps = method(self, query_region)
+        else:
+            overlaps = self.footprint.get_overlapping_regions(query_region)
+        if len(overlaps) == 0:
+            print("Error: No objects found in this region!")
+            return
+        if isinstance(dtypes, str):
+            dtypes = [dtypes]
+
+        return self.manager.get_data(dtypes, query_region, overlaps, *args, **kwargs)
+
+    def cone_search(self, center, radius, *args, **kwargs):
+        """
+        A convinience method for doing a cone search. Basically just
+        constructs a circular region and calls get_data_from_region.
+        """
+        reg = Region.circle(center=center, radius=radius)
+        return self.get_data_from_region(reg, *args, **kwargs)
+
+
+def load_dataset(name: str) -> Dataset:
+    manager = get_manager(name)
+    ds = Dataset(manager)
+    ds = setup_dataset(ds)
+    return ds
+
+
+def load_current_config(name: str):
+    manager = get_manager(name)
+    return manager.config

@@ -25,7 +25,7 @@ class FitsMaskHandler(Handler):
     def __init__(self, path: Path, config: dict, *args, **kwargs):
         super().__init__(path, config, "mask")
 
-    def get_data(self, regions, *args, **kwargs):
+    def get_data_from_named_regions(self, regions, *args, **kwargs):
         files = [f for f in self._path.glob("*.fits") if not f.name.startswith(".")]
         output = {}
         for name in regions:

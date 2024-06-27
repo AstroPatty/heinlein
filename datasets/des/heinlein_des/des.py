@@ -40,12 +40,15 @@ class MaskHandler(Handler):
             self.mangle_files = []
         self.plane_files = [f for f in path.glob("plane/*") if f.is_file()]
 
-    def get_data(self, region_names, *args, **kwargs):
+    def get_data_from_named_regions(self, region_names, *args, **kwargs):
         regex = re.compile("|".join(region_names))
         mangle_matches = list(filter(lambda x: regex.match(x.name), self.mangle_files))
         plane_matches = list(filter(lambda x: regex.match(x.name), self.plane_files))
 
         return self._get(region_names, plane_matches, mangle_matches, *args, **kwargs)
+
+    def get_data_from_region(self, region, super_regions):
+        raise NotImplementedError
 
     def _get(self, regions, plane_files, mangle_files=None, *args, **kwargs):
         output = {}

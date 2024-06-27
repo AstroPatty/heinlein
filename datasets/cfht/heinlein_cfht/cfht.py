@@ -29,7 +29,7 @@ class MaskHandler(Handler):
         super().__init__(path, config, "mask")
         self.known_files = [f for f in self._path.glob("*") if f.is_file()]
 
-    def get_data(self, regions, *args, **kwargs):
+    def get_data_from_named_regions(self, regions, *args, **kwargs):
         output = {}
         super_region_names = list(set([n.split("_")[0] for n in regions]))
         regions_ = {
@@ -52,6 +52,9 @@ class MaskHandler(Handler):
             mask_obj = mask.Mask(out, pixarray=True, **self._config)
             output.update({n: mask_obj for n in regions_[name]})
         return output
+
+    def get_data_from_region(self, region, major_regions):
+        raise NotImplementedError
 
     def get_data_object(self, data, *args, **kwargs):
         ids = [id(d) for d in data.values()]
