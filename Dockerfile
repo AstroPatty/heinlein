@@ -10,13 +10,10 @@ COPY pyproject.toml pyproject.toml
 COPY poetry.lock poetry.lock
 COPY README.md README.md
 
-# install dependencies
 RUN ~/.local/bin/poetry install --no-root --with develop --without datasets
 
 COPY heinlein /app/heinlein
 COPY datasets /app/datasets
-# Install the datasets
-# loop through the datasets and install them
 
 RUN ~/.local/bin/poetry install --with datasets
 
