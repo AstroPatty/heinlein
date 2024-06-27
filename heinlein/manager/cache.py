@@ -140,6 +140,8 @@ class Cache:
                 output[region] = self.get(region, dtypes)
             except KeyError:
                 continue
+        if not output:
+            raise KeyError("None of the requested regions are in the cache")
         return switch_major_key(output)
 
     def has_data(self, region_name, dtype):
