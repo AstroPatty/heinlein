@@ -334,7 +334,7 @@ version = "0.2.1"
 description = ""
 optional = false
 python-versions = ">=3.11"
-groups = ["main", "develop"]
+groups = ["main", "datasets"]
 markers = "python_version == \"3.11\" or python_version >= \"3.12\""
 files = []
 develop = false
@@ -349,7 +349,7 @@ version = "0.2.1"
 description = "DES plugin for heinlein"
 optional = false
 python-versions = ">=3.11"
-groups = ["main", "develop"]
+groups = ["main", "datasets"]
 markers = "python_version == \"3.11\" or python_version >= \"3.12\""
 files = []
 develop = false
@@ -364,7 +364,7 @@ version = "0.2.1"
 description = ""
 optional = false
 python-versions = ">=3.11"
-groups = ["main", "develop"]
+groups = ["main", "datasets"]
 markers = "python_version == \"3.11\" or python_version >= \"3.12\""
 files = []
 develop = false
@@ -379,7 +379,7 @@ version = "0.3.0"
 description = ""
 optional = false
 python-versions = ">=3.11"
-groups = ["main", "develop"]
+groups = ["main", "datasets"]
 markers = "python_version == \"3.11\" or python_version >= \"3.12\""
 files = []
 develop = false
@@ -1213,4 +1213,4 @@ ms = ["heinlein-ms"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11"
-content-hash = "ed0ef10be633c8bb25eb69b6d7b30c54c19757bc45a28e74610f2432f627e50d"
+content-hash = "29cf6916b2a2a37ac5c5e22cfd09176b870cdb7ccc67478c989d97df4374e3d1"
