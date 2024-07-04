@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from heinlein.manager.manager import DataManager, initialize_dataset
-from heinlein.utilities import warning_prompt_tf
+from heinlein.utilities import prep, warning_prompt_tf
 
 """
 Backend API functions
@@ -66,3 +66,17 @@ def get(name: str, dtype: str) -> Path:
     path = manager.get_path(dtype)
 
     return path
+
+
+def prep_catalog(name: str, path: Path):
+    """
+    Prepare a catalog for a dataset. The path should be a directory containing
+    the data as CSV files. The database will be created in the same directory.
+    """
+    if path.endswith(".sqlite3"):
+        prep.register_database(name, path)
+
+    csvs = list(path.glob("*.csv"))
+    if not csvs:
+        raise FileNotFoundError(f"No CSV files found in {path}")
+    prep.database_from_csvs(name, path)
