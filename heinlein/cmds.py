@@ -39,11 +39,12 @@ def get(dataset_name, data_type) -> str:
 
 @click.command
 @click.argument("dataset_name")
-@click.argument("path", type=click.Path(exists=True))
+@click.argument("path", type=click.Path(exists=True, path_type=Path))
 def prep_catalog(dataset_name: str, path: Path):
     """
     Prepare a catalog for a dataset. The path should be a directory containing
     the data as CSV files. The database will be created in the same directory.
     """
+    print(path)
     api.prep_catalog(dataset_name, path)
     return True
