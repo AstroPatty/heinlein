@@ -21,7 +21,7 @@ def database_from_csvs(dataset_name: str, csvs: list[Path]):
     db_path = csvs[0].parent / f"{dataset_name}.db"
     engine = create_engine(f"sqlite:///{db_path}").connect()
 
-    region_key = catalog_config["region_key"]
+    region_key = catalog_config["region"]
     index_key = catalog_config["index_key"]
 
     meta = MetaData()

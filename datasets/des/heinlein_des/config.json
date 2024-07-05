@@ -7,7 +7,8 @@
     },
     "dconfig": {
         "catalog": {
-            "region": "TILENAME"
+            "region": "TILENAME",
+            "index_key": "COADD_OBJECT_ID"
         },
         "mask": {
             "mask_key": "MSK"
