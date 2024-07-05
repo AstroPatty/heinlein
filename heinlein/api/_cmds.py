@@ -73,10 +73,10 @@ def prep_catalog(name: str, path: Path):
     Prepare a catalog for a dataset. The path should be a directory containing
     the data as CSV files. The database will be created in the same directory.
     """
-    if path.endswith(".sqlite3"):
+    if path.suffix == ".sqlite3":
         prep.register_database(name, path)
 
     csvs = list(path.glob("*.csv"))
     if not csvs:
         raise FileNotFoundError(f"No CSV files found in {path}")
-    prep.database_from_csvs(name, path)
+    prep.database_from_csvs(name, csvs)

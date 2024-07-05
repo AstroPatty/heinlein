@@ -11,6 +11,7 @@ def cli():
 cli.add_command(cmds.add)
 cli.add_command(cmds.remove)
 cli.add_command(cmds.get)
+cli.add_command(cmds.prep_catalog)
 
 if __name__ == "__main__":
     cli()
