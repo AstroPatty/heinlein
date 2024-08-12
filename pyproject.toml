@@ -23,6 +23,7 @@ click = "^8.1.7"
 pydantic = "^2.7.4"
 pydantic-settings = "^2.3.4"
 polars = "^1.0.0"
+pandas = "^2.2.2"
 
 
 [tool.poetry.group.develop.dependencies]
