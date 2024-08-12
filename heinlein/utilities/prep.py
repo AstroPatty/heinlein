@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import polars as pl
+import pandas as pd
 from sqlalchemy import MetaData, create_engine
 
 from heinlein.dtypes.catalog import load_config
@@ -25,9 +25,9 @@ def database_from_csvs(dataset_name: str, csvs: list[Path]):
     index_key = catalog_config["index_key"]
 
     meta = MetaData()
-    column_config = load_config()["colunms"]
+    column_config = load_config()["columns"]
     for csv in csvs:
-        data = pl.read_csv(csv)
+        data = pd.read_csv(csv)
         for name, aliases in column_config.items():
             for alias in aliases:
                 if alias in data.columns:
@@ -37,36 +37,35 @@ def database_from_csvs(dataset_name: str, csvs: list[Path]):
             raise KeyError(f"Region key {region_key} not found in {csv.name}")
         if index_key not in data.columns:
             raise KeyError(f"Index key {index_key} not found in {csv.name}")
-        partitions = data.partition_by(region_key, as_dict=True)
-        for region, partition in partitions.items():
+        partitions = data.groupby(region_key)
+        for rname, partition in partitions:
             meta.reflect(engine)
             tables_in_db = meta.tables.keys()
-            if region not in tables_in_db:
-                partition.write_database(
-                    region,
+            if rname not in tables_in_db:
+                partition.to_sql(
+                    rname,
                     engine,
                     if_exists="fail",
-                    engine_options={"index_label": index_key},
                 )
 
             else:
                 partition.write_database(
-                    f"{region}_temp",
+                    f"{rname}_temp",
                     engine,
-                    if_exists="fail",
-                    engine_options={"index_label": index_key},
+                    if_table_exists="fail",
                 )
 
                 engine.execute(
                     f"""
-                    INSERT OR IGNORE {region} SELECT * FROM {region}_temp
+                    INSERT OR IGNORE {rname} SELECT * FROM {rname}_temp
                     """
                 )
                 engine.execute(
                     f"""
-                    DROP TABLE {region}_temp
+                    DROP TABLE {rname}_temp
                     """
                 )
+    return db_path
 
 
 def regularize_sqlite_databse(database_path: Path):
