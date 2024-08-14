@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
-from sqlalchemy import MetaData, create_engine
+from sqlalchemy import MetaData, create_engine, text
 
 from heinlein.dtypes.catalog import load_config
 from heinlein.manager.manager import get_manager, initialize_dataset
@@ -49,22 +49,22 @@ def database_from_csvs(dataset_name: str, csvs: list[Path]):
                 )
 
             else:
-                partition.write_database(
+                partition.to_sql(
                     f"{rname}_temp",
                     engine,
-                    if_table_exists="fail",
+                    if_exists="fail",
                 )
 
-                engine.execute(
+                query = text(
                     f"""
-                    INSERT OR IGNORE {rname} SELECT * FROM {rname}_temp
+                    INSERT INTO '{rname}'
+                    SELECT * FROM '{rname}_temp'
+                    WHERE {index_key} NOT IN (SELECT {index_key} FROM '{rname}')
                     """
                 )
-                engine.execute(
-                    f"""
-                    DROP TABLE {rname}_temp
-                    """
-                )
+                engine.execute(query)
+                engine.execute(text(f"DROP TABLE '{rname}_temp'"))
+                engine.commit()
     return db_path
 
 
