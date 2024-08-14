@@ -1,8 +1,11 @@
-OPTIND=1
-while getopts 'i' opt; do
+while getopts 'is:' opt; do
   case $opt in
     i)
       CMD="/bin/bash"
+      TEST_SET=""
+      ;;
+    s)
+      TEST_SET="-e TEST_SET=$OPTARG"
       ;;
     *)
       CMD=""
@@ -10,4 +13,4 @@ while getopts 'i' opt; do
   esac
 done
 
-docker build -t heinlein-test:latest . && docker run -v $HEINLEIN_TEST_DATA:/home/data -it heinlein-test:latest $CMD
+docker build -t heinlein-test:latest . && docker run -v $HEINLEIN_TEST_DATA:/home/data $TEST_SET -it heinlein-test:latest $CMD
