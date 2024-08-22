@@ -8,6 +8,7 @@ while getopts 'is:' opt; do
       TEST_SET="-e TEST_SET=$OPTARG"
       ;;
     *)
+      TEST_SET=""
       CMD=""
       ;;
   esac
