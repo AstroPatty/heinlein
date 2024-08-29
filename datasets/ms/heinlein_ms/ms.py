@@ -89,7 +89,10 @@ def set_field(dataset: Dataset, field: tuple, *args, **kwargs):
         )
         return
     dataset.ms_field = field
-    clear_cache("ms")
+    try:
+        clear_cache("ms")
+    except ValueError:
+        pass
 
 
 @dataset_extension
