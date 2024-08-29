@@ -133,7 +133,6 @@ class DataManager:
         """
         self.name = name
         self._setup()
-        self._cache = get_cache(self.name)
         self._cache_lock = mp.Lock()
 
     def _setup(self, *args, **kwargs) -> None:
@@ -288,7 +287,8 @@ class DataManager:
                     f"Data of type {dtype} not found for dataset {self.name}!"
                 )
 
-        cached_data = self._cache.get(regnames, dtypes)
+        cache = get_cache(self.name)
+        cached_data = cache.get(regnames, dtypes)
 
         for dtype in return_types:
             if dtype in cached_data:
@@ -301,7 +301,7 @@ class DataManager:
                 new_data.update({dtype: data_})
 
         if len(new_data) != 0:
-            self._cache.add(new_data)
+            cache.add(new_data)
         storage = {}
         for dtype in return_types:
             cached_data_of_dtype = cached_data.get(dtype, {})

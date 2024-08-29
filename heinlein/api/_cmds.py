@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from heinlein.manager.manager import DataManager, initialize_dataset
+from heinlein.manager.manager import get_manager, initialize_dataset
 from heinlein.utilities import prep, warning_prompt_tf
 
 """
@@ -23,7 +23,7 @@ def add(name, dtype, path, force=False, *args, **kwargs) -> bool:
         return
 
     try:
-        data_manager = DataManager(name)
+        data_manager = get_manager(name)
     except FileNotFoundError:
         if not force:
             write_new = warning_prompt_tf(
@@ -33,7 +33,7 @@ def add(name, dtype, path, force=False, *args, **kwargs) -> bool:
                 print("Aborting...")
                 return
         initialize_dataset(name, path)
-        data_manager = DataManager(name)
+        data_manager = get_manager(name)
 
     data_manager.add_data(dtype, path)
     return True
@@ -44,7 +44,7 @@ def remove(name: str, dtype: str):
     Remove a datatype from a dataset
     """
     try:
-        manager = DataManager(name)
+        manager = get_manager(name)
     except FileNotFoundError:
         print(f"Error: dataset {name} does not exist!")
         return True
@@ -58,7 +58,7 @@ def get(name: str, dtype: str) -> Path:
     Get the path to a specific data type in a specific datset
     """
     try:
-        manager = DataManager(name)
+        manager = get_manager(name)
     except FileNotFoundError:
         print(f"Error: dataset {name} does not exist!")
     path = manager.get_path(dtype)
