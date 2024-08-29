@@ -25,6 +25,10 @@ pydantic-settings = "^2.3.4"
 polars = "^1.0.0"
 pandas = "^2.2.2"
 
+[tool.pytest.ini_options]
+filterwarnings = [
+    "error",
+    "ignore::astropy.wcs.FITSFixedWarning"]
 
 [tool.poetry.group.develop.dependencies]
 black = "^23.12.1"
