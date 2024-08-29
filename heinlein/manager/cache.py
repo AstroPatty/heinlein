@@ -87,6 +87,7 @@ class Cache:
         if needed_space > self.max_size:
             raise MemoryError(
                 "Cannot make space for an object larger than the cache itself"
+                f". Requested: {needed_space}, Cache size: {self.max_size}"
             )
 
         current_space = self.max_size - self.size
