@@ -108,6 +108,26 @@ class Dataset:
         reg = Region.circle(center=center, radius=radius)
         return self.get_data_from_region(reg, *args, **kwargs)
 
+    def box_search(
+        self,
+        center: tuple | SkyCoord,
+        width: u.Quantity,
+        height: u.Quantity,
+        *args,
+        **kwargs,
+    ) -> dict[str, Any]:
+        """
+        Perform a box search on the dataset. Will return a dictionary of format:
+        {"datta_type": data}
+        """
+        minx = center.ra - width / 2
+        maxx = center.ra + width / 2
+        miny = center.dec - height / 2
+        maxy = center.dec + height / 2
+        reg = Region.box([minx, miny, maxx, maxy])
+
+        return self.get_data_from_region(reg, *args, **kwargs)
+
     def get_data_from_region(
         self,
         query_region: BaseRegion,
