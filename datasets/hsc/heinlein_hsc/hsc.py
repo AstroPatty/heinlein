@@ -3,6 +3,7 @@ import math
 import operator
 import pickle
 import re
+import warnings
 from importlib.resources import read_binary, read_text
 from pathlib import Path
 
@@ -181,7 +182,9 @@ class MaskHandler(Handler):
             if not patch_path.exists():
                 raise ValueError(f"Could not find mask for region {name}")
 
-            mask = reg.Regions.read(str(patch_path))
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                mask = reg.Regions.read(str(patch_path))
             new_masks = np.empty(len(mask), dtype=object)
 
             for i, r in enumerate(mask):

@@ -23,6 +23,11 @@ dependencies = [
     "pyerfa (>=2.0.1.5,<3.0.0.0)"
 ]
 
+[tool.pytest.ini_options]
+filterwarnings = [
+    "error",
+    "ignore::astropy.wcs.FITSFixedWarning"]
+
 [tool.poetry.group.develop.dependencies]
 black = "^23.12.1"
 isort = "^5.13.2"
