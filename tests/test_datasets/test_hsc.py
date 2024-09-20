@@ -3,8 +3,9 @@ from pathlib import Path
 
 import astropy.units as u
 from astropy.coordinates import SkyCoord
+from pytest import fixture
 
-from heinlein import load_dataset
+from heinlein import load_dataset, set_option
 from heinlein.api import add
 from heinlein.region.footprint import Footprint
 
@@ -24,7 +25,8 @@ def add_hsc():
     add("hsc", "mask", str(mask_path), force=True)
 
 
-def test_hsc():
+@fixture
+def center():
     regions_path = DATA_PATH / "hsc" / "test_regions.reg"
     with open(regions_path, "rb") as f:
         regions = pickle.load(f)
@@ -32,19 +34,36 @@ def test_hsc():
     f = Footprint(regions)
     center = f._footprint.centroid
     center = SkyCoord(center.x, center.y, unit="deg")
+    return center
+
+
+@fixture
+def dataset():
+    set_option("CACHE_SIZE", "10G")
+    return load_dataset("hsc")
+
+
+def test_hsc_cone_search(dataset, center):
     second_center = center.directional_offset_by(0, 4 * u.arcmin)
-    d = load_dataset("hsc")
 
-    data = d.cone_search(center, radius, dtypes=["catalog", "mask"])
+    data = dataset.cone_search(center, radius, dtypes=["catalog", "mask"])
     cat = data["catalog"]
     mask = data["mask"]
     masked_cat = mask.mask(cat)
     assert len(cat) >= len(masked_cat)
     assert len(cat) > 0
 
-    data = d.cone_search(second_center, radius, dtypes=["catalog", "mask"])
+    data = dataset.cone_search(second_center, radius, dtypes=["catalog", "mask"])
     cat = data["catalog"]
     mask = data["mask"]
     masked_cat = mask.mask(cat)
     assert len(cat) >= len(masked_cat)
     assert len(cat) > 0
+
+
+def test_hsc_box_search(dataset, center):
+    data = dataset.box_search(center, 2 * radius, dtypes=["catalog", "mask"])
+    cat = data["catalog"]
+    mask = data["mask"]
+    masked_cat = mask.mask(cat)
+    assert len(cat) >= len(masked_cat)
