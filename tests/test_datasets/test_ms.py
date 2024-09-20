@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import astropy.units as u
+from pytest import fixture
 
 from heinlein import load_dataset
 from heinlein.api import add
@@ -14,14 +15,25 @@ def setup_module():
     add_ms()
 
 
+@fixture
+def dataset():
+    dataset = load_dataset("ms")
+    dataset.set_field((3, 5))
+    return dataset
+
+
 def add_ms():
     catalog_path = MS_DATA_PATH / "catalog"
     add("ms", "catalog", str(catalog_path), force=True)
 
 
-def test_ms():
-    d = load_dataset("ms")
-    d.set_field((3, 5))
-    a = d.cone_search((0, 0), radius, dtypes=["catalog"])
+def test_ms(dataset):
+    a = dataset.cone_search((0, 0), radius, dtypes=["catalog"])
+    cat = a["catalog"]
+    assert len(cat) > 0
+
+
+def test_ms_box_search(dataset):
+    a = dataset.box_search((0, 0), radius, dtypes=["catalog"])
     cat = a["catalog"]
     assert len(cat) > 0
