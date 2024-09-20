@@ -44,14 +44,14 @@ def add_cfht():
 
 def test_cfht_cone_search(dataset, center):
     second_center = center.directional_offset_by(0, 4 * u.arcmin)
-    a = d.cone_search(center, radius, dtypes=["catalog", "mask"])
+    a = dataset.cone_search(center, radius, dtypes=["catalog", "mask"])
     cat = a["catalog"]
     mask = a["mask"]
     masked_cat = mask.mask(cat)
     assert len(cat) >= len(masked_cat)
     assert len(cat) > 0
 
-    a = d.cone_search(second_center, radius, dtypes=["catalog", "mask"])
+    a = dataset.cone_search(second_center, radius, dtypes=["catalog", "mask"])
     cat = a["catalog"]
     mask = a["mask"]
     masked_cat = mask.mask(cat)
