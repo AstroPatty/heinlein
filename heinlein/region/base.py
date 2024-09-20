@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from functools import singledispatchmethod
 from typing import Any
 
+import astropy.units as u
 from astropy.coordinates import SkyCoord
 from shapely.geometry import Polygon
 from spherical_geometry.polygon import SingleSphericalPolygon
@@ -96,6 +97,10 @@ class BaseRegion(ABC):
     ) -> Any:
         attr = getattr(self._geometry, method_name)
         return attr(other)
+
+    @property
+    def bounding_box(self, *args, **kwargs) -> tuple:
+        return tuple(v * u.deg for v in self._flat_geometry.bounds)
 
     @property
     def geometry(self, *args, **kwargs):

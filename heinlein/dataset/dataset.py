@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from functools import partial
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 import astropy.units as u
 from astropy.coordinates import SkyCoord
@@ -112,7 +112,7 @@ class Dataset:
         self,
         center: tuple | SkyCoord,
         width: u.Quantity,
-        height: u.Quantity,
+        height: Optional[u.Quantity] = None,
         *args,
         **kwargs,
     ) -> dict[str, Any]:
@@ -120,6 +120,10 @@ class Dataset:
         Perform a box search on the dataset. Will return a dictionary of format:
         {"datta_type": data}
         """
+        if isinstance(center, tuple):
+            center = SkyCoord(*center, unit="deg")
+        if height is None:
+            height = width
         minx = center.ra - width / 2
         maxx = center.ra + width / 2
         miny = center.dec - height / 2
