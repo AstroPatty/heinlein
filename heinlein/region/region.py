@@ -14,13 +14,27 @@ from heinlein.region.base import BaseRegion
 from heinlein.utilities.utilities import initialize_grid
 
 
+def parse_angle_list(angles: list[u.Quantity]):
+    """
+    Parse a list of angles into floats. In units of degrees.
+    """
+    return list(
+        map(
+            lambda angle: angle.to(u.deg).value
+            if isinstance(angle, u.Quantity)
+            else angle,
+            angles,
+        )
+    )
+
+
 class Region:
     @staticmethod
     def circle(
         center: Union[SkyCoord, tuple],
         radius: Union[u.Quantity, float],
         *args,
-        **kwargs
+        **kwargs,
     ):
         """
         Return a circular region. Centered on center, radius of `radius`
@@ -65,7 +79,7 @@ class Region:
             bounds_ = [bounds] + list(args)
         else:
             bounds_ = bounds
-        box_ = geometry.box(*bounds_)
+        box_ = geometry.box(*parse_angle_list(bounds_))
         b_ = Region.polygon(box_)
         b_.box_ = box_
         return b_
@@ -144,7 +158,7 @@ class CircularRegion(BaseRegion):
             center.dec.to(u.deg).value,
             self._radius.to(u.deg).value,
             *args,
-            **kwargs
+            **kwargs,
         )
         super().__init__(geometry, "CircularRegion", name, *args, **kwargs)
 

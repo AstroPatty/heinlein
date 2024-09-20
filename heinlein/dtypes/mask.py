@@ -16,7 +16,7 @@ from shapely.strtree import STRtree
 from spherical_geometry.vector import lonlat_to_vector
 
 from heinlein.dtypes.dobj import HeinleinDataObject
-from heinlein.region import BaseRegion, CircularRegion
+from heinlein.region import BaseRegion
 
 warnings.simplefilter("ignore", category=AstropyWarning)
 
@@ -258,12 +258,10 @@ class _fitsMask(_mask):
         mask = self._check(coords)
         return catalog[mask]
 
-    def get_data_from_region(self, region):
-        if type(region) == CircularRegion:
-            center = region.coordinate
-            size = (region.radius, region.radius)
-        else:
-            return NotImplementedError
+    def get_data_from_region(self, region: BaseRegion):
+        bbox = region.bounding_box
+        center = SkyCoord((bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2)
+        size = (bbox[2] - bbox[0], bbox[3] - bbox[1])
 
         try:
             cutout = Cutout2D(self._mask_plane, center, size, wcs=self._wcs, copy=True)
