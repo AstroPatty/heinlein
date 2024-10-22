@@ -43,15 +43,23 @@ class CsvCatalogHandler(handler.Handler):
         files = {}
         for name in region_names:
             region_file = list(filter(lambda x: name in x.name, self.known_files))
-            if len(region_file) != 1:
-                raise heinleinIoException(f"Multiple files found for region {name}! ")
+            if len(region_file) == 0:
+                raise heinleinIoException(
+                    "No file found for region "
+                    f"{name}! Perhaps it is in an external"
+                    " storage device that isn't attached."
+                )
+            elif len(region_file) != 1:
+                raise heinleinIoException(
+                    "Multiple files found for region {name}! Found {region_file}"
+                )
             files.update({name: region_file[0]})
 
         for name, path in files.items():
             if not path.exists():
                 print(
-                    f"Path {self._path} does not exist! Perhaps it is in an external"
-                    " storage device that isn't attached."
+                    f"Path {self._path} does not exist! Perhaps it is "
+                    "in an external storage device that isn't attached."
                 )
                 return None
             data = ascii.read(path)

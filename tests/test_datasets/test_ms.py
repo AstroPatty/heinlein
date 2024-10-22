@@ -34,6 +34,12 @@ def test_ms(dataset):
 
 
 def test_ms_box_search(dataset):
-    a = dataset.box_search((0, 0), radius, dtypes=["catalog"])
-    cat = a["catalog"]
+    cone_results = dataset.cone_search((0, 0), radius, dtypes=["catalog"])
+    box_results = dataset.box_search((0, 0), radius, dtypes=["catalog"])
+    cat = box_results["catalog"]
     assert len(cat) > 0
+    cone_halo_ids = cone_results["catalog"]["HaloID"]
+    box_halo_ids = cat["HaloID"]
+
+    assert set(cone_halo_ids).issubset(set(box_halo_ids))
+    assert len(cone_halo_ids) < len(box_halo_ids)

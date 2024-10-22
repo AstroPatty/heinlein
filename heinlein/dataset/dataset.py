@@ -129,7 +129,6 @@ class Dataset:
         miny = center.dec - height / 2
         maxy = center.dec + height / 2
         reg = Region.box([minx, miny, maxx, maxy])
-
         return self.get_data_from_region(reg, *args, **kwargs)
 
     def get_data_from_region(
