@@ -41,6 +41,7 @@ def load_regions():
                     key = f"{i}_{j}_{x_i}_{y_i}"
                     reg = Region.polygon(subregion, name=key)
                     regions.update({key: reg})
+
     return regions
 
 

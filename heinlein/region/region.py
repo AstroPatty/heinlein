@@ -68,7 +68,8 @@ class Region:
         elif issubclass(type(coords), BaseGeometry):
             points = coords.exterior.xy
             poly = SingleSphericalPolygon.from_radec(points[0], points[1])
-            return PolygonRegion(poly, *args, **kwargs)
+            region = PolygonRegion(poly, *args, **kwargs)
+            return region
 
     @staticmethod
     def box(bounds, *args, **kwargs):
@@ -106,6 +107,22 @@ class PolygonRegion(BaseRegion):
         Return the center of the region
         """
         return self._flat_geometry.centroid
+
+    def translate(self, x: u.Quantity, y: u.Quantity, *args, **kwargs):
+        """
+        Translate the region by x and y
+        """
+        try:
+            x_min, y_min, x_max, y_max = self.box_.bounds
+            new_bounds = [
+                x_min + x.to_value("deg"),
+                y_min + y.to_value("deg"),
+                x_max + x.to_value("deg"),
+                y_max + y.to_value("deg"),
+            ]
+            return Region.box(*new_bounds)
+        except AttributeError:
+            raise NotImplementedError("Translation not implemented for this region")
 
     def generate_circular_tile(self, radius, *args, **kwargs):
         """
