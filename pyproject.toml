@@ -88,4 +88,4 @@ exclude = [
 ]
 
 [tool.ruff.lint]
-extend-include = ["E501"]
+extend-select = ["E501"]
