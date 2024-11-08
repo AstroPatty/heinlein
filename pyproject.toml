@@ -88,6 +88,4 @@ exclude = [
 "io",
 "test*"
 ]
-
-[tool.ruff.lint]
 extend-select = ["E501"]
