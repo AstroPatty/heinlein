@@ -29,6 +29,12 @@ class Footprint:
     """
     The footprint class is a container for a set of regions. It is used to represent
     the geometry of the survey, which is used to accelerate queries.
+
+    The initial querying for regions is done using Healpix. When a footprint is created,
+    it determines which healpix pixels overlap with each of its regions. The first step
+    in querying is then to determine which healpix pixels overlap with the region being
+    queried, and return
+    the regions that overlap with those pixels.
     """
 
     def __init__(self, regions: dict[str, BaseRegion], *args, **kwargs):
