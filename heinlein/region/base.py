@@ -2,15 +2,10 @@ from __future__ import annotations
 
 import json
 import logging
-from abc import ABC, abstractmethod
-from functools import singledispatchmethod
+from abc import ABC
 from typing import Any
 
-import astropy.units as u
-from astropy.coordinates import SkyCoord
-from shapely.geometry import Polygon
 from spherical_geometry.polygon import SingleSphericalPolygon
-from spherical_geometry.vector import lonlat_to_vector, vector_to_lonlat
 
 from heinlein.locations import MAIN_CONFIG_DIR
 
@@ -27,6 +22,31 @@ def load_config(*args, **kwargs):
         return config
 
 
+def create_bounding_box(bounds: tuple):
+    """
+    Create a SphericalPolygon from bounds, setup as "RA1 DEC1 RA2 DEC2"
+    Note, this does NOT check that the ra_min < ra_max or dec_min < dec_max,
+    because some regions may straddle the 0/360 line or the poles.
+    """
+
+    ra_min, dec_min, ra_max, dec_max = bounds
+    if ra_min == ra_max or dec_min == dec_max:
+        raise ValueError("Invalid bounds: Box has zero width or height")
+    RA_STRADDLES_ZERO = ra_min > ra_max
+    DEC_STRADDLES_POLE = dec_min > dec_max
+    ra_mid = (ra_min + ra_max) / 2
+    dec_mid = (dec_min + dec_max) / 2
+    if RA_STRADDLES_ZERO:
+        ra_mid = (ra_mid + 180) % 360
+    if DEC_STRADDLES_POLE:
+        dec_mid = (dec_mid + 90) % 180
+    ras = [ra_min, ra_max, ra_max, ra_min]
+    decs = [dec_min, dec_min, dec_max, dec_max]
+    return SingleSphericalPolygon.from_radec(
+        ras, decs, center=(ra_mid, dec_mid), degrees=True
+    )
+
+
 current_config = load_config()
 
 
@@ -34,7 +54,12 @@ class BaseRegion(ABC):
     _config = current_config
 
     def __init__(
-        self, geometry: SingleSphericalPolygon, type: str, name=None, *args, **kwargs
+        self,
+        polygon: SingleSphericalPolygon,
+        bounds: tuple,
+        name=None,
+        *args,
+        **kwargs,
     ):
         """
         Base region object.
@@ -46,34 +71,9 @@ class BaseRegion(ABC):
         type: <str> The type of the region
         name: <str> The name of the region (optional)
         """
-        self._spherical_geometry = geometry
-        self._type = type
+        self.spherical_geometry = polygon
+        self.bounding_box = create_bounding_box(bounds)
         self.name = name
-        self.setup()
-
-    def setup(self, *args, **kwargs):
-        """
-        Perform setup for the region
-        """
-
-        if not hasattr(self, "_flat_geometry"):
-            points = self._spherical_geometry.points
-            self._flat_geometry = Polygon(points)
-
-        if not hasattr(self, "_flat_sky_geometry"):
-            points = self._spherical_geometry.points
-            v = vector_to_lonlat(points[:, 0], points[:, 1], points[:, 2])
-            ra = [r.round(2) for r in v[0]]
-            dec = [d.round(2) for d in v[1]]
-            self._flat_sky_geometry = Polygon(list(zip(ra, dec)))
-
-    def __setstate__(self, state):
-        """
-        Fixes reading pickled regions
-        """
-        self.__dict__.update(state)
-        self._config = current_config
-        self.setup()
 
     def __getattr__(self, __name: str) -> Any:
         """
@@ -85,78 +85,9 @@ class BaseRegion(ABC):
             cmd_name = self._config["allowed_predicates"][__name]
             attr = getattr(self.spherical_geometry, cmd_name)
 
-            def func(x):
-                return attr(x.spherical_geometry)
+            def do_predicate(other: BaseRegion):
+                return attr(other.spherical_geometry)
 
-            return func
+            return do_predicate
         except KeyError:
             raise AttributeError(f"{self._type} has no attribute '{__name}'")
-
-    def _delegate_relationship(
-        self, other: BaseRegion, method_name: str, *args, **kwargs
-    ) -> Any:
-        attr = getattr(self._geometry, method_name)
-        return attr(other)
-
-    @property
-    def bounding_box(self, *args, **kwargs) -> tuple:
-        return tuple(v * u.deg for v in self._flat_geometry.bounds)
-
-    @property
-    def geometry(self, *args, **kwargs):
-        """
-        Returns the flattened 3D geometry for the object
-        """
-        return self._flat_geometry
-
-    @property
-    def sky_geometry(self, *args, **kwargs):
-        """
-        Returns the flat geometry, using sky coordinates
-        """
-        return self._flat_sky_geometry
-
-    @property
-    def spherical_geometry(self):
-        """
-        Returns the correct spherical geometry for the object
-        """
-        return self._spherical_geometry
-
-    @property
-    def type(self) -> str:
-        """
-        Returns the type of the region
-        """
-        return self._type
-
-    def center(self, *args, **kwargs):
-        pass
-
-    def get_grid(self, density, *args, **kwargs):
-        try:
-            return self._grids[density]
-
-        except KeyError:
-            g = self.initialize_grid(density)
-            self._grids[density] = g
-            return g
-
-        except AttributeError:
-            self._grids = {}
-            g = self.initialize_grid(density)
-            self._grids[density] = g
-            return g
-
-    @singledispatchmethod
-    def contains(self, point, *args, **kwargs):
-        return self._spherical_geometry.contains_point(point)
-
-    @contains.register
-    def _(self, point: SkyCoord):
-        vec = lonlat_to_vector(point.ra, point.dec)
-        return self.contains(vec)
-
-    @abstractmethod
-    def initialize_grid(self, density, *args, **kwargs):
-        pass
