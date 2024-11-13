@@ -24,6 +24,7 @@ pydantic = "^2.7.4"
 pydantic-settings = "^2.3.4"
 polars = "^1.0.0"
 pandas = "^2.2.2"
+healpy = "^1.18.0"
 
 [tool.pytest.ini_options]
 filterwarnings = [
@@ -64,6 +65,7 @@ cfht = [
 ms = [
     "heinlein-ms>=0.1.0"
 ]
+
 
 
 [tool.poetry.scripts]
