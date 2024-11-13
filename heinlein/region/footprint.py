@@ -1,28 +1,29 @@
 from functools import singledispatchmethod
 
 import astropy.units as u
-from shapely import GeometryCollection, STRtree, union_all
+import healpy
 
 from .region import BaseRegion
 from .sampling import Sampler
 
 
-def build_tree(regions: list[BaseRegion]) -> STRtree:
-    """
-    Builds an STRtree from a list of regions
-    """
-    geos = [r.geometry for r in regions]
-    tree = STRtree(geos)
-    return tree
+def partition_regions(
+    regions: list[BaseRegion], nside: int
+) -> dict[str, list[BaseRegion]]:
+    output = {}
+    for region in regions:
+        pixels = query_healpix(region, nside)
+        pixel_output = output.get(pixels, [])
+        pixel_output.append(region)
+        output[pixels] = pixel_output
+    return output
 
 
-def build_footprint(regions: list[BaseRegion]) -> GeometryCollection:
-    """
-    Stitch together a list of regions into a single footprint
-    """
-    shapely_geos = [r._flat_sky_geometry for r in regions]
-    collection = union_all(shapely_geos)
-    return collection
+def query_healpix(region: BaseRegion, nside: int):
+    lon, lat = region.bounding_box.to_lonlat()
+    lon, lat = lon[:-1], lat[:-1]
+    vecs = healpy.ang2vec(lon, lat, lonlat=True)
+    return healpy.query_polygon(nside, vecs)
 
 
 class Footprint:
@@ -37,11 +38,8 @@ class Footprint:
     the regions that overlap with those pixels.
     """
 
-    def __init__(self, regions: dict[str, BaseRegion], *args, **kwargs):
-        self._regnames = list(regions.keys())
-        self._regions = list(regions.values())
-        self._tree = build_tree(self._regions)
-        self._footprint = build_footprint(self._regions)
+    def __init__(self, regions: list[BaseRegion], nside=64, *args, **kwargs):
+        self._regions = partition_regions(regions, nside)
         self._sampler = Sampler(self._footprint)
 
     @singledispatchmethod
@@ -49,22 +47,20 @@ class Footprint:
         """
         Returns a list of regions that overlap with the given region
         """
-        overlap_idx = self._tree.query(region.geometry)
-        overlaps = [self._regions[i] for i in overlap_idx]
-        overlaps = filter(lambda x: x.intersects(region), overlaps)
-        return list(overlaps)
+        pixels = query_healpix(region, self._nside)
+        overlaps = [self._regions[pixel] for pixel in pixels]
+        output = []
+        for overlap in overlaps:
+            if overlap not in output:
+                output.extend(overlap)
+        # Get only unique regions
+
+        output = filter(lambda ov: ov.intersects_poly(region), overlaps)
+        return list(output)
 
     @get_overlapping_regions.register
     def _(self, region: list) -> list[list[BaseRegion]]:
-        region_overlaps = [self._tree.query(other.geometry) for other in region]
-        overlaps = [
-            [self._regions[i] for i in overlaps] for overlaps in region_overlaps
-        ]
-        overlaps = [
-            [o for o in overlap if o.intersects(region[i])]
-            for i, overlap in enumerate(overlaps)
-        ]
-        return overlaps
+        return [self.get_overlapping_regions(r) for r in region]
 
     def get_overlapping_region_names(
         self, region: BaseRegion | list[BaseRegion]
