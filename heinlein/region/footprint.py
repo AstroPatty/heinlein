@@ -4,7 +4,6 @@ import astropy.units as u
 import healpy
 
 from .region import BaseRegion
-from .sampling import Sampler
 
 
 def partition_regions(
@@ -13,9 +12,10 @@ def partition_regions(
     output = {}
     for region in regions:
         pixels = query_healpix(region, nside)
-        pixel_output = output.get(pixels, [])
-        pixel_output.append(region)
-        output[pixels] = pixel_output
+        for pixel in pixels:
+            pixel_output = output.get(pixel, [])
+            pixel_output.append(region)
+            output[pixel] = pixel_output
     return output
 
 
@@ -23,7 +23,7 @@ def query_healpix(region: BaseRegion, nside: int):
     lon, lat = region.bounding_box.to_lonlat()
     lon, lat = lon[:-1], lat[:-1]
     vecs = healpy.ang2vec(lon, lat, lonlat=True)
-    return healpy.query_polygon(nside, vecs)
+    return healpy.query_polygon(nside, vecs, inclusive=True)
 
 
 class Footprint:
@@ -40,23 +40,21 @@ class Footprint:
 
     def __init__(self, regions: list[BaseRegion], nside=64, *args, **kwargs):
         self._regions = partition_regions(regions, nside)
-        self._sampler = Sampler(self._footprint)
+        self._nside = nside
+        # self._sampler = Sampler(self._footprint)
 
     @singledispatchmethod
-    def get_overlapping_regions(self, region: BaseRegion) -> list[BaseRegion]:
+    def get_overlapping_regions(self, query_region: BaseRegion) -> list[BaseRegion]:
         """
         Returns a list of regions that overlap with the given region
         """
-        pixels = query_healpix(region, self._nside)
-        overlaps = [self._regions[pixel] for pixel in pixels]
+        pixels = query_healpix(query_region, self._nside)
         output = []
-        for overlap in overlaps:
-            if overlap not in output:
-                output.extend(overlap)
-        # Get only unique regions
-
-        output = filter(lambda ov: ov.intersects_poly(region), overlaps)
-        return list(output)
+        for pixel in pixels:
+            overlap = self._regions.get(pixel, [])
+            overlap = filter(lambda region: region.intersects(query_region), overlap)
+            output.extend(overlap)
+        return output
 
     @get_overlapping_regions.register
     def _(self, region: list) -> list[list[BaseRegion]]:

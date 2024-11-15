@@ -5,13 +5,13 @@ from importlib.resources import read_text
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
-from shapely import geometry
 
 from heinlein import Region
 from heinlein.dataset import dataset_extension
 from heinlein.dataset.dataset import Dataset
 from heinlein.errors import HeinleinError
 from heinlein.manager.cache import clear_cache
+from heinlein.region import BaseRegion, BoxRegion, CircularRegion
 
 
 def load_config():
@@ -25,7 +25,7 @@ def load_regions():
     width = (1.0 * u.degree).value
     min = (-1.5 * u.degree).value
     # Locations in the MS are given in radians for reasons unknown.
-    regions = {}
+    regions = []
     for i in range(8):
         for j in range(8):
             for x_i in range(4):
@@ -36,22 +36,36 @@ def load_regions():
                     y_min = y_center - width / 2
                     x_max = x_center + width / 2
                     y_max = y_center + width / 2
-                    subregion = geometry.box(x_min, y_min, x_max, y_max)
                     key = "{}_{}".format(str(x_i), str(y_i))
                     key = f"{i}_{j}_{x_i}_{y_i}"
-                    reg = Region.polygon(subregion, name=key)
-                    regions.update({key: reg})
+                    reg = Region.box((x_min, y_min, x_max, y_max), key)
+                    regions.append(reg)
 
     return regions
 
 
-def get_overlapping_regions(dataset: Dataset, query_region, *args, **kwargs):
+def get_overlapping_regions(
+    dataset: Dataset, query_region: BaseRegion, *args, **kwargs
+):
     field = dataset.get_field()
-
     # move the query region to the correct field
-    overlap_region = query_region.translate(
-        field[0] * 4 * u.degree, field[1] * 4 * u.degree
-    )
+    if isinstance(query_region, CircularRegion):
+        ra, dec = query_region._center
+        new_center = (ra + field[0] * 4, dec + field[1] * 4)
+        radius = query_region._radius
+        overlap_region = Region.circle(new_center, radius)
+    elif isinstance(query_region, BoxRegion):
+        bbox = query_region.bounding_box
+        ra, dec = bbox.to_lonlat()
+        ra_min, ra_max = ra[0], ra[2]
+        dec_min, dec_max = dec[0], dec[2]
+        new_bounds = (
+            ra_min + field[0] * 4,
+            dec_min + field[1] * 4,
+            ra_max + field[0] * 4,
+            dec_max + field[1] * 4,
+        )
+        overlap_region = Region.box(new_bounds)
 
     overlaps = dataset.footprint.get_overlapping_regions(overlap_region)
     return overlaps
