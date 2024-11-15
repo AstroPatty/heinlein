@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import numpy as np
+import pandas as pd
 from astropy.io import ascii
 from astropy.table import Table
 from sqlalchemy import create_engine, text
@@ -81,7 +81,7 @@ class SQLiteCatalogHandler(handler.Handler):
         self._engine = create_engine(f"sqlite:///{self._path}")
         self._con = self._engine.connect()
         sql = "SELECT * FROM sqlite_master where type='table'"
-        cur = self.execute_query(sql)
+        cur = self._con.execute(text(sql))
         self._tnames = [t[1] for t in cur.fetchall()]
 
     def get_data(self, region_names: list, *args, **kwargs):
@@ -102,7 +102,7 @@ class SQLiteCatalogHandler(handler.Handler):
         else:
             storage = self._get(region_names)
 
-        return {k: Catalog(table) for k, table in storage.items()}
+        return {k: Catalog(table, self._config) for k, table in storage.items()}
 
     def get_with_subregions(self, regions: dict):
         subregion_key = self._config.get("subregion", None)
@@ -172,16 +172,13 @@ class SQLiteCatalogHandler(handler.Handler):
 
     def execute_query(self, query):
         q = text(query)
-        cur = self._con.execute(q)
-        return cur
+        data = pd.read_sql(q, self._con)
+        return data
 
-    def _parse_return(self, cursor, *args, **kwargs):
-        rows = cursor.fetchall()
-        if len(rows) == 0:
+    def _parse_return(self, data, *args, **kwargs):
+        if len(data) == 0:
             return Catalog()
-        rows = np.array(rows, dtype=object)
+
         # replace all None with np.nan
-        rows[rows is None] = np.nan
-        columns = cursor.keys()
-        data = Table(rows=rows, names=columns)
+        data = Table.from_pandas(data)
         return data
