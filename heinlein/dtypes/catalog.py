@@ -12,7 +12,7 @@ from spherical_geometry.vector import lonlat_to_vector
 
 from heinlein.dtypes import dobj
 from heinlein.locations import MAIN_CONFIG_DIR
-from heinlein.region import BaseRegion, CircularRegion
+from heinlein.region import BaseRegion
 
 
 def load_config():
@@ -95,40 +95,32 @@ def Catalog(data: Table = None, config: dict = {}, *args, **kwargs):
 
     labeled_data = label_coordinates(data, config)
     catalog_coordinates = get_coordinates(labeled_data)
-    cartesian_points = get_cartesian_points(catalog_coordinates)
     data["coordinates"] = catalog_coordinates
-    return CatalogObject(data, cartesian_points)
+    return CatalogObject(data)
 
 
 class CatalogObject(dobj.HeinleinDataObject):
-    def __init__(self, data: Table, points: np.ndarray):
+    def __init__(self, data: Table):
         self._data = data
-        self._points = points
 
     def __len__(self):
         return len(self._data)
 
     def get_data_from_region(self, region: BaseRegion):
-        if type(region) == CircularRegion:
-            separation = region.coordinate.separation(self._data["coordinates"])
-            mask = separation <= region.radius
-            return self._data[mask]
-
-        return self._data
+        mask = region.contains(self._data["coordinates"])
+        return self._data[mask]
 
     @classmethod
     def combine(cls, objects: list[CatalogObject]):
         data = vstack([o._data for o in objects if len(o._data) > 0])
-        points = np.concatenate([o._points for o in objects])
-        return cls(data, points)
+        return cls(data)
 
     @cache
     def estimate_size(self) -> int:
         data_size = reduce(
             add, [estimate_column_size(self._data[col]) for col in self._data.colnames]
         )
-        coord_size = self._points.nbytes
-        return data_size + coord_size
+        return data_size
 
 
 def estimate_column_size(column: np.ndarray) -> int:

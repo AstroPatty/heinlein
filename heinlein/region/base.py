@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import logging
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Any
 
+from astropy.coordinates import SkyCoord
 from spherical_geometry.polygon import SingleSphericalPolygon
 
 from heinlein.locations import MAIN_CONFIG_DIR
@@ -22,9 +23,9 @@ def load_config(*args, **kwargs):
         return config
 
 
-def create_bounding_box(bounds: tuple):
+def create_bounding_box(bounds: tuple) -> SingleSphericalPolygon:
     """
-    Create a SphericalPolygon from bounds, setup as "RA1 DEC1 RA2 DEC2"
+    Create a SingleSphericalPolygon from bounds, setup as "RA1 DEC1 RA2 DEC2"
     Note, this does NOT check that the ra_min < ra_max or dec_min < dec_max,
     because some regions may straddle the 0/360 line or the poles.
     """
@@ -58,6 +59,7 @@ class BaseRegion(ABC):
         polygon: SingleSphericalPolygon,
         bounds: tuple,
         name=None,
+        regtype=None,
         *args,
         **kwargs,
     ):
@@ -67,13 +69,14 @@ class BaseRegion(ABC):
 
         parameters:
 
-        geometry: <spherical_geometry.SingleSphericalPolygon> The sky region
+        geometry: <spherical_geometry.SphericalPolygon> The sky region
         type: <str> The type of the region
         name: <str> The name of the region (optional)
         """
         self.spherical_geometry = polygon
         self.bounding_box = create_bounding_box(bounds)
         self.name = name
+        self._type = regtype
 
     def __getattr__(self, __name: str) -> Any:
         """
@@ -91,3 +94,17 @@ class BaseRegion(ABC):
             return do_predicate
         except KeyError:
             raise AttributeError(f"{self._type} has no attribute '{__name}'")
+
+    @property
+    def bounds(self):
+        ra, dec = self.bounding_box.to_lonlat()
+        min_ra, max_ra = ra[0], ra[2]
+        min_dec, max_dec = dec[0], dec[1]
+        return min_ra, min_dec, max_ra, max_dec
+
+    @abstractmethod
+    def contains(self, point: SkyCoord) -> bool:
+        """
+        Check if a point is in the region
+        """
+        pass
