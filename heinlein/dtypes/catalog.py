@@ -43,11 +43,15 @@ def label_coordinates(catalog: Table, config: dict = {}):
     Takes a catalog and finds the coordinate columns (ra and dec)
     returns the catalog with the coordinate columns labeled
     """
-    if not config:
-        config = load_config()
+
+    config_has_coord_columns = config.get("columns", False) and config["columns"].get(
+        "ra", False
+    )
+    if not config_has_coord_columns:
+        default_config = load_config()
         columns = set(catalog.colnames)
-        ras = set(config["columns"]["ra"])
-        dec = set(config["columns"]["dec"])
+        ras = set(default_config["columns"]["ra"])
+        dec = set(default_config["columns"]["dec"])
         ra_col = columns.intersection(ras)
         dec_col = columns.intersection(dec)
         if len(ra_col) != 1 or len(dec_col) != 1:

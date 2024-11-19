@@ -41,7 +41,6 @@ class Footprint:
     def __init__(self, regions: list[BaseRegion], nside=64, *args, **kwargs):
         self._regions = partition_regions(regions, nside)
         self._nside = nside
-        # self._sampler = Sampler(self._footprint)
 
     @singledispatchmethod
     def get_overlapping_regions(self, query_region: BaseRegion) -> list[BaseRegion]:

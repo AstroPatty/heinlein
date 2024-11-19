@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from functools import cache, singledispatchmethod
 from gettext import Catalog
 
+import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.io.fits import HDUList
@@ -259,9 +260,9 @@ class _fitsMask(_mask):
         return catalog[mask]
 
     def get_data_from_region(self, region: BaseRegion):
-        bbox = region.bounding_box
-        center = SkyCoord((bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2)
-        size = (bbox[2] - bbox[0], bbox[3] - bbox[1])
+        bounds = [b * u.deg for b in region.bounds]
+        center = SkyCoord((bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2)
+        size = (bounds[2] - bounds[0], bounds[3] - bounds[1])
 
         try:
             cutout = Cutout2D(self._mask_plane, center, size, wcs=self._wcs, copy=True)
