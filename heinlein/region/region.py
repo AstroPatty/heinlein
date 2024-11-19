@@ -65,7 +65,7 @@ class Region:
     ):
         """
         Return a circular region. Centered on center, radius of `radius`
-        The "center" is anything that can be parsed to a SkyCoord
+        The "center" is anything that can be parsed to a SkyCoord_
         If no units provided, will default to degrees
         """
         if not isinstance(center, SkyCoord):
@@ -84,6 +84,33 @@ class Region:
             raise ValueError("Invalid bounds: must be a tuple of 4 values")
         bounds_degree = parse_angle_list(bounds)
         return BoxRegion(bounds_degree, name)
+
+
+class PolygonRegion(BaseRegion):
+    def __init__(
+        self, points: list[tuple], inside=None, name: str = None, *args, **kwargs
+    ):
+        """
+        Polygon region. Accepts a list of points for initialization.
+
+        parameters:
+
+        points <list>: A list of points that define the polygon
+        name <str>: a name for the region (optional)
+        """
+        ra = [point[0] for point in points]
+        dec = [point[1] for point in points]
+        polygon = SingleSphericalPolygon.from_lonlat(ra, dec, inside)
+        ra_min = min(ra)
+        ra_max = max(ra)
+        dec_min = min(dec)
+        dec_max = max(dec)
+        bounds = (ra_min, dec_min, ra_max, dec_max)
+        super().__init__(polygon, bounds, name, "PolygonRegion", *args, **kwargs)
+        self._sampler = None
+
+    def contains(self, point: SkyCoord) -> bool:
+        return self.spherical_geometry.contains_point(point)
 
 
 class BoxRegion(BaseRegion):
