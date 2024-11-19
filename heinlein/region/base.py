@@ -78,22 +78,24 @@ class BaseRegion(ABC):
         self.name = name
         self._type = regtype
 
-    def __getattr__(self, __name: str) -> Any:
+    def __getattribute__(self, __name: str) -> Any:
         """
         Implements geometry relations for regions. Delegates unknown methods to the
         underlying spherical geometry object, IF that method is explicitly permitted
         in heinlein/config/region/region.json
         """
         try:
-            cmd_name = self._config["allowed_predicates"][__name]
-            attr = getattr(self.spherical_geometry, cmd_name)
+            config = object.__getattribute__(self, "_config")
+            cmd_name = config["allowed_predicates"][__name]
+            sg = object.__getattribute__(self, "spherical_geometry")
+            predicate = getattr(sg, cmd_name)
 
             def do_predicate(other: BaseRegion):
-                return attr(other.spherical_geometry)
+                return predicate(other.spherical_geometry)
 
             return do_predicate
-        except KeyError:
-            raise AttributeError(f"{self._type} has no attribute '{__name}'")
+        except (AttributeError, KeyError):
+            return object.__getattribute__(self, __name)
 
     @property
     def bounds(self):

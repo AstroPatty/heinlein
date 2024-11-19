@@ -1,4 +1,4 @@
 from .base import BaseRegion
-from .region import BoxRegion, CircularRegion, Region
+from .region import BoxRegion, CircularRegion, PolygonRegion, Region
 
-__all__ = ["Region", "BaseRegion", "CircularRegion", "BoxRegion"]
+__all__ = ["Region", "BaseRegion", "CircularRegion", "PolygonRegion", "BoxRegion"]
