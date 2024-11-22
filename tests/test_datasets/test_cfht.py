@@ -29,13 +29,13 @@ def center():
     with open(regions_path, "rb") as f:
         regions = pickle.load(f)
     bounds = [r.bounds for r in regions]
+
     overall_bounds = [
         min([b[0] for b in bounds]),
         min([b[1] for b in bounds]),
         max([b[2] for b in bounds]),
         max([b[3] for b in bounds]),
     ]
-    print(overall_bounds)
 
     center = SkyCoord(
         ra=(overall_bounds[0] + overall_bounds[2]) / 2 * u.deg,
