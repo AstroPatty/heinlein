@@ -44,6 +44,7 @@ class Cache:
         self.cache = OrderedDict()
         self.sizes = {}
         self.size = 0
+        self.ref_counts = {}
 
     def add(self, data):
         """
@@ -53,6 +54,7 @@ class Cache:
         data_to_cache = switch_major_key(data)
         total_size = 0
         to_update = {}
+        objects_to_store = set()
         for region_name, region_data in data_to_cache.items():
             to_update[region_name] = {}
             for dtype, data in region_data.items():
@@ -60,7 +62,14 @@ class Cache:
                     raise ValueError(
                         "Cannot add data to the cache that is already in the cache"
                     )
-                total_size += data.estimate_size()
+                if id(data) not in objects_to_store:
+                    objects_to_store.add(id(data))
+                    if id(data) not in self.ref_counts:
+                        self.ref_counts[id(data)] = 1
+                        total_size += data.estimate_size()
+                else:
+                    self.ref_counts[id(data)] += 1
+
                 to_update[region_name][dtype] = data
         self.make_space(total_size)
 
@@ -72,7 +81,7 @@ class Cache:
             self.sizes[region_name] = sum(
                 [data.estimate_size() for data in region_data.values()]
             )
-            self.size += self.sizes[region_name]
+        self.size += total_size
 
     def change_max_size(self, new_size: float):
         if new_size > self.size:
@@ -81,6 +90,7 @@ class Cache:
         else:
             raise ValueError(
                 "Cannot change the cache size to a value smaller than the current size"
+                f". Requested: {new_size}, Current size: {self.size}/{self.max_size}"
             )
 
     def make_space(self, needed_space: int):
@@ -98,9 +108,13 @@ class Cache:
         while space_to_free > 0:
             region_name, region_data = self.cache.popitem()
             region_space = self.sizes.pop(region_name)
-            space_to_free -= region_space
-            self.size -= region_space
-            del region_data
+            data_ids = [id(data) for data in region_data.values()]
+            for did in data_ids:
+                self.ref_counts[did] -= 1
+                if self.ref_counts[did] == 0:
+                    space_to_free -= region_space
+                    self.size -= region_space
+                    del region_data
         return True
 
     def empty(self):
