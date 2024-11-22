@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from copy import copy
 from functools import singledispatchmethod
 
 import heinlein
@@ -54,6 +55,7 @@ class Cache:
         data_to_cache = switch_major_key(data)
         total_size = 0
         to_update = {}
+        new_refs = copy(self.ref_counts)
         objects_to_store = set()
         for region_name, region_data in data_to_cache.items():
             to_update[region_name] = {}
@@ -64,12 +66,11 @@ class Cache:
                     )
                 if id(data) not in objects_to_store:
                     objects_to_store.add(id(data))
-                    if id(data) not in self.ref_counts:
-                        self.ref_counts[id(data)] = 1
-                        total_size += data.estimate_size()
-                else:
-                    self.ref_counts[id(data)] += 1
 
+                nrefs = new_refs.get(id(data), 0)
+                if nrefs == 0:
+                    total_size += data.estimate_size()
+                new_refs[id(data)] = nrefs + 1
                 to_update[region_name][dtype] = data
         self.make_space(total_size)
 
@@ -82,6 +83,7 @@ class Cache:
                 [data.estimate_size() for data in region_data.values()]
             )
         self.size += total_size
+        self.ref_counts = new_refs
 
     def change_max_size(self, new_size: float):
         if new_size > self.size:
