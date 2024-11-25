@@ -2,6 +2,7 @@ import warnings
 from abc import ABC, abstractmethod
 from functools import cache, singledispatchmethod
 from gettext import Catalog
+from typing import Iterable
 
 import astropy.units as u
 import numpy as np
@@ -13,6 +14,7 @@ from astropy.utils.exceptions import AstropyWarning
 from astropy.wcs import WCS, utils
 from shapely import get_num_geometries
 from shapely.geometry import MultiPoint
+from shapely.geometry.base import BaseGeometry
 from shapely.strtree import STRtree
 from spherical_geometry.vector import lonlat_to_vector
 
@@ -24,6 +26,8 @@ warnings.simplefilter("ignore", category=AstropyWarning)
 
 def get_mask_objects(input_list, *args, **kwargs):
     output_data = np.empty(len(input_list), dtype="object")
+    if all(isinstance(obj, BaseGeometry) for obj in input_list):
+        return [_regionMask(input_list)]
     for index, obj in enumerate(input_list):
         if type(obj) == HDUList:
             # if kwargs.get("pixarray", False):
@@ -278,7 +282,7 @@ class _fitsMask(_mask):
 
 
 class _regionMask(_mask):
-    def __init__(self, mask, *args, **kwargs):
+    def __init__(self, mask: Iterable[BaseRegion], *args, **kwargs):
         """
         Implementation for masks defined as regions.
         """
@@ -286,7 +290,7 @@ class _regionMask(_mask):
         self._init_tree()
 
     def _init_tree(self):
-        self._geo_list = np.array([reg.geometry for reg in self._mask])
+        self._geo_list = np.fromiter(self._mask, dtype=object)
         self._geo_tree = STRtree(self._geo_list)
 
     @singledispatchmethod
