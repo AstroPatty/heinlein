@@ -20,13 +20,36 @@ from heinlein.region import Region
 def load_regions():
     regions = read_binary("heinlein_hsc", "regions.reg")
     regions = pickle.loads(regions)
-    return {r.name: r for r in regions}
+    return regions
 
 
 def load_config():
     text = read_text("heinlein_hsc", "config.json")
     config = json.loads(text)
     return config
+
+
+def region_to_shapely(region):
+    """
+    Parses an astropy region object into a shapely object
+    Shapely doesn't work in curved space, but bright star
+    masks are on the scale of arcseconds, so working with
+    a flat sky is safe.
+    """
+    if isinstance(region, reg.CircleSkyRegion):
+        new_region = geometry.Point(
+            region.center.ra.to_value("deg"), region.center.dec.to_value("deg")
+        ).buffer(region.radius.to_value("deg"))
+    elif isinstance(region, reg.RectangleSkyRegion):
+        center = region.center
+        x = center.ra.to_value("deg")
+        y = center.dec.to_value("deg")
+        width = region.width.to_value("deg")
+        height = region.height.to_value("deg")
+        angle = region.angle.to_value("deg")
+        box = geometry.box(x - width / 2, y - height / 2, x + width / 2, y + height / 2)
+        new_region = affinity.rotate(box, angle)
+    return new_region
 
 
 def _load_region_data(files, *args, **kwargs):
@@ -167,54 +190,33 @@ class MaskHandler(Handler):
         self.known_patches = [f.stem for f in self._path.glob("*") if f.is_dir()]
 
     def get_data(self, regions, *args, **kwargs):
-        vals = {}
+        masks = {}
 
         for name in regions:
-            split = name.split(".")
+            name_split = name.split(".")
+            tract_name = name_split[0]
+            patch_number = name_split[1]
+
             basename = "BrightStarMask-{}-{},{}-HSC-I.reg"
-            patch_tuple = _patch_int_to_tuple(int(split[1]))
-            tract_name = split[0]
+            patch_tuple = _patch_int_to_tuple(int(patch_number))
+
             if tract_name not in self.known_patches:
                 raise ValueError(f"Could not find masks for HSC tract {tract_name}")
 
-            fname = basename.format(split[0], patch_tuple[0], patch_tuple[1])
-            patch_path = self._path / tract_name / fname
+            filename = basename.format(tract_name, patch_tuple[0], patch_tuple[1])
+            patch_path = self._path / tract_name / filename
+
             if not patch_path.exists():
                 raise ValueError(f"Could not find mask for region {name}")
 
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 mask = reg.Regions.read(str(patch_path))
-            new_masks = np.empty(len(mask), dtype=object)
 
-            for i, r in enumerate(mask):
-                if type(r) == reg.CircleSkyRegion:
-                    new_reg = Region.circle(r.center, r.radius.to_value("deg"))
-                elif type(r) == reg.RectangleSkyRegion:
-                    center = r.center
-                    x = center.ra.to_value("deg")
-                    y = center.dec.to_value("deg")
-                    width = r.width.to_value("deg")
-                    height = r.height.to_value("deg")
-                    angle = r.angle.to_value("deg")
-                    box = geometry.box(
-                        x - width / 2, y - height / 2, x + width / 2, y + height / 2
-                    )
-                    new_reg = affinity.rotate(box, angle)
-                    x_coords, y_coords = new_reg.exterior.xy
-                    inside = (x, y)
-                    new_reg = SingleSphericalPolygon.from_lonlat(
-                        x_coords, y_coords, center=inside
-                    )
-                    new_reg = Region.polygon(new_reg)
+            shapely_regions = [region_to_shapely(r) for r in mask]
+            masks.update({name: Mask(shapely_regions)})
 
-                new_masks[i] = new_reg
-
-            obj = np.empty(1, dtype=object)
-            obj[0] = new_masks
-            vals.update({name: Mask(obj)})
-
-        return vals
+        return masks
 
     def get_data_object(self, objs):
         objs_ = list(objs.values())
