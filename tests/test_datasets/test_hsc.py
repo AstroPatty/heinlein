@@ -30,10 +30,14 @@ def center():
     regions_path = DATA_PATH / "hsc" / "test_regions.reg"
     with open(regions_path, "rb") as f:
         regions = pickle.load(f)
-    regions = {r.name: r for r in regions}
-    f = Footprint(regions)
-    center = f._footprint.centroid
-    center = SkyCoord(center.x, center.y, unit="deg")
+    bounds = [r.bounds for r in regions]
+    min_ra = min([b[0] for b in bounds])
+    max_ra = max([b[2] for b in bounds])
+    min_dec = min([b[1] for b in bounds])
+    max_dec = max([b[3] for b in bounds])
+    center = SkyCoord(
+        ra=(min_ra + max_ra) / 2 * u.deg, dec=(min_dec + max_dec) / 2 * u.deg
+    )
     return center
 
 

@@ -37,7 +37,6 @@ def test_ms_box_search(dataset):
     cone_results = dataset.cone_search((0, 0), radius, dtypes=["catalog"])
     box_results = dataset.box_search((0, 0), 2 * radius, dtypes=["catalog"])
     cat = box_results["catalog"]
-    assert False
     assert len(cat) > 0
     cone_halo_ids = cone_results["catalog"]["HaloID"]
     box_halo_ids = cat["HaloID"]

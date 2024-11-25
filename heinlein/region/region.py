@@ -110,7 +110,9 @@ class PolygonRegion(BaseRegion):
         self._sampler = None
 
     def contains(self, point: SkyCoord) -> bool:
-        return self.spherical_geometry.contains_point(point)
+        return self.spherical_geometry.contains_radec(
+            point.ra.deg, point.dec.deg, degrees=True
+        )
 
 
 class BoxRegion(BaseRegion):
