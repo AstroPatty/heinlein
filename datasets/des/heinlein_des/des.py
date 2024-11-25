@@ -63,15 +63,15 @@ class MaskHandler(Handler):
                 continue
 
             plane_path = plane_file[0]
-            plane_msk = fits.open(plane_path, memmap=True)
-            masks = [plane_msk]
+            with fits.open(plane_path, memmap=True) as plane_msk:
+                masks = [plane_msk]
 
-            if mangle_files:
-                mangle_path = mangle_file[0]
-                mangle_msk = pymangle.Mangle(str(mangle_path))
-                masks.append(mangle_msk)
+                if mangle_files:
+                    mangle_path = mangle_file[0]
+                    mangle_msk = pymangle.Mangle(str(mangle_path))
+                    masks.append(mangle_msk)
 
-            output.update({region: Mask(masks, pixarray=True, **self._config)})
+                output.update({region: Mask(masks, pixarray=True, **self._config)})
         return output
 
     def get_data_object(self, data, *args, **kwargs):

@@ -12,6 +12,7 @@ from typing import Any, Callable, Optional
 
 import appdirs
 
+import heinlein
 from heinlein.errors import HeinleinError
 from heinlein.manager.cache import get_cache
 from heinlein.region.base import BaseRegion
@@ -286,9 +287,10 @@ class DataManager:
                 raise MissingDataError(
                     f"Data of type {dtype} not found for dataset {self.name}!"
                 )
-
-        cache = get_cache(self.name)
-        cached_data = cache.get(regnames, dtypes)
+        cached_data = {}
+        if cache_enabled := heinlein.get_option("CACHE_ENABLED"):
+            cache = get_cache(self.name)
+            cached_data = cache.get(regnames, dtypes)
 
         for dtype in return_types:
             if dtype in cached_data:
@@ -300,7 +302,7 @@ class DataManager:
                 data_ = self._handlers[dtype].get_data(regions_to_get, *args, **kwargs)
                 new_data.update({dtype: data_})
 
-        if len(new_data) != 0:
+        if cache_enabled and len(new_data) != 0:
             cache.add(new_data)
         storage = {}
         for dtype in return_types:

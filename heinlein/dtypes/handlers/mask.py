@@ -33,11 +33,11 @@ class FitsMaskHandler(Handler):
             if len(matches) > 1:
                 logging.error(f"Error: Found more than one mask for region {name}")
                 continue
-
-            data = fits.open(matches[0])
-            out = np.empty(1, dtype="object")
-            out[0] = data
-            output.update({name: out})
+            file = matches[0]
+            with fits.open(file) as data:
+                out = np.empty(1, dtype="object")
+                out[0] = data
+                output.update({name: out})
 
         return output
 

@@ -45,11 +45,11 @@ class MaskHandler(Handler):
                 continue
 
             path = matches[0]
-            data = fits.open(path)
-            out = np.empty(1, dtype="object")
-            out[0] = data
-            mask_obj = mask.Mask(out, pixarray=True, **self._config)
-            output.update({n: mask_obj for n in regions_[name]})
+            with fits.open(path) as data:
+                out = np.empty(1, dtype="object")
+                out[0] = data
+                mask_obj = mask.Mask(out, pixarray=True, **self._config)
+                output.update({n: mask_obj for n in regions_[name]})
         return output
 
     def get_data_object(self, data, *args, **kwargs):
