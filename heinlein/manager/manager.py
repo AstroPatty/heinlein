@@ -267,7 +267,7 @@ class DataManager:
         return True
 
     @check_overload
-    def get_from(
+    def get_in_regions(
         self, dtypes: list, region_overlaps: list, *args, **kwargs
     ) -> dict[str, Any]:
         return_types = []
@@ -277,7 +277,6 @@ class DataManager:
         else:
             regnames = set(region_overlaps)
 
-        self.load_handlers()
         data = self.config.get("data", {})
         for dtype in dtypes:
             try:
@@ -288,9 +287,8 @@ class DataManager:
                     f"Data of type {dtype} not found for dataset {self.name}!"
                 )
         cached_data = {}
-        if cache_enabled := heinlein.get_option("CACHE_ENABLED"):
-            cache = get_cache(self.name)
-            cached_data = cache.get(regnames, dtypes)
+        cache = get_cache(self.name)
+        cached_data = cache.get(regnames, dtypes)
 
         for dtype in return_types:
             if dtype in cached_data:
@@ -304,7 +302,7 @@ class DataManager:
                 )
                 new_data.update({dtype: data_})
 
-        if cache_enabled and len(new_data) != 0:
+        if len(new_data) != 0:
             cache.add(new_data)
         storage = {}
         for dtype in return_types:
@@ -338,9 +336,38 @@ class DataManager:
         The manager is responsible for finding the path, and the giving
         it to the handlers
         """
-
-        storage = self.get_from(dtypes, region_overlaps, *args, **kwargs)
+        self.load_handlers()
+        if heinlein.get_option("CACHE_ENABLED"):
+            storage = self.get_in_regions(dtypes, region_overlaps, *args, **kwargs)
+        else:
+            storage = self.get_in_query_region(
+                dtypes, query_region, region_overlaps, *args, **kwargs
+            )
         storage = self.parse_data(storage, *args, **kwargs)
+        return storage
+
+    def get_in_query_region(
+        self,
+        dtypes: list,
+        query_region: BaseRegion,
+        region_overlaps: list,
+        *args,
+        **kwargs,
+    ) -> dict[str, Any]:
+        data_info = self.config.get("data", {})
+        for dtype in dtypes:
+            try:
+                _ = data_info[dtype]
+            except KeyError:
+                raise MissingDataError(
+                    f"Data of type {dtype} not found for dataset {self.name}!"
+                )
+        storage = {}
+        for dtype in dtypes:
+            data = self._handlers[dtype].get_data_in_region(
+                region_overlaps, query_region
+            )
+            storage.update({dtype: data})
         return storage
 
     def parse_data(self, data, *args, **kwargs) -> dict[str, Any]:
