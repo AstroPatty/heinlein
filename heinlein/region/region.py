@@ -207,11 +207,12 @@ class CircularRegion(BaseRegion):
             *self._center,
             self._radius,
         )
+
         bounds = (
-            self._center[0] - self._radius,
-            self._center[1] - self._radius,
-            self._center[0] + self._radius,
-            self._center[1] + self._radius,
+            self._skypoint.directional_offset_by(270 * u.deg, self.radius).ra.deg,
+            self._skypoint.directional_offset_by(180 * u.deg, self.radius).dec.deg,
+            self._skypoint.directional_offset_by(90 * u.deg, self.radius).ra.deg,
+            self._skypoint.directional_offset_by(0 * u.deg, self.radius).dec.deg,
         )
         super().__init__(geometry, bounds, name, "CircularRegion", *args, **kwargs)
 

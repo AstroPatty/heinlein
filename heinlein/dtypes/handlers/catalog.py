@@ -117,7 +117,6 @@ class SQLiteCatalogHandler(handler.Handler):
 
         if not ra_cols or not dec_cols:
             raise ValueError("Catalog does not have the correct columns for ra and dec")
-
         storage = {}
         with Session(self._engine) as session:
             for region in survey_regions:
@@ -136,9 +135,11 @@ class SQLiteCatalogHandler(handler.Handler):
                         table.c[ra_name].between(ra_min, ra_max)
                         & table.c[dec_name].between(dec_min, dec_max)
                     )
+                    print(ra_min, ra_max, dec_min, dec_max)
                     result = session.execute(stmt).fetchall()
-                    data = AstropyTable(rows=result, names=table.columns.keys())
-                    storage.update({region: Catalog(data, self._config)})
+                    if len(result) != 0:
+                        data = AstropyTable(rows=result, names=table.columns.keys())
+                        storage.update({region: Catalog(data, self._config)})
 
                 else:
                     raise ValueError(f"Table {region} not found in database!")

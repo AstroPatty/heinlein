@@ -29,7 +29,6 @@ def create_bounding_box(bounds: tuple) -> SingleSphericalPolygon:
     Note, this does NOT check that the ra_min < ra_max or dec_min < dec_max,
     because some regions may straddle the 0/360 line or the poles.
     """
-
     ra_min, dec_min, ra_max, dec_max = bounds
     if ra_min == ra_max or dec_min == dec_max:
         raise ValueError("Invalid bounds: Box has zero width or height")
@@ -41,8 +40,8 @@ def create_bounding_box(bounds: tuple) -> SingleSphericalPolygon:
         ra_mid = (ra_mid + 180) % 360
     if DEC_STRADDLES_POLE:
         dec_mid = (dec_mid + 90) % 180
-    ras = [ra_min, ra_max, ra_max, ra_min]
-    decs = [dec_min, dec_min, dec_max, dec_max]
+    ras = [ra_min, ra_min, ra_max, ra_max]
+    decs = [dec_min, dec_max, dec_max, dec_min]
     return SingleSphericalPolygon.from_radec(
         ras, decs, center=(ra_mid, dec_mid), degrees=True
     )
@@ -75,6 +74,7 @@ class BaseRegion(ABC):
         """
         self.spherical_geometry = polygon
         self.bounding_box = create_bounding_box(bounds)
+        self.bounds = bounds
         self.name = name
         self._type = regtype
 
@@ -96,13 +96,6 @@ class BaseRegion(ABC):
             return do_predicate
         except (AttributeError, KeyError):
             return object.__getattribute__(self, __name)
-
-    @property
-    def bounds(self):
-        ra, dec = self.bounding_box.to_lonlat()
-        min_ra, max_ra = ra[0], ra[2]
-        min_dec, max_dec = dec[0], dec[1]
-        return min_ra, min_dec, max_ra, max_dec
 
     @abstractmethod
     def contains(self, point: SkyCoord) -> bool:

@@ -124,11 +124,11 @@ class Dataset:
             center = SkyCoord(*center, unit="deg")
         if height is None:
             height = width
-        minx = center.ra - width / 2
-        maxx = center.ra + width / 2
-        miny = center.dec - height / 2
-        maxy = center.dec + height / 2
-        reg = Region.box([minx, miny, maxx, maxy])
+        ra_min = center.directional_offset_by(270 * u.deg, width / 2).ra.deg
+        ra_max = center.directional_offset_by(90 * u.deg, width / 2).ra.deg
+        dec_min = center.directional_offset_by(180 * u.deg, height / 2).dec.deg
+        dec_max = center.directional_offset_by(0 * u.deg, height / 2).dec.deg
+        reg = Region.box([ra_min, dec_min, ra_max, dec_max])
         return self.get_data_from_region(reg, *args, **kwargs)
 
     def get_data_from_region(

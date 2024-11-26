@@ -51,6 +51,28 @@ def test_des_cone_search(dataset):
     assert all(masked_cat["coordinates"].separation(new_center) < radius)
 
 
+def test_cache_option(dataset):
+    heinlein.set_option("CACHE_ENABLED", False)
+    data = dataset.cone_search(DES_CENTER, radius, dtypes=["catalog", "mask"])
+    no_cache_cat = data["catalog"]
+    no_cache_mask = data["mask"]
+    heinlein.set_option("CACHE_ENABLED", True)
+    data = dataset.cone_search(DES_CENTER, radius, dtypes=["catalog", "mask"])
+    cache_cat = data["catalog"]
+    cache_mask = data["mask"]
+    import numpy as np
+
+    diff = set(cache_cat["COADD_OBJECT_ID"]) - set(no_cache_cat["COADD_OBJECT_ID"])
+    print(diff)
+    mask = np.fromiter(
+        map(lambda x: x in diff, cache_cat["COADD_OBJECT_ID"]), dtype=bool
+    )
+    diff_rows = cache_cat[mask]
+    print(diff_rows)
+    assert len(no_cache_cat) == len(cache_cat)
+    assert len(no_cache_mask) == len(cache_mask)
+
+
 def test_des_box_search(dataset):
     a = dataset.box_search(DES_CENTER, radius, dtypes=["catalog", "mask"])
     cat = a["catalog"]
