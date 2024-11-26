@@ -55,14 +55,14 @@ def test_hsc_cone_search(dataset, center):
     mask = data["mask"]
     masked_cat = mask.mask(cat)
     assert len(cat) >= len(masked_cat)
-    assert len(cat) > 0
+    assert all(masked_cat["coordinates"].separation(center) < radius)
 
     data = dataset.cone_search(second_center, radius, dtypes=["catalog", "mask"])
     cat = data["catalog"]
     mask = data["mask"]
     masked_cat = mask.mask(cat)
     assert len(cat) >= len(masked_cat)
-    assert len(cat) > 0
+    assert all(masked_cat["coordinates"].separation(second_center) < radius)
 
 
 def test_hsc_box_search(dataset, center):

@@ -58,14 +58,14 @@ def test_cfht_cone_search(dataset, center):
     mask = a["mask"]
     masked_cat = mask.mask(cat)
     assert len(cat) >= len(masked_cat)
-    assert len(cat) > 0
+    assert all(masked_cat["coordinates"].separation(center) < radius)
 
     a = dataset.cone_search(second_center, radius, dtypes=["catalog", "mask"])
     cat = a["catalog"]
     mask = a["mask"]
     masked_cat = mask.mask(cat)
     assert len(cat) >= len(masked_cat)
-    assert len(cat) > 0
+    assert all(masked_cat["coordinates"].separation(second_center) < radius)
 
 
 def test_cfht_box_search(dataset, center):

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import astropy.units as u
+from astropy.coordinates import SkyCoord
 from pytest import fixture
 
 from heinlein import load_dataset
@@ -28,9 +29,11 @@ def add_ms():
 
 
 def test_ms(dataset):
+    coordinate = SkyCoord(0, 0, unit="deg")
     a = dataset.cone_search((0, 0), radius, dtypes=["catalog"])
     cat = a["catalog"]
     assert len(cat) > 0
+    assert all(cat["coordinates"].separation(coordinate) < radius)
 
 
 def test_ms_box_search(dataset):

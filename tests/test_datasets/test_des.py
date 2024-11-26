@@ -40,6 +40,7 @@ def test_des_cone_search(dataset):
     mask = a["mask"]
     masked_cat = mask.mask(cat)
     assert len(cat) >= len(masked_cat)
+    assert all(masked_cat["coordinates"].separation(DES_CENTER) < radius)
 
     new_center = DES_CENTER.directional_offset_by(0, 4 * u.arcmin)
     a = dataset.cone_search(new_center, radius, dtypes=["catalog", "mask"])
@@ -47,6 +48,7 @@ def test_des_cone_search(dataset):
     mask = a["mask"]
     masked_cat = mask.mask(cat)
     assert len(cat) >= len(masked_cat)
+    assert all(masked_cat["coordinates"].separation(new_center) < radius)
 
 
 def test_des_box_search(dataset):
