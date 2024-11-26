@@ -363,10 +363,9 @@ class DataManager:
                     f"Data of type {dtype} not found for dataset {self.name}!"
                 )
         storage = {}
+        region_names = [r.name for r in region_overlaps]
         for dtype in dtypes:
-            data = self._handlers[dtype].get_data_in_region(
-                region_overlaps, query_region
-            )
+            data = self._handlers[dtype].get_data_in_region(region_names, query_region)
             storage.update({dtype: data})
         return storage
 
@@ -374,6 +373,7 @@ class DataManager:
         return_data = {}
         for dtype, values in data.items():
             # Now, we process into useful objects and filter further
+            print(values)
             if data is None:
                 logger.error(f"Unable to find data of type {dtype}")
                 continue

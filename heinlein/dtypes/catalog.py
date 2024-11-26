@@ -97,8 +97,7 @@ def Catalog(data: Table = None, config: dict = {}, *args, **kwargs):
     if data is None:
         data = Table()
     if len(data) == 0:
-        points = np.array([])
-        return CatalogObject(data, points)
+        return CatalogObject(data)
 
     labeled_data = label_coordinates(data, config)
     catalog_coordinates = get_coordinates(labeled_data)

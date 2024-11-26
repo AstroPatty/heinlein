@@ -49,7 +49,7 @@ class MaskHandler(Handler):
         return self._get(region_names, plane_matches, mangle_matches, *args, **kwargs)
 
     def get_data_in_region(self, survey_names: list[str], query_region: BaseRegion):
-        pass
+        return self.get_data_by_regions(survey_names, query_region)
 
     def _get(self, regions, plane_files, mangle_files=None, *args, **kwargs):
         output = {}

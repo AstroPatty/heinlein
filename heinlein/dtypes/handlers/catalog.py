@@ -1,10 +1,13 @@
 import json
 from pathlib import Path
 
-import pandas as pd
+import astropy.units as u
 from astropy.io import ascii
-from astropy.table import Table
-from sqlalchemy import create_engine, text
+from astropy.table import Table as AstropyTable
+from sqlalchemy import MetaData
+from sqlalchemy import Table as SQLTable
+from sqlalchemy import create_engine, inspect, select
+from sqlalchemy.orm import Session
 
 from heinlein.dtypes.catalog import Catalog
 from heinlein.dtypes.handlers import handler
@@ -91,48 +94,55 @@ class SQLiteCatalogHandler(handler.Handler):
 
     def create_engine(self, *args, **kwargs):
         self._engine = create_engine(f"sqlite:///{self._path}")
-        self._con = self._engine.connect()
-        sql = "SELECT * FROM sqlite_master where type='table'"
-        cur = self._con.execute(text(sql))
-        self._tnames = [t[1] for t in cur.fetchall()]
+        self._inspector = inspect(self._engine)
+        self._metadata = MetaData()
+        self._metadata.reflect(bind=self._engine)
+        # Get the table names
+        self._tnames = self._inspector.get_table_names()
 
     def get_data_in_region(self, survey_regions: list[str], query_region: BaseRegion):
         ra_min, dec_min, ra_max, dec_max = query_region.bounds
         ra_cols = self._config.get("columns", {}).get("ra", [])
         dec_cols = self._config.get("columns", {}).get("dec", [])
-
+        ra_min, dec_min, ra_max, dec_max = query_region.bounds
         if not isinstance(ra_cols, list):
             ra_cols = [ra_cols["key"]]
+            ra_min = (ra_min * u.deg).to(ra_cols["unit"]).value
+            ra_max = (ra_max * u.deg).to(ra_cols["unit"]).value
+
         if not isinstance(dec_cols, list):
             dec_cols = [dec_cols["key"]]
+            dec_min = (dec_min * u.deg).to(dec_cols["unit"]).value
+            dec_max = (dec_max * u.deg).to(dec_cols["unit"]).value
 
         if not ra_cols or not dec_cols:
             raise ValueError("Catalog does not have the correct columns for ra and dec")
 
         storage = {}
-        for region in survey_regions:
-            if region in self._tnames:
-                db_column_names = self._engine.execute(
-                    f"PRAGMA table_info({region})"
-                ).fetchall()
-                db_column_names = [c[1] for c in db_column_names]
-                ra_col = set(ra_cols) & set(db_column_names)
-                dec_col = set(dec_cols) & set(db_column_names)
-                if len(ra_col) != 1 or len(dec_col) != 1:
-                    raise ValueError(
-                        "Catalog does not have the correct columns for ra and dec"
+        with Session(self._engine) as session:
+            for region in survey_regions:
+                if region in self._tnames:
+                    table = SQLTable(region, self._metadata, autoload_with=self._engine)
+                    db_columns = table.columns.keys()
+                    ra_col = set(ra_cols) & set(db_columns)
+                    dec_col = set(dec_cols) & set(db_columns)
+                    if len(ra_col) != 1 or len(dec_col) != 1:
+                        raise ValueError(
+                            "Catalog does not have the correct columns for ra and dec"
+                        )
+                    ra_name = list(ra_col)[0]
+                    dec_name = list(dec_col)[0]
+                    stmt = select(table).where(
+                        table.c[ra_name].between(ra_min, ra_max)
+                        & table.c[dec_name].between(dec_min, dec_max)
                     )
-                ra_name = list(ra_col)[0]
-                dec_name = list(dec_col)[0]
-                ranges = {
-                    ra_name: (ra_min, ra_max),
-                    dec_name: (dec_min, dec_max),
-                }
-                data = self.get_in_ranges(region, ranges)
-                storage.update({region: Catalog(data, self._config)})
+                    result = session.execute(stmt).fetchall()
+                    data = AstropyTable(rows=result, names=table.columns.keys())
+                    storage.update({region: Catalog(data, self._config)})
 
-            else:
-                raise ValueError(f"Table {region} not found in database!")
+                else:
+                    raise ValueError(f"Table {region} not found in database!")
+        return storage
 
     def get_data_by_regions(self, survey_regions: list[str], *args, **kwargs):
         subregion_key = self._config.get("subregion", None)
@@ -151,94 +161,42 @@ class SQLiteCatalogHandler(handler.Handler):
             storage = self.get_with_subregions(regions_to_get)
         else:
             storage = self.get(survey_regions)
-
         return {k: Catalog(table, self._config) for k, table in storage.items()}
 
     def get_with_subregions(self, regions: dict):
         subregion_key = self._config.get("subregion", None)
         region_key = self._config.get("region", None)
         storage = {}
-        for region, subregions in regions.items():
-            region_names = [".".join([region, sr]) for sr in subregions]
-            if str(region) in self._tnames:
-                table = self.get_where(region, {subregion_key: subregions})
-                if len(table) != 0:
-                    for index, sr in enumerate(subregions):
-                        mask = (table[region_key].astype(str) == region) & (
-                            table[subregion_key].astype(str) == sr
-                        )
-                        storage.update({region_names[index]: table[mask]})
-                else:
-                    storage.update({sr: Catalog() for sr in region_names})
-                    # This needs to be fixed
-            elif len(self._tnames) == 1:
+        with Session(self._engine) as session:
+            for region, subregions in regions.items():
                 region_names = [".".join([region, sr]) for sr in subregions]
-
-                table = self.get_where(
-                    self._tnames[0],
-                    {region_key: region.name, subregion_key: subregions},
-                )
-                for index, sr in enumerate(subregions):
-                    mask = table[subregion_key] == sr
-                    storage.update({region_names[index]: table[mask]})
-            else:
-                storage.update({sr: Table() for sr in region_names})
+                if str(region) in self._tnames:
+                    table = SQLTable(region, self._metadata, autoload_with=self._engine)
+                    stmt = select(table).where(table.c[subregion_key].in_(subregions))
+                    result = session.execute(stmt).fetchall()
+                    data = AstropyTable(rows=result, names=table.columns.keys())
+                    if len(data) != 0:
+                        for index, sr in enumerate(subregions):
+                            mask = (data[region_key].astype(str) == region) & (
+                                data[subregion_key].astype(str) == sr
+                            )
+                            storage.update({region_names[index]: data[mask]})
+                    else:
+                        storage.update({sr: AstropyTable() for sr in region_names})
+                        # This needs to be fixed
+                else:
+                    storage.update({sr: AstropyTable() for sr in region_names})
         return storage
 
     def get(self, region_names: list):
         storage = {}
-        for region in region_names:
-            if region in self._tnames:
-                table = self.get_all(region)
-
-                storage.update({region: table})
-
-            elif len(self._tnames) == 1:
-                region_key = self._config.get("region", None)
-                table = self.get_where(self._tnames[0], {region_key: region.name})
-                storage.update({region: table})
+        if not set(region_names).issubset(self._tnames):
+            raise ValueError(f"Tables {region_names} not found in database!")
+        with Session(self._engine) as session:
+            for region in region_names:
+                table = SQLTable(region, self._metadata, autoload_with=self._engine)
+                stmt = select(table)
+                result = session.execute(stmt).fetchall()
+                data = AstropyTable(rows=result, names=table.columns.keys())
+                storage.update({region: data})
         return storage
-
-    def get_in_ranges(self, tname: str, ranges: dict[str, tuple]):
-        base_query = f'SELECT * FROM "{tname}" WHERE '
-        base_condition = "{} BETWEEN {} AND {}"
-        output_conditions = []
-        for k, (v1, v2) in ranges.items():
-            output_conditions.append(base_condition.format(k, v1, v2))
-        query = base_query + " AND ".join(output_conditions)
-        table = self.execute_query(query)
-        return self._parse_return(table)
-
-    def get_where(self, tname: str, conditions: dict):
-        base_query = f'SELECT * FROM "{tname}" WHERE '
-        base_condition = '{} = "{}"'
-        multiple_base_conditions = "{} IN ({})"
-        output_conditions = []
-        for k, vs in conditions.items():
-            if isinstance(vs, list):
-                c = '","'.join([str(v) for v in vs])
-                c = '"' + c + '"'
-                output_conditions.append(multiple_base_conditions.format(k, c))
-            else:
-                output_conditions.append(base_condition.format(k, vs))
-        query = base_query + " AND ".join(output_conditions)
-        table = self.execute_query(query)
-        return self._parse_return(table)
-
-    def get_all(self, tname):
-        query = f'SELECT * FROM "{tname}"'
-        table = self.execute_query(query)
-        return self._parse_return(table)
-
-    def execute_query(self, query):
-        q = text(query)
-        data = pd.read_sql(q, self._con)
-        return data
-
-    def _parse_return(self, data, *args, **kwargs):
-        if len(data) == 0:
-            return Catalog()
-
-        # replace all None with np.nan
-        data = Table.from_pandas(data)
-        return data

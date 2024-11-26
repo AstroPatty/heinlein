@@ -29,7 +29,7 @@ class MaskHandler(Handler):
         self.known_files = [f for f in self._path.glob("*") if f.is_file()]
 
     def get_data_in_region(self, survey_regions, query_region):
-        pass
+        return self.get_data_by_regions(survey_regions)
 
     def get_data_by_regions(self, survey_regions, *args, **kwargs):
         output = {}

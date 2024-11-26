@@ -190,7 +190,33 @@ class MaskHandler(Handler):
         self.known_patches = [f.stem for f in self._path.glob("*") if f.is_dir()]
 
     def get_data_in_region(self, survey_regions, query_region):
-        pass
+        masks = {}
+        bounds = query_region.bounds
+        query_region_bbox = geometry.box(*bounds)
+        for name in survey_regions:
+            name_split = name.split(".")
+            tract_name = name_split[0]
+            patch_number = name_split[1]
+
+            basename = "BrightStarMask-{}-{},{}-HSC-I.reg"
+            patch_tuple = _patch_int_to_tuple(int(patch_number))
+
+            if tract_name not in self.known_patches:
+                raise ValueError(f"Could not find masks for HSC tract {tract_name}")
+
+            filename = basename.format(tract_name, patch_tuple[0], patch_tuple[1])
+            patch_path = self._path / tract_name / filename
+
+            if not patch_path.exists():
+                raise ValueError(f"Could not find mask for region {name}")
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                mask = reg.Regions.read(str(patch_path))
+            shapely_regions = list(
+                mask.map(region_to_shapely).filter(query_region_bbox.intersects)
+            )
+            masks.update({name: Mask(shapely_regions)})
 
     def get_data_by_regions(self, survey_regions, *args, **kwargs):
         masks = {}
