@@ -43,29 +43,32 @@ def label_coordinates(catalog: Table, config: dict = {}):
     Takes a catalog and finds the coordinate columns (ra and dec)
     returns the catalog with the coordinate columns labeled
     """
+    ra_cols = config.get("columns", {}).get("ra", {})
+    dec_cols = config.get("columns", {}).get("dec", {})
 
-    config_has_coord_columns = config.get("columns", False) and config["columns"].get(
-        "ra", False
-    )
-    if not config_has_coord_columns:
-        default_config = load_config()
+    if isinstance(ra_cols, list):
         columns = set(catalog.colnames)
-        ras = set(default_config["columns"]["ra"])
-        dec = set(default_config["columns"]["dec"])
+        ras = set(ra_cols)
         ra_col = columns.intersection(ras)
-        dec_col = columns.intersection(dec)
-        if len(ra_col) != 1 or len(dec_col) != 1:
+        if len(ra_col) != 1:
             raise ValueError("Catalog does not have the correct columns for ra and dec")
         ra_name = list(ra_col)[0]
-        dec_name = list(dec_col)[0]
         ra_unit = u.deg
-        dec_unit = u.deg
-    else:
-        ra_name = config["columns"]["ra"]["key"]
-        dec_name = config["columns"]["dec"]["key"]
-        ra_unit_name = config["columns"]["ra"].get("unit", "deg")
-        dec_unit_name = config["columns"]["dec"].get("unit", "deg")
+    elif isinstance(ra_cols, dict):
+        ra_name = ra_cols.get("key")
+        ra_unit_name = ra_cols.get("unit", "deg")
         ra_unit = getattr(u, ra_unit_name)
+    if isinstance(dec_cols, list):
+        columns = set(catalog.colnames)
+        decs = set(dec_cols)
+        dec_col = columns.intersection(decs)
+        if len(dec_col) != 1:
+            raise ValueError("Catalog does not have the correct columns for ra and dec")
+        dec_name = list(dec_col)[0]
+        dec_unit = u.deg
+    elif isinstance(dec_cols, dict):
+        dec_name = dec_cols.get("key")
+        dec_unit_name = dec_cols.get("unit", "deg")
         dec_unit = getattr(u, dec_unit_name)
 
     catalog.rename_columns([ra_name, dec_name], ["ra", "dec"])

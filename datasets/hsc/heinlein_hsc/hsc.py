@@ -189,10 +189,13 @@ class MaskHandler(Handler):
         super().__init__(path, *args, **kwargs)
         self.known_patches = [f.stem for f in self._path.glob("*") if f.is_dir()]
 
-    def get_data(self, regions, *args, **kwargs):
+    def get_data_in_region(self, survey_regions, query_region):
+        pass
+
+    def get_data_by_regions(self, survey_regions, *args, **kwargs):
         masks = {}
 
-        for name in regions:
+        for name in survey_regions:
             name_split = name.split(".")
             tract_name = name_split[0]
             patch_number = name_split[1]

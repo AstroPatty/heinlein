@@ -222,7 +222,6 @@ class _fitsMask(_mask):
 
         wcs = WCS(mask[0].header)
         mask_key = mask_key
-        print(mask)
         mask_plane = mask[mask_key].data
         return cls(mask, wcs, mask_plane)
 

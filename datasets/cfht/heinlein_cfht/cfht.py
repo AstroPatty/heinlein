@@ -28,11 +28,14 @@ class MaskHandler(Handler):
         super().__init__(path, config, "mask")
         self.known_files = [f for f in self._path.glob("*") if f.is_file()]
 
-    def get_data(self, regions, *args, **kwargs):
+    def get_data_in_region(self, survey_regions, query_region):
+        pass
+
+    def get_data_by_regions(self, survey_regions, *args, **kwargs):
         output = {}
-        super_region_names = list(set([n.split("_")[0] for n in regions]))
+        super_region_names = list(set([n.split("_")[0] for n in survey_regions]))
         regions_ = {
-            n: list(filter(lambda x: x.startswith(n), regions))
+            n: list(filter(lambda x: x.startswith(n), survey_regions))
             for n in super_region_names
         }
         for name in super_region_names:

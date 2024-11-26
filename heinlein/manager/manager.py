@@ -299,7 +299,9 @@ class DataManager:
                 regions_to_get = regnames
 
             if len(regions_to_get) != 0:
-                data_ = self._handlers[dtype].get_data(regions_to_get, *args, **kwargs)
+                data_ = self._handlers[dtype].get_data_by_regions(
+                    regions_to_get, *args, **kwargs
+                )
                 new_data.update({dtype: data_})
 
         if cache_enabled and len(new_data) != 0:
