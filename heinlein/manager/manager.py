@@ -80,9 +80,6 @@ def get_external_implementation(name: str) -> Optional[ModuleType]:
                 f" separately. You can install it with `pip install heinlein_{name}`."
             )
             return None
-        print(module)
-        a = getattr(module, name)
-        print(a)
         return getattr(module, name)
 
 
