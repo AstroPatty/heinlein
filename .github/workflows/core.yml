@@ -23,9 +23,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
       - name: install poetry
         uses: abatilo/actions-poetry@v3
       - name: Build with poetry
@@ -38,9 +38,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
       - name: install poetry
         uses: abatilo/actions-poetry@v3
       - name: Build ${{ matrix.dataset }}
@@ -57,10 +57,10 @@ jobs:
     needs: [build-core-wheel]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
-      - uses: JRubics/poetry-publish@v2.0
+          python-version: "3.11"
+      - uses: JRubics/poetry-publish@v2.1
         with:
           pypi_token: ${{ secrets.PYPI_API_TOKEN }}
 
@@ -77,7 +77,6 @@ jobs:
       id: build_changelog
       uses: mikepenz/release-changelog-builder-action@v4
     - uses: actions/download-artifact@v3
-    - uses: ncipollo/release-action@v1.13.0
+    - uses: ncipollo/release-action@v1
       with:
-        token: ${{ secrets.RELEASE_TOKEN }}
         body: ${{ steps.build_changelog.outputs.changelog }}
