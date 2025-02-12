@@ -1,7 +1,7 @@
 import json
 import pickle
 import re
-from importlib.resources import read_binary, read_text
+from importlib.resources import files
 from pathlib import Path
 
 from astropy.io import fits
@@ -19,14 +19,16 @@ EXPORT = ["load_regions"]
 
 
 def load_regions():
-    data = read_binary("heinlein_des", "regions.reg")
-    regions = pickle.loads(data)
+    resources = files("heinlein_des")
+    with open(resources / "regions.reg", "rb") as f:
+        regions = pickle.load(f)
     return regions
 
 
 def load_config():
-    data = read_text("heinlein_des", "config.json")
-    config = json.loads(data)
+    resources = files("heinlein_des")
+    with open(resources / "config.json") as f:
+        config = json.load(f)
     return config
 
 

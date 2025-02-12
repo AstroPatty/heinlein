@@ -1,6 +1,6 @@
 import json
 import logging
-from importlib.resources import read_text
+from importlib.resources import files
 
 import astropy.units as u
 import numpy as np
@@ -15,8 +15,9 @@ from heinlein.region import BaseRegion, BoxRegion, CircularRegion
 
 
 def load_config():
-    data = read_text("heinlein_ms", "config.json")
-    config = json.loads(data)
+    source = files("heinlein_ms") / "config.json"
+    with open(source) as f:
+        config = json.load(f)
     return config
 
 
