@@ -1,9 +1,6 @@
-<<<<<<< HEAD
 import io
 from contextlib import redirect_stdout
-=======
 from pathlib import Path
->>>>>>> e5fe91f (Add some commands)
 
 import click
 
@@ -38,16 +35,12 @@ def get(dataset_name, data_type) -> str:
     """
     Get the path to a specific data type in a specific datset
     """
-<<<<<<< HEAD
     # Capture any print statements
 
     with redirect_stdout(io.StringIO()) as _:
         path = api.get(dataset_name, data_type)
 
     click.echo(path)
-=======
-    path = api.get(dataset_name, data_type)
-    return str(path)
 
 
 @click.command(name="prep")
@@ -71,4 +64,3 @@ def prep(dataset_name: str, path: Path, data_type: str = "catalog"):
         case _:
             raise NotImplementedError()
     return True
->>>>>>> e5fe91f (Add some commands)
