@@ -1,17 +1,15 @@
-[tool.poetry]
+[project]
 name = "heinlein_des"
-version = "0.2.0"
+version = "0.2.1"
 description = "DES plugin for heinlein"
-authors = ["Patrick Wells <pwells@ucdavis.edu>"]
+authors = [{name="Patrick Wells", email="patrick@astropatty.com"}]
 readme = "README.md"
 packages = [{include = "heinlein_des"}]
-
-[tool.poetry.dependencies]
-python = "^3.10"
+requires-python = "^3.10"
 
 
 [tool.poetry.group.heinlein.dependencies]
-heinlein = "^0.7.0"
+heinlein = "^0.9.0"
 
 [build-system]
 requires = ["poetry-core"]
