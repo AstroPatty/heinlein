@@ -113,8 +113,8 @@ logger = logging.getLogger("manager")
 class DataManager:
     def __init__(self, name, *args, **kwargs):
         """
-        The datamanger is a fairly thin wrapper around godata to track where data is
-        and store configuration.
+        The datamanger just tracks where data and configuration are for
+        a given dataset.
 
         parameters:
 

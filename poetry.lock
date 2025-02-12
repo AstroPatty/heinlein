@@ -338,7 +338,7 @@ name = "heinlein-cfht"
 version = "0.2.1"
 description = ""
 optional = false
-python-versions = "^3.10"
+python-versions = ">=3.10"
 groups = ["main", "develop"]
 markers = "python_version <= \"3.11\" or python_version >= \"3.12\""
 files = []
@@ -353,7 +353,7 @@ name = "heinlein-des"
 version = "0.2.1"
 description = "DES plugin for heinlein"
 optional = false
-python-versions = "^3.10"
+python-versions = ">=3.10"
 groups = ["main", "develop"]
 markers = "python_version <= \"3.11\" or python_version >= \"3.12\""
 files = []
@@ -368,7 +368,7 @@ name = "heinlein-hsc"
 version = "0.2.1"
 description = ""
 optional = false
-python-versions = "^3.10"
+python-versions = ">=3.10"
 groups = ["main", "develop"]
 markers = "python_version <= \"3.11\" or python_version >= \"3.12\""
 files = []
@@ -383,7 +383,7 @@ name = "heinlein-ms"
 version = "0.2.1"
 description = ""
 optional = false
-python-versions = "^3.10"
+python-versions = ">=3.10"
 groups = ["main", "develop"]
 markers = "python_version <= \"3.11\" or python_version >= \"3.12\""
 files = []
@@ -1203,5 +1203,5 @@ ms = ["heinlein-ms"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = "^3.10"
-content-hash = "abf8fc1561b67e937ee3cef7d0d211de51a74b0a48c6ef1822dd66e997aaf98d"
+python-versions = ">=3.10"
+content-hash = "fd71871d096a96a9d7cdcbf6c0dcc0b14370954b8f5f2667a720af3a9d7387da"
