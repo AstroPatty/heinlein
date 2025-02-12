@@ -703,28 +703,28 @@ virtualenv = ">=20.10.0"
 
 [[package]]
 name = "pyerfa"
-version = "2.0.1.1"
+version = "2.0.1.5"
 description = "Python bindings for ERFA"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "python_version == \"3.11\" or python_version >= \"3.12\""
 files = [
-    {file = "pyerfa-2.0.1.1-cp39-abi3-macosx_10_9_x86_64.whl", hash = "sha256:1ce322ac30673c2aeb0ee22ced4938c1e9e26db0cbe175912a213aaff42383df"},
-    {file = "pyerfa-2.0.1.1-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:67dfc00dcdea87a9b3c0bb4596fb0cfb54ee9c1c75fdcf19411d1029a18f6eec"},
-    {file = "pyerfa-2.0.1.1-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:34ee545780246fb0d1d3f7e46a6daa152be06a26b2d27fbfe309cab9ab488ea7"},
-    {file = "pyerfa-2.0.1.1-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1db85db72ab352da6ffc790e41209d8f41feb5b175d682cf1f0e3e60e9e5cdf8"},
-    {file = "pyerfa-2.0.1.1-cp39-abi3-musllinux_1_1_x86_64.whl", hash = "sha256:c50b7cdb005632931b7b56a679cf25361ed6b3aa7c21e491e65cc89cb337e66a"},
-    {file = "pyerfa-2.0.1.1-cp39-abi3-win32.whl", hash = "sha256:30649047b7a8ce19f43e4d18a26b8a44405a6bb406df16c687330a3b937723b2"},
-    {file = "pyerfa-2.0.1.1-cp39-abi3-win_amd64.whl", hash = "sha256:94df7566ce5a5abb14e2dd1fe879204390639e9a76383ec27f10598eb24be760"},
-    {file = "pyerfa-2.0.1.1-pp39-pypy39_pp73-macosx_10_9_x86_64.whl", hash = "sha256:0e95cf3d11f76f473bf011980e9ea367ca7e68ca675d8b32499814fb6e387d4c"},
-    {file = "pyerfa-2.0.1.1-pp39-pypy39_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:08b5abb90b34e819c1fca69047a76c0d344cb0c8fe4f7c8773f032d8afd623b4"},
-    {file = "pyerfa-2.0.1.1-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:1c0c1efa701cab986aa58d03c58f77e47ea1898bff2684377d29580a055f836a"},
-    {file = "pyerfa-2.0.1.1.tar.gz", hash = "sha256:dbac74ef8d3d3b0f22ef0ad3bbbdb30b2a9e10570b1fa5a98be34c7be36c9a6b"},
+    {file = "pyerfa-2.0.1.5-cp39-abi3-macosx_10_9_x86_64.whl", hash = "sha256:b282d7c60c4c47cf629c484c17ac504fcb04abd7b3f4dfcf53ee042afc3a5944"},
+    {file = "pyerfa-2.0.1.5-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:be1aeb70390dd03a34faf96749d5cabc58437410b4aab7213c512323932427df"},
+    {file = "pyerfa-2.0.1.5-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:b0603e8e1b839327d586c8a627cdc634b795e18b007d84f0cda5500a0908254e"},
+    {file = "pyerfa-2.0.1.5-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0e43c7194e3242083f2350b46c09fd4bf8ba1bcc0ebd1460b98fc47fe2389906"},
+    {file = "pyerfa-2.0.1.5-cp39-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:07b80cd70701f5d066b1ac8cce406682cfcd667a1186ec7d7ade597239a6021d"},
+    {file = "pyerfa-2.0.1.5-cp39-abi3-win32.whl", hash = "sha256:d30b9b0df588ed5467e529d851ea324a67239096dd44703125072fd11b351ea2"},
+    {file = "pyerfa-2.0.1.5-cp39-abi3-win_amd64.whl", hash = "sha256:66292d437dcf75925b694977aa06eb697126e7b86553e620371ed3e48b5e0ad0"},
+    {file = "pyerfa-2.0.1.5-pp39-pypy39_pp73-macosx_10_15_x86_64.whl", hash = "sha256:4991dee680ff36c87911d8faa4c7d1aa6278ad9b5e0d16158cf22fa7d74ba25c"},
+    {file = "pyerfa-2.0.1.5-pp39-pypy39_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:690e258294202c86f479e78e80fd235cd27bd717f7f60062fccc3dbd6ef0b1a9"},
+    {file = "pyerfa-2.0.1.5-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:171ce9676a448a7eb555f03aa19ad5c749dbced1ce4f9923e4d93443c4a9c612"},
+    {file = "pyerfa-2.0.1.5.tar.gz", hash = "sha256:17d6b24fe4846c65d5e7d8c362dcb08199dc63b30a236aedd73875cc83e1f6c0"},
 ]
 
 [package.dependencies]
-numpy = ">=1.19"
+numpy = ">=1.19.3"
 
 [package.extras]
 docs = ["sphinx-astropy (>=1.3)"]
@@ -859,40 +859,36 @@ files = [
 
 [[package]]
 name = "regions"
-version = "0.8"
+version = "0.10"
 description = "An Astropy coordinated package for region handling"
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.10"
 groups = ["main"]
 markers = "python_version == \"3.11\" or python_version >= \"3.12\""
 files = [
-    {file = "regions-0.8-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:382984e843bb69c6dfe6604740def429767f3f3eb112dd6712e964ace818b7b2"},
-    {file = "regions-0.8-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:f767fceb55e928672b8e2af5a3af8c65794eb88e6ec4f2a92e63ed45c31e3440"},
-    {file = "regions-0.8-cp310-cp310-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:252e32aab87f1f452ca9240bfdef004c49fb171fadff50e05b227d2c5849936c"},
-    {file = "regions-0.8-cp310-cp310-win_amd64.whl", hash = "sha256:3418d425d919d0d66fda78566c40ae9734522241dad3879681c07c13e5fa923b"},
-    {file = "regions-0.8-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:61daa87b4211f1f0b20aceaed589f5ebeb20a95e9f6f11874eb930c0c198e095"},
-    {file = "regions-0.8-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:7206394950cb15e5db4a72d05fb5b449894ea1dc374f9f811ccc187e9fc4e41d"},
-    {file = "regions-0.8-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:58c614402d4da1607ac95645afd65da3ffa46082d8d35e6b81913ab0ea188a07"},
-    {file = "regions-0.8-cp311-cp311-win_amd64.whl", hash = "sha256:471562123977b98df6520fdd7caffbe71293592f33b3b07c6908be8941f7b2d2"},
-    {file = "regions-0.8-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:8faab7f5c786a360a0e2ae9be38e92b67749036aabfe309b490749d0fc7dc593"},
-    {file = "regions-0.8-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:7b2043a2166f1d3aeaf5835aa9e7a7e0ea1d1a183ba9dc9bf8b548c85ea2dcef"},
-    {file = "regions-0.8-cp312-cp312-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0e80901c4f1b16d020f17c1849dbe889a3c5eb25c8b63ef232faad82a5a04fc6"},
-    {file = "regions-0.8-cp312-cp312-win_amd64.whl", hash = "sha256:fda7e03618bbd4e40d9636e600a0ea4decd31f0b32f76495c0076806c87a3948"},
-    {file = "regions-0.8-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:665799aa02a3978abdfdb889b43768511259b2f961b24e55e7314f555f8d457d"},
-    {file = "regions-0.8-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:d2d4fbe2282a156484ac4dd09cd03e4b7e6f78e3d21363a6fb9bee193a82aed8"},
-    {file = "regions-0.8-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4078461e1458393fd8306b5a32e6d96fdda42ecd49a8809aed19bbd3b63335b9"},
-    {file = "regions-0.8-cp39-cp39-win_amd64.whl", hash = "sha256:984949b39267818ff6cd0cf874843eb172881f517de54f41b7166b87514a20b5"},
-    {file = "regions-0.8.tar.gz", hash = "sha256:02b37f19533d30dcb053c2fb2e8d3b24a55d213acd7e7622a3df8874fe0d8024"},
+    {file = "regions-0.10-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:f29875f04c85daf64ab2321cac97459e338760b145fbdfb09f60c28f164b5554"},
+    {file = "regions-0.10-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:8d7844fe33206c9180bf21a7982b2eed816fff50eb91f8f73adbe9ac2763019e"},
+    {file = "regions-0.10-cp310-cp310-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5852f7e84ebf6d74ca62b2dd6c724b325aa088c8ce478ee2a79e88a168843aec"},
+    {file = "regions-0.10-cp310-cp310-win_amd64.whl", hash = "sha256:b307169a7d5e15a8e94895c2d03b8154725958439d993a191e50da20277fb4e1"},
+    {file = "regions-0.10-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:ff9ae69b7629d55a8257129771d900b1d75e1bce24cdb69f954aa60f4ef62929"},
+    {file = "regions-0.10-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:1aed9a15dd76ad80464a11f45be718b4553bb469c9fe38dbbbf21731f174e064"},
+    {file = "regions-0.10-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:744f1b8a50309660ac716fe545d297e4dc734d8c6b877a4cbf4b83337c26d725"},
+    {file = "regions-0.10-cp311-cp311-win_amd64.whl", hash = "sha256:502a131a4c4feb3cfef3f0e7ce2ebd9a1033b1f1b0537e0b736f0337bb46e55b"},
+    {file = "regions-0.10-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:d79dd921c311b1084be79942b4ab2a07df055952c24770b9c4be12a6f71b7b82"},
+    {file = "regions-0.10-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:dde792254f1dfed111e0bcea904d0004daa6511e8040c53bcb2f0bd25b518021"},
+    {file = "regions-0.10-cp312-cp312-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:9f04830e9c6950da0bf185409409a4dac7e9b951739b92d0d8116b8868097d34"},
+    {file = "regions-0.10-cp312-cp312-win_amd64.whl", hash = "sha256:e1f5c5b924afd5285b42cdf0ab9cfeb72739765b80eb3db80c7bea42fc030970"},
+    {file = "regions-0.10.tar.gz", hash = "sha256:961c518ea044268de0003a17953de3d4984623e9d47ad5424c100f6967e69a81"},
 ]
 
 [package.dependencies]
-astropy = ">=5.0"
-numpy = ">=1.22"
+astropy = ">=5.1"
+numpy = ">=1.23"
 
 [package.extras]
 all = ["matplotlib (>=3.5)", "shapely"]
-docs = ["regions[all]", "sphinx-astropy (>=1.6)", "tomli"]
-test = ["pytest-arraydiff", "pytest-astropy (>=0.10)"]
+docs = ["regions[all]", "sphinx-astropy (>=1.9)", "tomli"]
+test = ["pytest-arraydiff", "pytest-astropy (>=0.11)"]
 
 [[package]]
 name = "ruff"
@@ -1202,4 +1198,4 @@ ms = ["heinlein-ms"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11"
-content-hash = "13150c115ec612edf707b6afc7a05c689dcea46f24474db4198952a56b9642cf"
+content-hash = "ed0ef10be633c8bb25eb69b6d7b30c54c19757bc45a28e74610f2432f627e50d"
