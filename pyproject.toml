@@ -5,10 +5,10 @@ description = ""
 authors = [{name="Patrick Wells", email="patrick@astropatty.com"}]
 readme = "README.md"
 exclude = ["surveys"]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 dependencies = [
-    "numpy>=1.26.3,<2.0",
+    "numpy>=2.2.0,<3.0",
     "shapely>=2.0.2,<3.0",
     "pandas>=2.2.0,<3.0",
     "appdirs>=1.4.4,<2.0",
@@ -18,7 +18,8 @@ dependencies = [
     "cacheout>=0.16.0,<1.0",
     "regions>=0.8,<1.0",
     "sqlalchemy>=2.0.25,<3.0",
-    "click>=8.1.7,<9.0"
+    "click>=8.1.7,<9.0",
+    "astropy (>=7.0.1,<8.0.0)"
 ]
 
 

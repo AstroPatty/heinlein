@@ -5,7 +5,7 @@ description = "DES plugin for heinlein"
 authors = [{name="Patrick Wells", email="patrick@astropatty.com"}]
 readme = "README.md"
 packages = [{include = "heinlein_des"}]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 
 [tool.poetry.group.heinlein.dependencies]
