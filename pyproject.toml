@@ -19,7 +19,8 @@ dependencies = [
     "regions>=0.8,<1.0",
     "sqlalchemy>=2.0.25,<3.0",
     "click>=8.1.7,<9.0",
-    "astropy (>=7.0.1,<8.0.0)"
+    "astropy (>=7.0.1,<8.0.0)",
+    "pyerfa (>=2.0.1.5,<3.0.0.0)"
 ]
 
 
