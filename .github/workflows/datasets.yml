@@ -19,9 +19,9 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v4
             - name: Set up Python
-              uses: actions/setup-python@v2
+              uses: actions/setup-python@v5
               with:
-                python-version: '3.10'
+                python-version: '3.11'
             - name: Install poetry
               uses: abatilo/actions-poetry@v3
             - name: Install heinlein and datasets
@@ -38,9 +38,9 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v4
             - name: Set up Python
-              uses: actions/setup-python@v2
+              uses: actions/setup-python@v5
               with:
-                python-version: '3.10'
+                python-version: '3.11'
             - name: Install poetry
               uses: abatilo/actions-poetry@v3
             - name: Publish
