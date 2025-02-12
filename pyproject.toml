@@ -1,12 +1,11 @@
-
 [project]
 name = "heinlein"
 version = "0.9.1"
 description = ""
-authors = [{name = "Patrick Wells", email = "patrick@astropatty.com"}]
+authors = [{name="Patrick Wells", email="patrick@astropatty.com"}]
 readme = "README.md"
 exclude = ["surveys"]
-requires-python = ">=3.10"
+requires-python = "^3.10"
 
 dependencies = [
     "numpy>=1.26.3,<2.0",
