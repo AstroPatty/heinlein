@@ -4,7 +4,7 @@ import operator
 import pickle
 import re
 import warnings
-from importlib.resources import read_binary, read_text
+from importlib.resources import files
 from pathlib import Path
 
 import numpy as np
@@ -18,14 +18,16 @@ from heinlein.region import Region
 
 
 def load_regions():
-    regions = read_binary("heinlein_hsc", "regions.reg")
-    regions = pickle.loads(regions)
+    resources = files("heinlein_hsc")
+    with open(resources / "regions.reg", "rb") as f:
+        regions = pickle.load(f)
     return regions
 
 
 def load_config():
-    text = read_text("heinlein_hsc", "config.json")
-    config = json.loads(text)
+    resources = files("heinlein_hsc")
+    with open(resources / "config.json") as f:
+        config = json.load(f)
     return config
 
 

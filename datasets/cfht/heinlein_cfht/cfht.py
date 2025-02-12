@@ -1,7 +1,7 @@
 import json
 import logging
 import pickle
-from importlib.resources import read_binary, read_text
+from importlib.resources import files
 from pathlib import Path
 
 import numpy as np
@@ -12,14 +12,16 @@ from heinlein.dtypes.handlers.handler import Handler
 
 
 def load_regions():
-    data = read_binary("heinlein_cfht", "regions.reg")
-    regions = pickle.loads(data)
+    resources = files("heinlein_cfht")
+    with open(resources / "regions.reg", "rb") as f:
+        regions = pickle.load(f)
     return regions
 
 
 def load_config():
-    data = read_text("heinlein_cfht", "config.json")
-    config = json.loads(data)
+    resources = files("heinlein_cfht")
+    with open(resources / "config.json") as f:
+        config = json.load(f)
     return config
 
 
