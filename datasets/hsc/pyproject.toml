@@ -5,7 +5,7 @@ description = ""
 authors = [{name="Patrick Wells", email="patrick@astropatty.com"}]
 readme = "README.md"
 packages = [{include = "heinlein_hsc"}]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 
 
