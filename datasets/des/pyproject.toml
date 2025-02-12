@@ -9,7 +9,7 @@ requires-python = ">=3.11"
 
 
 [tool.poetry.group.heinlein.dependencies]
-heinlein = "^0.10.0"
+heinlein = "^0.10.2"
 
 [build-system]
 requires = ["poetry-core"]
