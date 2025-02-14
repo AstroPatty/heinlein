@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from functools import cache, reduce
+from functools import reduce
 from operator import add
 
 import astropy.units as u
@@ -106,6 +106,7 @@ def Catalog(data: Table = None, config: dict = {}, *args, **kwargs):
 class CatalogObject(dobj.HeinleinDataObject):
     def __init__(self, data: Table):
         self._data = data
+        self.size = None
 
     def __len__(self):
         return len(self._data)
@@ -119,12 +120,14 @@ class CatalogObject(dobj.HeinleinDataObject):
         data = vstack([o._data for o in objects if len(o._data) > 0])
         return cls(data)
 
-    @cache
     def estimate_size(self) -> int:
-        data_size = reduce(
-            add, [estimate_column_size(self._data[col]) for col in self._data.colnames]
-        )
-        return data_size
+        if self.size is None:
+            data_size = reduce(
+                add,
+                [estimate_column_size(self._data[col]) for col in self._data.colnames],
+            )
+            self.size = data_size
+        return self.size
 
 
 def estimate_column_size(column: np.ndarray) -> int:
