@@ -198,7 +198,7 @@ class Dataset:
         counts = [p.count("/") + 1 for p in partitions.keys()]
         singles = []
 
-        for i, (regs, s) in enumerate(samples.items()):
+        for i, (regs, s) in enumerate(partitions.items()):
             if counts[i] == 1:
                 continue
             regs_to_get = regs.split("/")
@@ -226,3 +226,11 @@ class Dataset:
                 for s_ in s:
                     yield (s_, self.get_data_from_region(s_, dtypes))
                 clear_cache(self.name)
+
+    def clear_cache(self):
+        """
+        Clear the cache for this dataset, useful if you are sampling a lot and need
+        to clear up memory.
+        """
+        clear_cache(self.name)
+        return
