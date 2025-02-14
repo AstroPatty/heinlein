@@ -1,7 +1,9 @@
+import gc
 from pathlib import Path
 
 import pytest
 from astropy.io import fits
+from memory_profiler import profile
 
 from heinlein import set_option
 from heinlein.dtypes.mask import Mask
@@ -20,8 +22,11 @@ def cache():
 @pytest.fixture(scope="module")
 def masks():
     mask_files = DES_MASK_PATH.glob("*.fits")
-    mask_data = {f.stem: fits.open(f) for f in mask_files}
-    mask_objects = {k: Mask([v], mask_key=1) for k, v in mask_data.items()}
+    mask_data = {}
+    for f in mask_files:
+        with fits.open(f) as mask:
+            mask_data[f.stem] = mask
+            mask_objects = {k: Mask([v], mask_key=1) for k, v in mask_data.items()}
 
     return mask_objects
 
@@ -55,7 +60,6 @@ def test_get(cache, masks):
 
 
 def test_clear(cache, masks):
-    keys = list(masks.keys())
     clear_cache("des")
 
     with pytest.raises(KeyError):

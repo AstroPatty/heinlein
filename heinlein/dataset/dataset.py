@@ -195,37 +195,34 @@ class Dataset:
         samples = [Region.circle(center=s, radius=sample_dimensions) for s in samples]
 
         partitions = self.footprint.partition_by_region(samples)
-        counts = [p.count("/") + 1 for p in partitions.keys()]
-        singles = []
+        counts = {p: p.count("/") + 1 for p in partitions.keys()}
+        done = set()
 
-        for i, (regs, s) in enumerate(partitions.items()):
-            if counts[i] == 1:
+        for reg_key in partitions.keys():
+            if counts[reg_key] == 1:
                 continue
-            regs_to_get = regs.split("/")
+            regs_to_get = reg_key.split("/")
+            s = partitions[reg_key]
             for s_ in s:
                 yield (s_, self.get_data_from_region(s_, dtypes))
             for reg_ in regs_to_get:
                 # Now, get the samples that fall into a single one of the regions
-                if reg_ in singles:
+                if reg_ in done or reg_ not in partitions:
                     continue
-                try:
-                    samples_in_reg = samples[reg_]
-                except KeyError:
-                    continue
-                singles.append(reg_)
-                for s_ in samples_in_reg:
+                done.add(reg_)
+                for s_ in partitions[reg_]:
                     yield (s_, self.get_data_from_region(s_, dtypes))
             # Now, we dump the data from those regions
+            done.add(reg_key)
             clear_cache(self.name)
         # Now we go through all the samples that fall in a single survey region
         # that were NOT covered before
-        for i, (reg, s) in enumerate(samples.items()):
-            if counts[i] != 1 or reg in singles:
-                continue
-            else:
-                for s_ in s:
-                    yield (s_, self.get_data_from_region(s_, dtypes))
-                clear_cache(self.name)
+        remaining = set(partitions.keys()) - done
+        for reg_key in remaining:
+            s = partitions[reg_key]
+            for s_ in s:
+                yield (s_, self.get_data_from_region(s_, dtypes))
+            clear_cache(self.name)
 
     def clear_cache(self):
         """

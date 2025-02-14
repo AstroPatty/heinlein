@@ -1,6 +1,6 @@
 import warnings
 from abc import ABC, abstractmethod
-from functools import cache, singledispatchmethod
+from functools import singledispatchmethod
 from gettext import Catalog
 from typing import Iterable
 
@@ -67,7 +67,6 @@ class Mask(HeinleinDataObject):
         m._masks = masks
         return m
 
-    @cache
     def estimate_size(self) -> int:
         return sum([mask.estimate_size() for mask in self._masks])
 
@@ -209,7 +208,7 @@ class _fitsMask(_mask):
     def __init__(self, mask, wcs, mask_data):
         super().__init__(mask)
         self._wcs = wcs
-        self._mask_plane = mask_data
+        self._mask = mask_data
 
     @classmethod
     def from_hdu(cls, mask, mask_key, pixarray=False, *args, **kwargs):
@@ -232,7 +231,7 @@ class _fitsMask(_mask):
         return cls(cutout, wcs, data)
 
     def estimate_size(self) -> int:
-        return self._mask_plane.nbytes
+        return self._mask.nbytes
 
     def _check(self, coords):
         y, x = utils.skycoord_to_pixel(coords, self._wcs)
@@ -243,8 +242,8 @@ class _fitsMask(_mask):
         y = np.round(y, 0).astype(int)
         masked = np.ones(len(x), dtype=bool)
 
-        x_limit = self._mask_plane.shape[0]
-        y_limit = self._mask_plane.shape[1]
+        x_limit = self._mask.shape[0]
+        y_limit = self._mask.shape[1]
 
         negative_check = (x < 0) | (y < 0)
         # Note: We already inverted indices above
@@ -253,7 +252,7 @@ class _fitsMask(_mask):
         to_skip = negative_check | x_limit_check | y_limit_check
 
         masked[to_skip] = False
-        pixel_values = self._mask_plane[x[~to_skip], y[~to_skip]]
+        pixel_values = self._mask[x[~to_skip], y[~to_skip]]
         masked[~to_skip] = pixel_values > 0
         return ~masked
 
@@ -269,7 +268,7 @@ class _fitsMask(_mask):
         size = (bounds[2] - bounds[0], bounds[3] - bounds[1])
 
         try:
-            cutout = Cutout2D(self._mask_plane, center, size, wcs=self._wcs, copy=True)
+            cutout = Cutout2D(self._mask, center, size, wcs=self._wcs, copy=True)
         except NoOverlapError:
             return None
 
