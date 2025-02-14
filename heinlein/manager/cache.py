@@ -3,8 +3,6 @@ from collections.abc import Iterable
 from copy import copy
 from functools import singledispatchmethod
 
-from memory_profiler import profile
-
 import heinlein
 
 CURRENT_CACHES = {}
@@ -122,7 +120,6 @@ class Cache:
                     del region_data
         return True
 
-    @profile
     def empty(self):
         self.cache = OrderedDict()
         self.sizes = {}

@@ -46,9 +46,6 @@ heinlein-hsc = {path = "datasets/hsc"}
 
 
 
-[tool.poetry.group.dev.dependencies]
-memory-profiler = "^0.61.0"
-
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
