@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from collections.abc import Iterable
 from copy import copy
 from functools import singledispatchmethod
 
@@ -133,14 +134,16 @@ class Cache:
                 del self.cache[region_name]
 
     @singledispatchmethod
-    def get(self, region_name: str, dtypes):
+    def get(self, region_name: str, dtypes: Iterable):
         if region_name not in self.cache:
             raise KeyError("Region not in cache")
-        if not isinstance(dtypes, list):
-            dtypes = [dtypes]
+        if isinstance(dtypes, str):
+            dtypes = {dtypes}
+        elif not isinstance(dtypes, set):
+            dtypes = set(dtypes)
 
         dtypes_in_cache = set(self.cache[region_name].keys())
-        dtypes_to_get = set(dtypes).intersection(dtypes_in_cache)
+        dtypes_to_get = dtypes.intersection(dtypes_in_cache)
         if not dtypes_to_get:
             raise ValueError("None of the requested objects are in the cache")
 
@@ -148,9 +151,7 @@ class Cache:
         return {dtype: self.cache[region_name][dtype] for dtype in dtypes_to_get}
 
     @get.register
-    def _(self, regions: set, dtypes):
-        if not isinstance(dtypes, list):
-            dtypes = [dtypes]
+    def _(self, regions: set, dtypes: Iterable):
         output = {}
         for region in regions:
             try:
