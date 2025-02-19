@@ -119,7 +119,7 @@ class SQLiteCatalogHandler(handler.Handler):
                         )
                         storage.update({region_names[index]: table[mask]})
                 else:
-                    storage.update({sr: Catalog() for sr in region_names})
+                    storage.update({sr: Table() for sr in region_names})
                     # This needs to be fixed
             elif len(self._tnames) == 1:
                 region_names = [".".join([region, sr]) for sr in subregions]
@@ -177,7 +177,7 @@ class SQLiteCatalogHandler(handler.Handler):
 
     def _parse_return(self, data, *args, **kwargs):
         if len(data) == 0:
-            return Catalog()
+            return Table()
 
         # replace all None with np.nan
         data = Table.from_pandas(data)

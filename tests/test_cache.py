@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pytest
 from astropy.io import fits
-from memory_profiler import profile
 
 from heinlein import set_option
 from heinlein.dtypes.mask import Mask
@@ -60,6 +59,7 @@ def test_get(cache, masks):
 
 
 def test_clear(cache, masks):
+    keys = list(masks.keys())
     clear_cache("des")
 
     with pytest.raises(KeyError):
