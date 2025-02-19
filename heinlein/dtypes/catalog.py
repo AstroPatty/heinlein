@@ -121,11 +121,17 @@ class CatalogObject(dobj.HeinleinDataObject):
 
     def estimate_size(self) -> int:
         if self.size is None:
-            data_size = reduce(
-                add,
-                [estimate_column_size(self._data[col]) for col in self._data.colnames],
-            )
-            self.size = data_size
+            if len(self._data) == 0:
+                self.size = 0
+            else:
+                data_size = reduce(
+                    add,
+                    [
+                        estimate_column_size(self._data[col])
+                        for col in self._data.colnames
+                    ],
+                )
+                self.size = data_size
         return self.size
 
 
