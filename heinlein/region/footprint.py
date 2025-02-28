@@ -26,6 +26,24 @@ def query_healpix(region: BaseRegion, nside: int):
     return healpy.query_polygon(nside, vecs, inclusive=True)
 
 
+def get_healpix_nside(region: BaseRegion):
+    """
+    Dynamically decide on the nside for a given footprint based on
+    the size of a region
+
+    We want something that gives us several regions but not too
+    many
+    """
+    area = 8 * region.bounding_box.area()  # in steradians
+    n = 1
+    while True:
+        pixsize = healpy.nside2pixarea(n**2)
+        if pixsize < area:
+            break
+        n += 1
+    return 2 ** (n - 1)
+
+
 class Footprint:
     """
     The footprint class is a container for a set of regions. It is used to represent
@@ -38,9 +56,9 @@ class Footprint:
     the regions that overlap with those pixels.
     """
 
-    def __init__(self, regions: list[BaseRegion], nside=64, *args, **kwargs):
-        self._regions = partition_regions(regions, nside)
-        self._nside = nside
+    def __init__(self, regions: list[BaseRegion], nside=256, *args, **kwargs):
+        self._nside = get_healpix_nside(regions[0])
+        self._regions = partition_regions(regions, self._nside)
 
     @singledispatchmethod
     def get_overlapping_regions(self, query_region: BaseRegion) -> list[BaseRegion]:

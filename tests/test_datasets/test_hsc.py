@@ -51,13 +51,13 @@ def dataset():
 def test_hsc_mask_in_footprint(dataset):
     with raises(MissingDataError):
         center = SkyCoord(34, -2, unit="deg")
-        data = dataset.cone_search(center, 1 * u.deg, dtypes=["mask"])
+        data = dataset.cone_search(center, 2 * u.arcmin, dtypes=["mask"])
 
 
 def test_hsc_catalog_in_footprint(dataset):
     with raises(MissingDataError):
         center = SkyCoord(34, -2, unit="deg")
-        data = dataset.cone_search(center, 1 * u.deg, dtypes=["catalog"])
+        data = dataset.cone_search(center, 2 * u.arcmin, dtypes=["catalog"])
 
 
 def test_hsc_cone_search(dataset, center):
