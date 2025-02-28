@@ -118,8 +118,6 @@ class SQLiteCatalogHandler(handler.Handler):
                             table[subregion_key].astype(str) == sr
                         )
                         storage.update({region_names[index]: table[mask]})
-                else:
-                    storage.update({sr: Table() for sr in region_names})
                     # This needs to be fixed
             elif len(self._tnames) == 1:
                 region_names = [".".join([region, sr]) for sr in subregions]
@@ -131,8 +129,6 @@ class SQLiteCatalogHandler(handler.Handler):
                 for index, sr in enumerate(subregions):
                     mask = table[subregion_key] == sr
                     storage.update({region_names[index]: table[mask]})
-            else:
-                storage.update({sr: Table() for sr in region_names})
         return storage
 
     def _get(self, region_names: list):
@@ -177,7 +173,7 @@ class SQLiteCatalogHandler(handler.Handler):
 
     def _parse_return(self, data, *args, **kwargs):
         if len(data) == 0:
-            return Table()
+            return {}
 
         # replace all None with np.nan
         data = Table.from_pandas(data)

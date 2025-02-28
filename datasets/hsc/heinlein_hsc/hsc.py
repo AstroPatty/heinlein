@@ -203,13 +203,13 @@ class MaskHandler(Handler):
             patch_tuple = _patch_int_to_tuple(int(patch_number))
 
             if tract_name not in self.known_patches:
-                raise ValueError(f"Could not find masks for HSC tract {tract_name}")
+                return {}
 
             filename = basename.format(tract_name, patch_tuple[0], patch_tuple[1])
             patch_path = self._path / tract_name / filename
 
             if not patch_path.exists():
-                raise ValueError(f"Could not find mask for region {name}")
+                return {}
 
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")

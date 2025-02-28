@@ -10,7 +10,7 @@ from astropy.coordinates import SkyCoord
 from heinlein.dataset.extension import get_extension, load_extensions
 from heinlein.manager import get_manager
 from heinlein.manager.cache import clear_cache
-from heinlein.manager.manager import DataManager
+from heinlein.manager.manager import DataManager, MissingDataError
 from heinlein.region import BaseRegion, Region
 from heinlein.region.footprint import Footprint
 
@@ -155,7 +155,7 @@ class Dataset:
         else:
             overlaps = self.footprint.get_overlapping_regions(query_region)
         if len(overlaps) == 0:
-            print("Error: No objects found in this region!")
+            raise ValueError("Region does not fall within the survey footprint")
             return
 
         data = {}
@@ -204,14 +204,20 @@ class Dataset:
             regs_to_get = reg_key.split("/")
             s = partitions[reg_key]
             for s_ in s:
-                yield (s_, self.get_data_from_region(s_, dtypes))
+                try:
+                    yield (s_, self.get_data_from_region(s_, dtypes))
+                except MissingDataError:
+                    continue  # for now...
             for reg_ in regs_to_get:
                 # Now, get the samples that fall into a single one of the regions
                 if reg_ in done or reg_ not in partitions:
                     continue
                 done.add(reg_)
                 for s_ in partitions[reg_]:
-                    yield (s_, self.get_data_from_region(s_, dtypes))
+                    try:
+                        yield (s_, self.get_data_from_region(s_, dtypes))
+                    except MissingDataError:
+                        continue
             # Now, we dump the data from those regions
             done.add(reg_key)
             clear_cache(self.name)
@@ -221,7 +227,10 @@ class Dataset:
         for reg_key in remaining:
             s = partitions[reg_key]
             for s_ in s:
-                yield (s_, self.get_data_from_region(s_, dtypes))
+                try:
+                    yield (s_, self.get_data_from_region(s_, dtypes))
+                except MissingDataError:
+                    continue
             clear_cache(self.name)
 
     def clear_cache(self):

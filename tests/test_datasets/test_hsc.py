@@ -3,10 +3,11 @@ from pathlib import Path
 
 import astropy.units as u
 from astropy.coordinates import SkyCoord
-from pytest import fixture
+from pytest import fixture, raises
 
 from heinlein import load_dataset, set_option
 from heinlein.api import add
+from heinlein.manager.manager import MissingDataError
 from heinlein.region.footprint import Footprint
 
 radius = 2 * u.arcmin
@@ -45,6 +46,18 @@ def center():
 def dataset():
     set_option("CACHE_SIZE", "10G")
     return load_dataset("hsc")
+
+
+def test_hsc_mask_in_footprint(dataset):
+    with raises(MissingDataError):
+        center = SkyCoord(34, -2, unit="deg")
+        data = dataset.cone_search(center, 1 * u.deg, dtypes=["mask"])
+
+
+def test_hsc_catalog_in_footprint(dataset):
+    with raises(MissingDataError):
+        center = SkyCoord(34, -2, unit="deg")
+        data = dataset.cone_search(center, 1 * u.deg, dtypes=["catalog"])
 
 
 def test_hsc_cone_search(dataset, center):

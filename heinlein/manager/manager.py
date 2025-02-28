@@ -309,8 +309,8 @@ class DataManager:
             missing_regions = regnames - found_regions
             if len(missing_regions) != 0:
                 raise MissingDataError(
-                    f"Could not find data for regions {missing_regions} of"
-                    f" type {dtype}"
+                    "Unable to load data for this region. "
+                    "The region is in the survey footprint, but the data are missing."
                 )
 
             storage.update({dtype: {**cached_data_of_dtype, **new_data_of_dtype}})
