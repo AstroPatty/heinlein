@@ -4,6 +4,7 @@ import pandas as pd
 from astropy.io import ascii
 from astropy.table import Table
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError
 
 from heinlein.dtypes.catalog import Catalog
 from heinlein.dtypes.handlers import handler
@@ -11,6 +12,39 @@ from heinlein.dtypes.handlers import handler
 
 class heinleinIoException(Exception):
     pass
+
+
+def get_region_table_names(config: dict, region_names: list) -> dict[str, list]:
+    regions_to_get = {}
+    subregion_key = config.get("subregion", None)
+    if subregion_key is not None:
+        splits = [rname.split(".") for rname in region_names]
+        for split in splits:
+            if len(split) == 2:
+                if split[0] in regions_to_get.keys():
+                    regions_to_get[split[0]].append(split[1])
+                else:
+                    regions_to_get.update({split[0]: [split[1]]})
+            elif len(split) == 2 and split[0] not in regions_to_get.keys():
+                regions_to_get.update({split[0]: []})
+    else:
+        for region in region_names:
+            regions_to_get.update({region: []})
+
+    return regions_to_get
+
+
+def split_table_by(table: Table, key: str) -> dict[str, Table]:
+    """
+    Splits a table by a given key.
+    Returns a dictionary of tables, where the
+    keys are the unique values of the given key.
+    """
+    unique_values = set(table[key])
+    tables = {}
+    for value in unique_values:
+        tables.update({value: table[table[key] == value]})
+    return tables
 
 
 def get_catalog_handler(config: dict, dconfig: dict):
@@ -68,6 +102,9 @@ class CsvCatalogHandler(handler.Handler):
 
 
 class SQLiteCatalogHandler(handler.Handler):
+    region_query = """SELECT * FROM \"{}\""""
+    subergion_query = """SELECT * FROM \"{}\" WHERE {} IN ({})"""
+
     def __init__(self, path: Path, config: dict, *args, **kwargs):
         super().__init__(path, config, "catalog")
         if not path.exists():
@@ -85,96 +122,35 @@ class SQLiteCatalogHandler(handler.Handler):
         self._tnames = [t[1] for t in cur.fetchall()]
 
     def get_data(self, region_names: list, *args, **kwargs):
-        subregion_key = self._config.get("subregion", None)
-        if subregion_key is not None:
-            splits = [rname.split(".") for rname in region_names]
-            regions_to_get = {}
-            for split in splits:
-                if len(split) == 2:
-                    if split[0] in regions_to_get.keys():
-                        regions_to_get[split[0]].append(split[1])
-                    else:
-                        regions_to_get.update({split[0]: [split[1]]})
-                elif len(split) == 2 and split[0] not in regions_to_get.keys():
-                    regions_to_get.update({split[0]: []})
-
-            storage = self.get_with_subregions(regions_to_get)
-        else:
-            storage = self._get(region_names)
+        regions_to_get = get_region_table_names(self._config, region_names)
+        storage = {}
+        for region, subregions in regions_to_get.items():
+            if not subregions:
+                query = self.region_query.format(region)
+                try:
+                    table = self.execute_query(query)
+                except OperationalError:
+                    continue
+                storage.update({region: Table.from_pandas(table)})
+            else:
+                subregion_key = self._config.get("subregion", None)
+                search_subregions = ",".join([f'"{sr}"' for sr in subregions])
+                query = self.subergion_query.format(
+                    region, subregion_key, search_subregions
+                )
+                try:
+                    table = self.execute_query(query)
+                except OperationalError:
+                    continue
+                tables_by_subregion = split_table_by(table, subregion_key)
+                for subregion, sub_table in tables_by_subregion.items():
+                    storage.update(
+                        {f"{region}.{subregion}": Table.from_pandas(sub_table)}
+                    )
 
         return {k: Catalog(table, self._config) for k, table in storage.items()}
-
-    def get_with_subregions(self, regions: dict):
-        subregion_key = self._config.get("subregion", None)
-        region_key = self._config.get("region", None)
-        storage = {}
-        for region, subregions in regions.items():
-            region_names = [".".join([region, sr]) for sr in subregions]
-            if str(region) in self._tnames:
-                table = self.get_where(region, {subregion_key: subregions})
-                if len(table) != 0:
-                    for index, sr in enumerate(subregions):
-                        mask = (table[region_key].astype(str) == region) & (
-                            table[subregion_key].astype(str) == sr
-                        )
-                        storage.update({region_names[index]: table[mask]})
-                    # This needs to be fixed
-            elif len(self._tnames) == 1:
-                region_names = [".".join([region, sr]) for sr in subregions]
-
-                table = self.get_where(
-                    self._tnames[0],
-                    {region_key: region.name, subregion_key: subregions},
-                )
-                for index, sr in enumerate(subregions):
-                    mask = table[subregion_key] == sr
-                    storage.update({region_names[index]: table[mask]})
-        return storage
-
-    def _get(self, region_names: list):
-        storage = {}
-        for region in region_names:
-            if region in self._tnames:
-                table = self.get_all(region)
-
-                storage.update({region: table})
-
-            elif len(self._tnames) == 1:
-                region_key = self._config.get("region", None)
-                table = self.get_where(self._tnames[0], {region_key: region.name})
-                storage.update({region: table})
-        return storage
-
-    def get_where(self, tname: str, conditions: dict):
-        base_query = f'SELECT * FROM "{tname}" WHERE '
-        base_condition = '{} = "{}"'
-        multiple_base_conditions = "{} IN ({})"
-        output_conditions = []
-        for k, vs in conditions.items():
-            if isinstance(vs, list):
-                c = '","'.join([str(v) for v in vs])
-                c = '"' + c + '"'
-                output_conditions.append(multiple_base_conditions.format(k, c))
-            else:
-                output_conditions.append(base_condition.format(k, vs))
-        query = base_query + " AND ".join(output_conditions)
-        table = self.execute_query(query)
-        return self._parse_return(table)
-
-    def get_all(self, tname):
-        query = f'SELECT * FROM "{tname}"'
-        table = self.execute_query(query)
-        return self._parse_return(table)
 
     def execute_query(self, query):
         q = text(query)
         data = pd.read_sql(q, self._con)
-        return data
-
-    def _parse_return(self, data, *args, **kwargs):
-        if len(data) == 0:
-            return {}
-
-        # replace all None with np.nan
-        data = Table.from_pandas(data)
         return data
